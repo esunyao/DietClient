@@ -12,34 +12,24 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+import { HomeScreen } from './src/features/diet/screens/HomeScreen';
 
+/**
+ * -----------------------------------------------------------------------------
+ * 🎓 React Native 根入口组件 (App.tsx)
+ * -----------------------------------------------------------------------------
+ * 职责：
+ * 1. 挂载全局上下文 Provider（例如 Safe Area 适配、路由容器 NavigationContainer、全局状态管理等）
+ * 2. 作为全局 UI 的顶层入口
+ * -----------------------------------------------------------------------------
+ */
+function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      {/* 直接渲染我们刚编写的 HomeScreen 样板 */}
+      <HomeScreen />
     </SafeAreaProvider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default App;
