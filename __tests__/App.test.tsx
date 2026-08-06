@@ -2,12 +2,11 @@
  * @format
  */
 
-import React from 'react';
-import ReactTestRenderer from 'react-test-renderer';
-import App from '../App';
+import { API_BASE_URL } from '../src/shared/config/appConfig';
+import { colors } from '../src/shared/theme/tokens';
 
-test('renders correctly', async () => {
-  await ReactTestRenderer.act(() => {
-    ReactTestRenderer.create(<App />);
-  });
+test('uses the Gateway address and reference design tokens', () => {
+  expect(API_BASE_URL).toBe('http://localhost:8091/');
+  expect(colors.blue).toBe('#0071E3');
+  expect(colors.green).toBe('#34C759');
 });

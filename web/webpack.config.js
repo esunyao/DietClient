@@ -34,10 +34,22 @@ module.exports = {
     alias: {
       // 把 react-native 精确替换为 react-native-web
       'react-native$': 'react-native-web',
+      // AsyncStorage 的 package exports 同时暴露 TS source；webpack + Babel 会把它转成
+      // 浏览器不能直接执行的 CommonJS exports。Web 端固定使用已编译的模块入口。
+      '@react-native-async-storage/async-storage$': path.resolve(
+        appDirectory,
+        'node_modules/@react-native-async-storage/async-storage/lib/module/index.js',
+      ),
     },
   },
   module: {
     rules: [
+      {
+        // AsyncStorage 的 Web ESM 产物仍有省略 .js 的内部导入。
+        // Webpack 5 对严格 ESM 默认要求完整扩展名，关闭该限制以兼容 RN 生态包。
+        test: /\.m?js$/,
+        resolve: { fullySpecified: false },
+      },
       {
         test: /\.[jt]sx?$/,
         loader: 'babel-loader',
@@ -46,12 +58,11 @@ module.exports = {
           // 仅 web 构建追加 react-native-web babel 插件（根 babel.config.js 的 RN preset 仍生效）
           plugins: [require.resolve('babel-plugin-react-native-web')],
         },
-        // 需转译的未编译 npm 包（负向断言排除已编译包）。
-        // 注意：Windows 上路径可能是反斜杠，用 [\\/] 兼容两种分隔符，
-        // 否则 webpack-dev-server 等 "type": "module" 的包被 babel 转成 CJS 后
-        // 会被 webpack 仍当 ESM 解析，导致 "require is not defined"。
+        // 仅转译 React Native Web 运行时；React Navigation 已发布 ESM 产物，
+        // 若再经 RN Babel preset 转为 CJS，会在浏览器触发 `exports is not defined`。
+        // Windows 路径可能为反斜杠，因此用 [\\/] 同时兼容两种分隔符。
         exclude:
-          /node_modules[\\/](?!react-native-web|react-native-safe-area-context|react-native-screens|@react-navigation)/,
+          /node_modules[\\/](?!react-native-web|react-native-safe-area-context|react-native-screens)/,
       },
       {
         test: /\.(png|jpe?g|gif|svg|webp)$/i,

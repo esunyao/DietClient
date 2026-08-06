@@ -1,33 +1,22 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React from 'react';
+import { StatusBar } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
-
-import { HomeScreen } from './src/features/diet/screens/HomeScreen';
+import { AppNavigator } from './src/navigation/AppNavigator';
+import { ToastProvider } from './src/shared/components/Toast';
+import { colors } from './src/shared/theme/tokens';
 
 /**
- * -----------------------------------------------------------------------------
- * 🎓 React Native 根入口组件 (App.tsx)
- * -----------------------------------------------------------------------------
- * 职责：
- * 1. 挂载全局上下文 Provider（例如 Safe Area 适配、路由容器 NavigationContainer、全局状态管理等）
- * 2. 作为全局 UI 的顶层入口
- * -----------------------------------------------------------------------------
+ * 应用根节点只负责装配跨页面能力。
+ * 路由、会话和具体业务页面分别在各自目录维护，避免入口文件演变成业务中心。
  */
 function App() {
   return (
     <SafeAreaProvider>
-      {/* 直接渲染我们刚编写的 HomeScreen 样板 */}
-      <HomeScreen />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <ToastProvider>
+        <AppNavigator />
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }
