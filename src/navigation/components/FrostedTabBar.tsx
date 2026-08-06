@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BarChart3, Camera, FileText, Home, Sparkles, UserRound } from 'lucide-react-native';
 
 import { GlassSurface } from '../../shared/components/GlassSurface';
 import { useTabBarVisibility } from '../../shared/store/tabBarVisibility';
-import { colors, fonts, shadows } from '../../shared/theme/tokens';
-import SkiaTabBarChrome from './SkiaTabBarChrome';
+import { colors, fonts } from '../../shared/theme/tokens';
 
 const tabMeta = {
   HomeTab: { label: '首页', Icon: Home },
@@ -17,17 +17,17 @@ const tabMeta = {
   ProfileTab: { label: '我的', Icon: UserRound },
 } as const;
 
-const BAR_HEIGHT = 58;
+const BAR_HEIGHT = 52;
 
 /**
  * 模拟稿的悬浮六项底栏：
- * - 扁平：58 高度 + 大圆角 + 软阴影，active 项保留白色胶囊高亮。
- * - 更强玻璃：Skia 光晕 + 磨砂模糊层，保留原高帧率光学质感。
+ * - 紧凑：52 高度 + 大圆角 + 细描边，避免浅色背景下与页面融为一体。
+ * - 浅色玻璃：不使用大范围 Skia 光晕或深阴影，消除底部黑色渐变感。
  * - 随滚动隐藏：订阅 useTabBarVisibility，translateY 滑出/滑入（原生走 native driver）。
  * - 无障碍按键仍由 Pressable 提供，Canvas 光晕 pointerEvents 关闭。
  */
 export function FrostedTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const [width, setWidth] = useState(0);
+  const insets = useSafeAreaInsets();
   const activeIndex = state.index;
   const hidden = useTabBarVisibility(s => s.hidden);
   const setHidden = useTabBarVisibility(s => s.setHidden);
@@ -48,16 +48,10 @@ export function FrostedTabBar({ state, descriptors, navigation }: BottomTabBarPr
     }).start();
   }, [hidden, translateY]);
 
-  const chrome = useMemo(
-    () => (width ? <SkiaTabBarChrome activeIndex={activeIndex} height={BAR_HEIGHT} width={width} /> : null),
-    [activeIndex, width],
-  );
-
   return (
-    <Animated.View style={[styles.barWrap, { transform: [{ translateY }] }]}>
-      <GlassSurface variant="frosted" intensity={50} style={styles.bar}>
-        <View onLayout={event => setWidth(event.nativeEvent.layout.width)} style={styles.content}>
-          {chrome}
+    <Animated.View style={[styles.barWrap, { bottom: Math.max(insets.bottom, 6), transform: [{ translateY }] }]}>
+      <GlassSurface variant="navigation" intensity={58} style={styles.bar}>
+        <View style={styles.content}>
           {state.routes.map((route, index) => {
             const meta = tabMeta[route.name as keyof typeof tabMeta];
             const focused = index === activeIndex;
@@ -80,7 +74,7 @@ export function FrostedTabBar({ state, descriptors, navigation }: BottomTabBarPr
                 onPress={onPress}
                 style={({ pressed }) => [styles.item, focused && styles.itemFocused, pressed && styles.itemPressed]}
               >
-                <Icon color={focused ? colors.blue : '#7A8BA0'} size={19} strokeWidth={focused ? 2.45 : 2.1} />
+                <Icon color={focused ? colors.blue : '#7A8BA0'} size={18} strokeWidth={focused ? 2.45 : 2.1} />
                 <Text style={[styles.label, focused && styles.labelFocused]}>{meta.label}</Text>
               </Pressable>
             );
@@ -92,16 +86,20 @@ export function FrostedTabBar({ state, descriptors, navigation }: BottomTabBarPr
 }
 
 const styles = StyleSheet.create({
-  barWrap: { position: 'absolute', left: 12, right: 12, bottom: 12, zIndex: 120 },
+  barWrap: { position: 'absolute', left: 12, right: 12, zIndex: 120 },
   bar: {
     height: BAR_HEIGHT,
-    borderRadius: 22,
-    boxShadow: shadows.soft,
+    borderRadius: 20,
+    boxShadow: '0 2px 8px rgba(100, 116, 139, 0.10)',
   },
   content: { flex: 1, flexDirection: 'row', alignItems: 'stretch' },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 16, marginVertical: 5 },
-  itemFocused: { backgroundColor: 'rgba(255,255,255,0.40)' },
+  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 14, marginVertical: 4 },
+  itemFocused: {
+    backgroundColor: 'rgba(0, 113, 227, 0.10)',
+    borderColor: 'rgba(0, 113, 227, 0.16)',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   itemPressed: { opacity: 0.74, transform: [{ scale: 0.96 }] },
-  label: { color: '#7A8BA0', fontFamily: fonts.body, fontSize: 9, fontWeight: '700' },
+  label: { color: '#7A8BA0', fontFamily: fonts.body, fontSize: 8.5, fontWeight: '700' },
   labelFocused: { color: colors.blue },
 });

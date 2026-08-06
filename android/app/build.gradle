@@ -117,7 +117,7 @@ android {
         abi {
             enable true // 开启拆分
             reset()
-            include "x86_64"
+            include "arm64-v8a"
 
             // 如果设为 false，就不会生成包含所有架构的超大打包文件
             // 如果设为 true，会额外生成一个包含全部架构的通用通用 apk (universal-release.apk)
