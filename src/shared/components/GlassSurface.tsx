@@ -1,32 +1,48 @@
 import React from 'react';
-import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { BlurView } from '@sbaiahmed1/react-native-blur';
 
-import { colors, radii } from '../theme/tokens';
+import { glass, radii } from '../theme/tokens';
 
 /**
  * 玻璃材质的唯一入口。
- * BlurView 在 Web 使用 backdrop-filter，在原生端使用各平台的模糊实现；
- * 这样页面不需要各自维护一套半透明背景和兼容性降级逻辑。
+ * - `frosted`：真 backdrop blur（Web 为 backdrop-filter，原生为平台模糊），
+ *   保持原始高帧率光学质感；配合顶部高光与细亮描边让玻璃轮廓更分明。
+ * - `soft`：半透明白 + 细描边 + 顶部高光，**不开 blur**，仅用于信息密集的字段卡，
+ *   保留玻璃观感的同时减少模糊层叠加。
  */
 export function GlassSurface({
   children,
   style,
-  intensity = 36,
+  intensity = 44,
+  variant = 'frosted',
 }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   intensity?: number;
+  variant?: 'frosted' | 'soft';
 }) {
+  const sheen = <View pointerEvents="none" style={styles.sheen} />;
+
+  if (variant === 'soft') {
+    return (
+      <View style={[styles.surface, styles.softSurface, style]}>
+        {sheen}
+        {children}
+      </View>
+    );
+  }
+
   return (
     <BlurView
       blurAmount={intensity}
       blurRounds={4}
       blurType="systemUltraThinMaterialLight"
-      overlayColor="rgba(255, 255, 255, 0.58)"
-      reducedTransparencyFallbackColor={colors.surface}
+      overlayColor="rgba(255, 255, 255, 0.42)"
+      reducedTransparencyFallbackColor="#FFFFFF"
       style={[styles.surface, style]}
     >
+      {sheen}
       {children}
     </BlurView>
   );
@@ -36,8 +52,20 @@ const styles = StyleSheet.create({
   surface: {
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.88)',
+    borderColor: glass.border,
     borderRadius: radii.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.56)',
+    backgroundColor: 'rgba(255, 255, 255, 0.30)',
+  },
+  softSurface: {
+    backgroundColor: glass.tintSoft,
+  },
+  /** 顶部细内高光：仿 iOS 材质的高光描边，让玻璃轮廓更分明。 */
+  sheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth * 2,
+    backgroundColor: glass.sheen,
   },
 });

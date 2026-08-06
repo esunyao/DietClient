@@ -9,6 +9,8 @@ export interface AvatarFile {
   fileName: string;
   contentType: AvatarMimeType;
   byteSize: number;
+  /** 仅 Web 端填充：prepare 阶段已取到的 Blob，供 PUT 时复用，避免二次 fetch。原生端忽略。 */
+  blob?: Blob;
 }
 
 export type AvatarUploadProgress = (percent: number) => void;

@@ -57,7 +57,12 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
+
+/**
+ * 设定是否自动剔除无用资源
+ * */
+def enableShrinkResourcesInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -102,7 +107,21 @@ android {
             // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableShrinkResourcesInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+
+        }
+    }
+    splits {
+        // 按照架构（arm64, x86等）拆分 APK
+        abi {
+            enable true // 开启拆分
+            reset()
+            include "x86_64"
+
+            // 如果设为 false，就不会生成包含所有架构的超大打包文件
+            // 如果设为 true，会额外生成一个包含全部架构的通用通用 apk (universal-release.apk)
+            universalApk false
         }
     }
 }

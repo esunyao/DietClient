@@ -45,3 +45,9 @@ npx tsc --noEmit     # TypeScript 类型检查
 - `babel.config.js` 只用 `module:@react-native/babel-preset`（原生与 web 共用，web 的 `babel-plugin-react-native-web` 仅在 webpack 配置里追加，勿加进根 babel 配置，会破坏原生构建）。
 - `metro.config.js` 为默认配置；**勿在 Metro 侧做 web 支持**（RN 0.86 的 Metro 无 web 别名/HTML 壳，官方文档也标注 web 支持为 "undocumented"，web 走 webpack 即可）。
 - 构建产物 `dist/` 已加入 `.gitignore`。
+
+## 头像上传（对象存储 CORS）
+
+- 头像上传链路：`POST /v1/files/avatar/presign` → `PUT {uploadUrl}`（MinIO）→ `POST /v1/files/avatar/confirm`。
+- **Web 端跨域**：上传目标是 MinIO 预签名地址（如 `http://192.168.3.101:9000/...`），与 `localhost:8080` 跨源。浏览器 PUT 会被 CORS 预检拦截，需在 MinIO 控制台为存储桶配置允许本机 origin 的 CORS 规则，否则前端会提示"被浏览器跨域策略或网络拦截"。
+- 原生端：`avatarUpload.native.ts` 已处理 `content://` / `ph://` 协议（先经 RNFetchBlob 落盘到缓存再上传），并在取不到 `fileSize` 时跳过 5MB 校验，避免误报。

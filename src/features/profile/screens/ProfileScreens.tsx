@@ -4,11 +4,11 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { launchCamera, launchImageLibrary, type Asset } from 'react-native-image-picker';
-import { Activity, Ban, Cake, ChevronRight, Droplets, FileText, HeartPulse, KeyRound, Pencil, RefreshCw, Ruler, Scale, ShieldAlert, Stethoscope, Target, UserRound, Utensils } from 'lucide-react-native';
+import { Activity, Ban, Cake, ChevronRight, Clock, Droplets, FileText, HeartPulse, Home, KeyRound, Pencil, RefreshCw, Ruler, Scale, ShieldAlert, Stethoscope, UserRound, Utensils } from 'lucide-react-native';
 
 import type { ProfileStackParamList } from '../../../navigation/types';
 import { getErrorMessage } from '../../../shared/api/client';
-import { AppButton, AppScreen, Avatar, EmptyState, GlassCard, MetricProgress, ScreenHeader, SectionTitle, Tag, inputStyle } from '../../../shared/components/ui';
+import { AppButton, AppScreen, Avatar, EmptyState, GlassCard, MetricProgress, ScreenHeader, SectionTitle, StatCell, Tag, inputStyle } from '../../../shared/components/ui';
 import { useToast } from '../../../shared/components/Toast';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { ActivityLevel, Gender, HealthGoal, ProfileUpdatePayload } from '../../../shared/types/api';
@@ -51,6 +51,16 @@ function ProfileAction({ icon, label, onPress }: { icon: React.ReactNode; label:
   );
 }
 
+/** 板块标题右侧的「编辑」入口，对齐 htmlTest 的 section-head 编辑链接。 */
+function EditLink({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.editLink}>
+      <Pencil color={colors.blue} size={11} />
+      <Text style={styles.editText}>编辑</Text>
+    </Pressable>
+  );
+}
+
 /**
  * 选择、上传与确认被封装在同一处：页面只负责决定入口，避免遗漏确认接口而产生孤儿文件。
  * 底部表单使用系统手势动画；上传时只更新进度文字，不触发整页重渲染。
@@ -62,6 +72,7 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
   const avatarPreviewUrl = useSessionStore(state => state.avatarPreviewUrl);
   const setUser = useSessionStore(state => state.setUser);
   const setAvatarPreviewUrl = useSessionStore(state => state.setAvatarPreviewUrl);
+  const refreshUserData = useSessionStore(state => state.refreshUserData);
   const { show } = useToast();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -81,6 +92,8 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
       // 先保存对象键以保持与服务端模型一致，再存可直接显示的临时 URL。
       setUser({ ...user, avatarUrl: presign.objectKey });
       setAvatarPreviewUrl(confirmed.avatarUrl);
+      // 兜底：重新拉取用户信息，确保本地状态与服务端头像对象键保持一致。
+      refreshUserData().catch(() => undefined);
       show('头像已更新', 'success');
     } catch (error) {
       show(getErrorMessage(error), 'error');
@@ -88,7 +101,7 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
       setUploading(false);
       setProgress(0);
     }
-  }, [setAvatarPreviewUrl, setUser, show, user]);
+  }, [refreshUserData, setAvatarPreviewUrl, setUser, show, user]);
 
   const pickFromLibrary = useCallback(async () => {
     sheetRef.current?.dismiss();
@@ -176,27 +189,34 @@ export function ProfileScreen({ navigation }: ProfileProps) {
     );
   }
 
+  const bmiRisk = Boolean(profile?.bmi && profile.bmi >= 24);
+
   return (
-    <AppScreen>
-      <ScreenHeader
-        title="我的"
-        subtitle="你的健康档案"
-        onBack={() => navigation.getParent()?.navigate('HomeTab' as never)}
-        action={<Pressable accessibilityLabel="刷新资料" onPress={refresh} style={styles.refreshButton}><RefreshCw color={colors.blue} size={18} /></Pressable>}
-      />
-      <GlassCard style={styles.identityCard}>
-        <AvatarEditor size={66} />
+    <AppScreen
+      header={
+        <ScreenHeader
+          title="我的"
+          subtitle="你的健康档案"
+          onBack={() => navigation.getParent()?.navigate('HomeTab' as never)}
+          action={<Pressable accessibilityLabel="刷新资料" onPress={refresh} style={styles.refreshButton}><RefreshCw color={colors.blue} size={16} /></Pressable>}
+        />
+      }
+    >
+      {/* 身份卡：头像 + 昵称 + ID/性别/年龄 + 风险与目标 chip */}
+      <GlassCard variant="frosted" style={styles.identityCard}>
+        <AvatarEditor size={56} />
         <View style={styles.identityCopy}>
           <Text style={styles.identityName}>{user.nickname || user.username}</Text>
           <Text style={styles.identityMeta}>ID · {user.userId.slice(0, 8)} · {profile?.gender ? genderLabels[profile.gender] : '未设置'} {profile?.age ? `${profile.age}岁` : ''}</Text>
           <Text numberOfLines={1} style={styles.identityEmail}>{user.email}</Text>
         </View>
         <View style={styles.identityTags}>
-          <Tag label={profile?.bmi && profile.bmi >= 24 ? '风险：中' : '风险：低'} tone={profile?.bmi && profile.bmi >= 24 ? 'amber' : 'green'} />
-          {profile?.healthGoal ? <Tag label={`◎ ${goalLabels[profile.healthGoal]}`} tone="green" /> : null}
+          <Tag label={bmiRisk ? '风险：中' : '风险：低'} tone={bmiRisk ? 'amber' : 'green'} />
+          {profile?.healthGoal ? <Tag label={`🎯 ${goalLabels[profile.healthGoal]}`} tone="green" /> : null}
         </View>
       </GlassCard>
 
+      {/* 功能入口 2 列网格 */}
       <View style={styles.actionGrid}>
         <ProfileAction icon={<Pencil color={colors.blue} size={18} />} label="编辑个人资料" onPress={() => profile ? navigation.navigate('EditProfile') : show('当前账户没有可编辑的健康画像。', 'error')} />
         <ProfileAction icon={<FileText color={colors.blue} size={18} />} label="我的报告" onPress={() => navigation.getParent()?.navigate('ReportsTab' as never)} />
@@ -206,35 +226,63 @@ export function ProfileScreen({ navigation }: ProfileProps) {
         <EmptyState title="健康画像尚未建立" description="当前 Orion 服务没有提供客户端创建画像接口，请联系管理员初始化画像后再编辑。" action={<AppButton label={refreshing ? '正在刷新…' : '重新读取'} disabled={refreshing} onPress={refresh} variant="secondary" />} />
       ) : profile ? (
         <>
-          <SectionTitle title="基础健康信息" action={<Pressable onPress={() => navigation.navigate('EditProfile')}><Text style={styles.editText}>编辑</Text></Pressable>} />
+          {/* 基础信息 */}
+          <SectionTitle title="基础信息" action={<EditLink onPress={() => navigation.navigate('EditProfile')} />} />
           <GlassCard style={styles.infoCard}>
             <InfoRow icon={<UserRound color={colors.muted} size={17} />} label="性别" value={profile.gender ? genderLabels[profile.gender] : '待完善'} />
             <InfoRow icon={<Cake color={colors.muted} size={17} />} label="年龄" value={displayValue(profile.age, ' 岁')} />
             <InfoRow icon={<Ruler color={colors.muted} size={17} />} label="身高" value={displayValue(profile.heightCm, ' cm')} />
             <InfoRow icon={<Scale color={colors.muted} size={17} />} label="体重" value={displayValue(profile.weightKg, ' kg')} />
-            <InfoRow icon={<HeartPulse color={colors.muted} size={17} />} label="BMI" value={displayValue(profile.bmi)} accent={profile.bmi && profile.bmi >= 24 ? 'amber' : undefined} />
+            <InfoRow icon={<HeartPulse color={colors.muted} size={17} />} label="BMI" value={displayValue(profile.bmi)} accent={bmiRisk ? 'amber' : undefined} />
           </GlassCard>
 
-          <SectionTitle title="健康目标与习惯" />
+          {/* 生活环境与习惯 */}
+          <SectionTitle title="生活环境与习惯" action={<EditLink onPress={() => navigation.navigate('EditProfile')} />} />
           <GlassCard style={styles.infoCard}>
-            <InfoRow icon={<Target color={colors.muted} size={17} />} label="健康目标" value={profile.healthGoal ? goalLabels[profile.healthGoal] : '待完善'} />
+            <InfoRow icon={<Utensils color={colors.muted} size={17} />} label="饮食偏好" value={tagsToText(profile.preferredCuisine)} />
             <InfoRow icon={<Activity color={colors.muted} size={17} />} label="活动水平" value={profile.activityLevel ? activityLabels[profile.activityLevel] : '待完善'} />
-            <InfoRow icon={<Droplets color={colors.muted} size={17} />} label="每日饮水" value={displayValue(profile.dailyWaterMl, ' ml')} />
-            <InfoRow icon={<Utensils color={colors.muted} size={17} />} label="偏好菜系" value={tagsToText(profile.preferredCuisine)} />
+            <InfoRow icon={<Clock color={colors.muted} size={17} />} label="用餐时间" value="待完善" />
+            <InfoRow icon={<Utensils color={colors.muted} size={17} />} label="单次摄入量" value="待完善" />
+            <InfoRow icon={<Home color={colors.muted} size={17} />} label="居住环境" value="待完善" />
           </GlassCard>
 
-          <SectionTitle title="过敏与饮食限制" />
+          {/* 临床与检测信息 */}
+          <SectionTitle title="临床与检测信息" action={<EditLink onPress={() => navigation.navigate('EditProfile')} />} />
           <GlassCard style={styles.infoCard}>
-            <InfoRow icon={<ShieldAlert color={colors.muted} size={17} />} label="过敏原" value={tagsToText(profile.allergies)} accent={profile.allergies.length ? 'amber' : undefined} />
+            <InfoRow icon={<Stethoscope color={colors.muted} size={17} />} label="既往病史" value={tagsToText(profile.medicalConditions)} accent={profile.medicalConditions.length ? 'red' : undefined} />
+            <InfoRow icon={<ShieldAlert color={colors.muted} size={17} />} label="过敏" value={tagsToText(profile.allergies)} accent={profile.allergies.length ? 'amber' : undefined} />
             <InfoRow icon={<Ban color={colors.muted} size={17} />} label="饮食禁忌" value={tagsToText(profile.dietaryRestrictions)} />
-            <InfoRow icon={<Stethoscope color={colors.muted} size={17} />} label="疾病情况" value={tagsToText(profile.medicalConditions)} accent={profile.medicalConditions.length ? 'red' : undefined} />
+            <InfoRow icon={<Droplets color={colors.muted} size={17} />} label="血液微量元素" value="演示数据" />
           </GlassCard>
 
-          <GlassCard style={styles.goalCard}>
-            <View style={styles.goalHeading}><Target color={colors.green} size={20} /><Text style={styles.goalTitle}>今日目标进度</Text><Text style={styles.goalNote}>演示数据</Text></View>
-            <View style={styles.goalMetrics}><MetricProgress label="热量" value={80} color={colors.blue} rightLabel="1,280 / 1,600 kcal" /><MetricProgress label="蛋白质" value={40} color={colors.green} rightLabel="38 / 95 g" /><MetricProgress label="钠摄入" value={82} color={colors.amber} rightLabel="1,640 / 2,000 mg" /></View>
+          {/* 个性化营养目标 */}
+          <SectionTitle title="个性化营养目标" detail="由健康画像自动生成" />
+          <GlassCard>
+            <View style={styles.goalStats}>
+              <StatCell style={styles.goalStatCol} label="热量" value="1,600" unit="kcal" />
+              <StatCell style={styles.goalStatCol} label="蛋白质" value="95" unit="g" />
+              <StatCell style={styles.goalStatCol} label="钠上限" value="2,000" unit="mg" />
+            </View>
+            <View style={styles.goalMetrics}>
+              <MetricProgress label="今日热量达标" value={80} color={colors.blue} rightLabel="80%" />
+              <MetricProgress label="蛋白质达标" value={40} color={colors.green} rightLabel="40%" />
+              <MetricProgress label="钠摄入进度" value={82} color={colors.amber} rightLabel="82%" />
+            </View>
+            <Text style={styles.demoNote}>演示数据 · 由健康画像自动生成</Text>
           </GlassCard>
 
+          {/* 中医体质评估 */}
+          <SectionTitle title="中医体质评估" />
+          <GlassCard>
+            <View style={styles.goalMetrics}>
+              <MetricProgress label="平和质" value={72} color={colors.green} rightLabel="72%" />
+              <MetricProgress label="痰湿质" value={55} color={colors.amber} rightLabel="55%" />
+              <MetricProgress label="阳虚质" value={30} color={colors.violet} rightLabel="30%" />
+            </View>
+            <Text style={styles.demoNote}>体质结果将用于优化饮食建议（演示数据）</Text>
+          </GlassCard>
+
+          {/* 账户安全 */}
           <Pressable onPress={() => navigation.navigate('ChangePassword')} style={({ pressed }) => [styles.securityLink, pressed && styles.pressed]}>
             <KeyRound color={colors.violet} size={17} />
             <Text style={styles.securityText}>账户安全与修改密码</Text>
@@ -339,7 +387,11 @@ export function EditProfileScreen({ navigation }: EditProps) {
   }, [profile, reset, user]);
 
   if (!profile || !user) {
-    return <AppScreen><ScreenHeader title="编辑资料" onBack={navigation.goBack} /><EmptyState title="没有可编辑的画像" description="请先返回“我的”刷新账户资料。" /></AppScreen>;
+    return (
+      <AppScreen header={<ScreenHeader title="编辑资料" onBack={() => navigation.goBack()} />}>
+        <EmptyState title="没有可编辑的画像" description="请先返回“我的”刷新账户资料。" />
+      </AppScreen>
+    );
   }
 
   const save = handleSubmit(async values => {
@@ -376,8 +428,7 @@ export function EditProfileScreen({ navigation }: EditProps) {
   });
 
   return (
-    <AppScreen>
-      <ScreenHeader title="编辑资料" subtitle="保存后会同步到 Orion 用户服务" onBack={() => navigation.goBack()} />
+    <AppScreen header={<ScreenHeader title="编辑资料" subtitle="保存后会同步到 Orion 用户服务" onBack={() => navigation.goBack()} />}>
       <GlassCard>
         <SectionTitle title="账户信息" detail="点击头像可更换图片" />
         <View style={styles.accountEditor}><AvatarEditor size={76} /><View style={styles.accountEditorCopy}><Text style={styles.accountEditorName}>{user.nickname || user.username}</Text><Text style={styles.accountEditorHint}>{avatarPreviewUrl ? '点击头像即可重新上传' : '当前使用昵称渐变头像'}</Text></View></View>
@@ -440,8 +491,7 @@ export function ChangePasswordScreen({ navigation }: PasswordProps) {
   });
 
   return (
-    <AppScreen>
-      <ScreenHeader title="修改密码" subtitle="保存后请使用新密码登录" onBack={() => navigation.goBack()} />
+    <AppScreen header={<ScreenHeader title="修改密码" subtitle="保存后请使用新密码登录" onBack={() => navigation.goBack()} />}>
       <GlassCard>
         <Text style={styles.passwordHint}>为保护账户安全，请先验证当前密码。新密码长度需为 6–100 个字符。</Text>
         <PasswordField control={control} name="oldPassword" label="当前密码" rules={{ required: '请输入当前密码' }} />
@@ -467,7 +517,7 @@ function PasswordField({ control, name, label, rules }: { control: Control<Passw
 }
 
 const styles = StyleSheet.create({
-  refreshButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: colors.blueSoft },
+  refreshButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.62)' },
   identityCard: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', padding: spacing.lg },
   identityCopy: { flex: 1, gap: 3 },
   identityName: { color: colors.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: '800' },
@@ -480,17 +530,17 @@ const styles = StyleSheet.create({
   profileActionLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700', flex: 1 },
   pressed: { opacity: 0.72 },
   editText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' },
+  editLink: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 100, backgroundColor: 'rgba(0,113,227,0.06)' },
   infoCard: { paddingVertical: 4 },
   infoRow: { minHeight: 47, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(230,237,245,0.72)' },
   infoLead: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   infoIcon: { width: 20, alignItems: 'center' },
   infoLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
   infoValue: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700', maxWidth: '62%', textAlign: 'right' },
-  goalCard: { backgroundColor: '#F0FAF4' },
-  goalHeading: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  goalTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, fontWeight: '800', flex: 1 },
-  goalNote: { color: colors.muted, fontFamily: fonts.body, fontSize: 10 },
+  goalStats: { flexDirection: 'row' },
+  goalStatCol: { flex: 1 },
   goalMetrics: { gap: spacing.md, marginTop: spacing.lg },
+  demoNote: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, marginTop: spacing.md },
   securityLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 4 },
   securityText: { flex: 1, color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },
   logoutButton: { marginTop: spacing.sm },

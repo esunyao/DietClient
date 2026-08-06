@@ -74,6 +74,9 @@ yarn-error.log
 !.yarn/sdks
 !.yarn/versions
 
+# pnpm
+.pnpm-store/
+
 # Web 构建产物（react-native-web / webpack）
 dist/
 

@@ -31,6 +31,35 @@ export const radii = {
   pill: 999,
 };
 
+/** 玻璃材质相关 token：外壳（顶栏/底栏）用强玻璃，信息密集卡用 soft 玻璃。 */
+export const glass = {
+  border: 'rgba(255, 255, 255, 0.88)',
+  borderStrong: 'rgba(255, 255, 255, 0.98)',
+  /** 顶部内高光，仿 iOS 材质的高光描边。 */
+  sheen: 'rgba(255, 255, 255, 0.55)',
+  /** 半透明白底色：值越低越透出背景光斑（玻璃感更强）。 */
+  tint: 'rgba(255, 255, 255, 0.50)',
+  tintSoft: 'rgba(255, 255, 255, 0.72)',
+};
+
+/** 背景光斑与 tab 光晕用色，统一收敛到 token，避免散落硬编码。 */
+export const glow = {
+  orbBlue: 'rgba(0, 113, 227, 0.12)',
+  orbGreen: 'rgba(52, 199, 89, 0.10)',
+  orbViolet: 'rgba(109, 93, 251, 0.09)',
+  blue: 'rgba(0, 113, 227, 0.22)',
+  green: 'rgba(52, 199, 89, 0.07)',
+  white: 'rgba(255, 255, 255, 0.72)',
+  violet: 'rgba(109, 93, 251, 0.09)',
+};
+
+/** 常用投影，扁平外壳用软阴影，卡片与 tab 用分层阴影。 */
+export const shadows = {
+  soft: '0 4px 16px rgba(91, 120, 149, 0.10)',
+  card: '0 8px 18px rgba(91, 120, 149, 0.10)',
+  tab: '0 12px 28px rgba(58, 90, 120, 0.16)',
+};
+
 export const spacing = {
   xs: 4,
   sm: 8,

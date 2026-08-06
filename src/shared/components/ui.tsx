@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -15,16 +17,46 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, Sparkles, Utensils } from 'lucide-react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
-import { colors, fonts, radii, spacing } from '../theme/tokens';
+import { colors, fonts, glow, radii, shadows, spacing } from '../theme/tokens';
 import { GlassSurface } from './GlassSurface';
+import { useTabBarVisibility } from '../store/tabBarVisibility';
 
-export function AppScreen({ children, scroll = true, contentStyle }: {
+export function AppScreen({ children, scroll = true, contentStyle, header }: {
   children: React.ReactNode;
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  /** 悬浮在内容之上的玻璃胶囊栏（灵动岛式）。传入时内容顶部自动让位。 */
+  header?: React.ReactNode;
 }) {
+  const setHidden = useTabBarVisibility(state => state.setHidden);
+  const lastY = useRef(0);
+  const hiddenRef = useRef(false);
+
+  // 与 htmlTest 的底部导航一致：向下滚动超过 80px 隐藏，向上滚动或回到顶部显示。
+  // 仅在方向翻转时写 store，避免每帧触发重渲染。
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const dy = y - lastY.current;
+    let next = hiddenRef.current;
+    if (dy > 0 && y > 80) {
+      next = true;
+    } else if (dy < 0 || y < 80) {
+      next = false;
+    }
+    lastY.current = y;
+    if (next !== hiddenRef.current) {
+      hiddenRef.current = next;
+      setHidden(next);
+    }
+  }, [setHidden]);
+
   const content = scroll ? (
-    <ScrollView contentContainerStyle={[styles.scrollContent, contentStyle]} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={[styles.scrollContent, header ? styles.scrollContentWithHeader : null, contentStyle]}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
+      showsVerticalScrollIndicator={false}
+    >
       {children}
     </ScrollView>
   ) : (
@@ -36,14 +68,23 @@ export function AppScreen({ children, scroll = true, contentStyle }: {
       <View pointerEvents="none" style={styles.canvasGlowOne} />
       <View pointerEvents="none" style={styles.canvasGlowTwo} />
       {content}
+      {header ? <View style={styles.floatingHeader}>{header}</View> : null}
     </SafeAreaView>
   );
 }
 
-export function GlassCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <GlassSurface style={[styles.card, style]}>{children}</GlassSurface>;
+export function GlassCard({ children, style, variant = 'frosted' }: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  variant?: 'frosted' | 'soft';
+}) {
+  return <GlassSurface variant={variant} style={[styles.card, style]}>{children}</GlassSurface>;
 }
 
+/**
+ * 扁平“灵动岛”式悬浮胶囊：紧凑高度 + 大圆角 + 软阴影 + 细亮描边。
+ * 通常作为 AppScreen 的 header 浮层使用，内容可从中滚过露出磨砂玻璃。
+ */
 export function ScreenHeader({ title, subtitle, onBack, action }: {
   title: string;
   subtitle?: string;
@@ -51,10 +92,10 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   action?: React.ReactNode;
 }) {
   return (
-    <GlassSurface style={styles.header} intensity={42}>
+    <GlassSurface variant="frosted" intensity={52} style={styles.header}>
       {onBack ? (
         <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.backButton}>
-          <ArrowLeft color={colors.ink} size={20} />
+          <ArrowLeft color={colors.ink} size={17} />
         </Pressable>
       ) : null}
       <View style={styles.headerText}>
@@ -131,6 +172,24 @@ export function MetricProgress({ label, value, color = colors.blue, rightLabel }
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${safeValue}%`, backgroundColor: color }]} />
       </View>
+    </View>
+  );
+}
+
+/** 三列统计小格（热量/蛋白质/钠上限等），对齐 htmlTest 的个性化营养目标统计。 */
+export function StatCell({ label, value, unit, style }: {
+  label: string;
+  value: string;
+  unit?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.statCell, style]}>
+      <Text style={styles.statCellLabel}>{label}</Text>
+      <Text style={styles.statCellValue}>
+        {value}
+        {unit ? <Text style={styles.statCellUnit}> {unit}</Text> : null}
+      </Text>
     </View>
   );
 }
@@ -278,18 +337,20 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas, overflow: 'hidden' },
   fill: { flex: 1 },
   scrollContent: { zIndex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 116, gap: spacing.lg },
-  canvasGlowOne: { position: 'absolute', width: 250, height: 250, borderRadius: 125, top: -120, right: -90, backgroundColor: 'rgba(0,113,227,0.11)' },
-  canvasGlowTwo: { position: 'absolute', width: 210, height: 210, borderRadius: 105, bottom: 100, left: -110, backgroundColor: 'rgba(52,199,89,0.10)' },
+  scrollContentWithHeader: { paddingTop: 78 },
+  floatingHeader: { position: 'absolute', top: 10, left: spacing.lg, right: spacing.lg, zIndex: 60 },
+  canvasGlowOne: { position: 'absolute', width: 250, height: 250, borderRadius: 125, top: -120, right: -90, backgroundColor: glow.orbBlue },
+  canvasGlowTwo: { position: 'absolute', width: 210, height: 210, borderRadius: 105, bottom: 100, left: -110, backgroundColor: glow.orbGreen },
   card: {
     padding: spacing.lg,
-    boxShadow: '0 8px 18px rgba(91, 120, 149, 0.10)',
+    boxShadow: shadows.card,
   },
-  header: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, boxShadow: '0 8px 20px rgba(91, 120, 149, 0.08)' },
-  backButton: { position: 'absolute', left: 9, width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.54)' },
-  headerText: { alignItems: 'center', maxWidth: '72%' },
-  headerTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
-  headerSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, marginTop: 1 },
-  headerAction: { position: 'absolute', right: 9 },
+  header: { minHeight: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, boxShadow: shadows.soft },
+  backButton: { position: 'absolute', left: 6, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.6)' },
+  headerText: { alignItems: 'center', maxWidth: '70%' },
+  headerTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
+  headerSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 9, marginTop: 1 },
+  headerAction: { position: 'absolute', right: 6 },
   button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderRadius: radii.md, backgroundColor: colors.blue, paddingHorizontal: spacing.lg },
   buttonSecondary: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#D5E9FC' },
   buttonDanger: { backgroundColor: colors.red },
@@ -317,6 +378,10 @@ const styles = StyleSheet.create({
   metricValue: { color: colors.muted, fontFamily: fonts.mono, fontSize: 12, fontWeight: '700' },
   progressTrack: { height: 6, borderRadius: radii.pill, backgroundColor: '#E8EFF6', overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: radii.pill },
+  statCell: { alignItems: 'center', gap: 3 },
+  statCellLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, letterSpacing: 0.4 },
+  statCellValue: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
+  statCellUnit: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, fontWeight: '600' },
   ringSvg: { position: 'absolute' },
   ringCenter: { alignItems: 'center', justifyContent: 'center' },
   ringNumber: { color: colors.ink, fontFamily: fonts.display, fontSize: 27, fontWeight: '800', letterSpacing: -1 },

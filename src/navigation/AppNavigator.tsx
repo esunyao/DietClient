@@ -62,6 +62,7 @@ function MainNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
+        lazy: true,
       }}
     >
       <Tab.Screen name="HomeTab" component={HomeNavigator} options={{ title: '首页' }} />
