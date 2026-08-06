@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -11,10 +12,11 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Sparkles, Utensils } from 'lucide-react-native';
+import { ArrowLeft, Camera, Sparkles, Utensils } from 'lucide-react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { colors, fonts, radii, spacing } from '../theme/tokens';
+import { GlassSurface } from './GlassSurface';
 
 export function AppScreen({ children, scroll = true, contentStyle }: {
   children: React.ReactNode;
@@ -29,11 +31,17 @@ export function AppScreen({ children, scroll = true, contentStyle }: {
     <View style={[styles.fill, contentStyle]}>{children}</View>
   );
 
-  return <SafeAreaView edges={['top']} style={styles.screen}>{content}</SafeAreaView>;
+  return (
+    <SafeAreaView edges={['top']} style={styles.screen}>
+      <View pointerEvents="none" style={styles.canvasGlowOne} />
+      <View pointerEvents="none" style={styles.canvasGlowTwo} />
+      {content}
+    </SafeAreaView>
+  );
 }
 
 export function GlassCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+  return <GlassSurface style={[styles.card, style]}>{children}</GlassSurface>;
 }
 
 export function ScreenHeader({ title, subtitle, onBack, action }: {
@@ -43,7 +51,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   action?: React.ReactNode;
 }) {
   return (
-    <View style={styles.header}>
+    <GlassSurface style={styles.header} intensity={42}>
       {onBack ? (
         <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.backButton}>
           <ArrowLeft color={colors.ink} size={20} />
@@ -53,8 +61,8 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
         <Text style={styles.headerTitle}>{title}</Text>
         {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
       </View>
-      {action ? <View>{action}</View> : null}
-    </View>
+      {action ? <View style={styles.headerAction}>{action}</View> : null}
+    </GlassSurface>
   );
 }
 
@@ -81,9 +89,8 @@ export function AppButton({ label, onPress, loading, disabled, variant = 'primar
         style,
       ]}
     >
-      <Text style={[styles.buttonText, variant === 'secondary' && styles.buttonSecondaryText]}>
-        {loading ? '处理中…' : label}
-      </Text>
+      {loading ? <ActivityIndicator color={variant === 'secondary' ? colors.blue : '#FFFFFF'} size="small" /> : null}
+      <Text style={[styles.buttonText, variant === 'secondary' && styles.buttonSecondaryText]}>{label}</Text>
     </Pressable>
   );
 }
@@ -186,15 +193,60 @@ export function LogoMark({ size = 62 }: { size?: number }) {
   );
 }
 
-export function Avatar({ name, avatarUrl, size = 54 }: { name: string; avatarUrl?: string; size?: number }) {
+export function Avatar({
+  name,
+  avatarUrl,
+  size = 54,
+  onPress,
+  showEditBadge = false,
+  onImageError,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  size?: number;
+  onPress?: () => void;
+  showEditBadge?: boolean;
+  onImageError?: () => void;
+}) {
   const initial = name.trim().slice(0, 1) || '你';
-  if (avatarUrl) {
-    return <Image accessibilityLabel={`${name}的头像`} source={{ uri: avatarUrl }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.blueSoft }} />;
-  }
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const imageVisible = Boolean(avatarUrl && avatarUrl !== failedUrl);
+
+  useEffect(() => setFailedUrl(null), [avatarUrl]);
+
+  const content = (
+    <>
+      <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
+        <Svg width={size} height={size} viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
+          <Defs>
+            <LinearGradient id="avatarGradient" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor={colors.blue} />
+              <Stop offset="1" stopColor={colors.green} />
+            </LinearGradient>
+          </Defs>
+          <Circle cx="50" cy="50" r="50" fill="url(#avatarGradient)" />
+          <Circle cx="72" cy="24" r="18" fill="rgba(255,255,255,0.14)" />
+        </Svg>
+        <Text style={[styles.avatarText, { fontSize: size * 0.36 }]}>{initial}</Text>
+      </View>
+      {imageVisible ? (
+        <Image
+          accessibilityLabel={`${name}的头像`}
+          onError={() => {
+            setFailedUrl(avatarUrl || null);
+            onImageError?.();
+          }}
+          source={{ uri: avatarUrl || undefined }}
+          style={[styles.avatarImage, { width: size, height: size, borderRadius: size / 2 }]}
+        />
+      ) : null}
+      {showEditBadge ? <View style={styles.avatarEditBadge}><Camera color="#FFFFFF" size={Math.max(12, size * 0.19)} /></View> : null}
+    </>
+  );
 
   return (
-    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.avatarText, { fontSize: size * 0.36 }]}>{initial}</Text>
+    <View style={[styles.avatarWrap, { width: size, height: size }]}>
+      {onPress ? <Pressable accessibilityRole="button" accessibilityLabel="更换头像" onPress={onPress} style={styles.avatarPressable}>{content}</Pressable> : content}
     </View>
   );
 }
@@ -223,23 +275,22 @@ export const inputStyle: TextStyle = {
 };
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas },
+  screen: { flex: 1, backgroundColor: colors.canvas, overflow: 'hidden' },
   fill: { flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 116, gap: spacing.lg },
+  scrollContent: { zIndex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 116, gap: spacing.lg },
+  canvasGlowOne: { position: 'absolute', width: 250, height: 250, borderRadius: 125, top: -120, right: -90, backgroundColor: 'rgba(0,113,227,0.11)' },
+  canvasGlowTwo: { position: 'absolute', width: 210, height: 210, borderRadius: 105, bottom: 100, left: -110, backgroundColor: 'rgba(52,199,89,0.10)' },
   card: {
-    backgroundColor: colors.glass,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.92)',
-    borderRadius: radii.lg,
     padding: spacing.lg,
     boxShadow: '0 8px 18px rgba(91, 120, 149, 0.10)',
   },
-  header: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: '#FFFFFF' },
-  headerText: { flex: 1 },
-  headerTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 26, fontWeight: '800', letterSpacing: -0.6 },
-  headerSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 2 },
-  button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, backgroundColor: colors.blue, paddingHorizontal: spacing.lg },
+  header: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, boxShadow: '0 8px 20px rgba(91, 120, 149, 0.08)' },
+  backButton: { position: 'absolute', left: 9, width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.54)' },
+  headerText: { alignItems: 'center', maxWidth: '72%' },
+  headerTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
+  headerSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, marginTop: 1 },
+  headerAction: { position: 'absolute', right: 9 },
+  button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderRadius: radii.md, backgroundColor: colors.blue, paddingHorizontal: spacing.lg },
   buttonSecondary: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#D5E9FC' },
   buttonDanger: { backgroundColor: colors.red },
   buttonDisabled: { opacity: 0.55 },
@@ -271,8 +322,12 @@ const styles = StyleSheet.create({
   ringNumber: { color: colors.ink, fontFamily: fonts.display, fontSize: 27, fontWeight: '800', letterSpacing: -1 },
   ringCaption: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, marginTop: -2 },
   logoIcon: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  avatar: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blue },
+  avatarWrap: { position: 'relative', overflow: 'visible' },
+  avatarPressable: { width: '100%', height: '100%', borderRadius: radii.pill },
+  avatar: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: colors.blue },
+  avatarImage: { position: 'absolute', top: 0, left: 0, backgroundColor: colors.blueSoft },
   avatarText: { color: '#FFFFFF', fontFamily: fonts.display, fontWeight: '800' },
+  avatarEditBadge: { position: 'absolute', right: -2, bottom: -2, width: 23, height: 23, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blue, borderWidth: 2, borderColor: '#FFFFFF' },
   empty: { alignItems: 'center', paddingVertical: spacing.xl },
   emptyIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blueSoft, marginBottom: spacing.md },
   emptyTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 17, fontWeight: '800' },

@@ -4,7 +4,10 @@
  * https://necolas.github.io/react-native-web/docs/multi-platform/
  */
 const path = require('path');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const NodePolyfillPlugin = require('node-polyfill-webpack-plugin');
 
 const appDirectory = path.resolve(__dirname, '..');
 const isProduction = process.env.NODE_ENV === 'production';
@@ -40,6 +43,8 @@ module.exports = {
         appDirectory,
         'node_modules/@react-native-async-storage/async-storage/lib/module/index.js',
       ),
+      // Skia 的 Web 图形模块会用到 Node 兼容项；交由 polyfill 插件提供浏览器实现。
+      'react-native-reanimated/package.json$': path.resolve(appDirectory, 'node_modules/react-native-reanimated/package.json'),
     },
   },
   module: {
@@ -62,7 +67,7 @@ module.exports = {
         // 若再经 RN Babel preset 转为 CJS，会在浏览器触发 `exports is not defined`。
         // Windows 路径可能为反斜杠，因此用 [\\/] 同时兼容两种分隔符。
         exclude:
-          /node_modules[\\/](?!react-native-web|react-native-safe-area-context|react-native-screens)/,
+          /node_modules[\\/](?!react-native-web|react-native-safe-area-context|react-native-screens|react-native-image-picker)/,
       },
       {
         test: /\.(png|jpe?g|gif|svg|webp)$/i,
@@ -71,6 +76,18 @@ module.exports = {
     ],
   },
   plugins: [
+    // React Native 生态包会在运行时读取此编译期常量；Webpack 默认不会像 Metro 一样注入它。
+    new webpack.DefinePlugin({ __DEV__: JSON.stringify(!isProduction) }),
+    new NodePolyfillPlugin(),
+    // WithSkiaWeb 延迟加载 CanvasKit；WASM 单独复制后可被 locateFile('/canvaskit.wasm') 找到。
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: require.resolve('canvaskit-wasm/bin/full/canvaskit.wasm'),
+          to: 'canvaskit.wasm',
+        },
+      ],
+    }),
     // NODE_ENV 由 webpack 的 mode 自动注入，无需手动 DefinePlugin
     new HtmlWebpackPlugin({
       template: path.resolve(__dirname, 'index.html'),

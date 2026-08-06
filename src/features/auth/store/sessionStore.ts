@@ -14,6 +14,8 @@ interface SessionState {
   tokens: TokenPair | null;
   user: User | null;
   profile: UserProfile | null;
+  /** 头像对象键不可直接用于 <Image>，这里只保存 GET /v1/files/avatar 返回的展示 URL。 */
+  avatarPreviewUrl: string | null;
   profileMissing: boolean;
   error: string | null;
   hydrate: () => Promise<void>;
@@ -22,6 +24,7 @@ interface SessionState {
   refreshUserData: () => Promise<void>;
   setUser: (user: User) => void;
   setProfile: (profile: UserProfile) => void;
+  setAvatarPreviewUrl: (url: string | null) => void;
   signOut: () => Promise<void>;
   clearLocalSession: () => Promise<void>;
 }
@@ -31,17 +34,40 @@ function isProfileNotFound(error: unknown): boolean {
     (axios.isAxiosError(error) && error.response?.status === 404);
 }
 
-async function loadUserData(): Promise<{ user: User; profile: UserProfile | null; profileMissing: boolean }> {
+async function loadUserData(previous?: Pick<SessionState, 'user' | 'avatarPreviewUrl'>): Promise<{
+  user: User;
+  profile: UserProfile | null;
+  profileMissing: boolean;
+  avatarPreviewUrl: string | null;
+}> {
+  // 用户与画像没有依赖关系，并发读取可缩短登录后首屏等待时间。
+  const profileRequest = userApi.getProfile().then(
+    profile => ({ profile, profileMissing: false }),
+    error => {
+      if (isProfileNotFound(error)) {
+        return { profile: null, profileMissing: true };
+      }
+      throw error;
+    },
+  );
   const user = await userApi.getSelf();
+  const profileResult = await profileRequest;
+
+  if (!user.avatarUrl) {
+    return { user, ...profileResult, avatarPreviewUrl: null };
+  }
+
+  // 后端更新头像对象键时才重新换取预签名展示 URL，避免每次进入“我的”都多一次网络请求。
+  if (previous?.user?.avatarUrl === user.avatarUrl && previous.avatarPreviewUrl) {
+    return { user, ...profileResult, avatarPreviewUrl: previous.avatarPreviewUrl };
+  }
 
   try {
-    const profile = await userApi.getProfile();
-    return { user, profile, profileMissing: false };
-  } catch (error) {
-    if (isProfileNotFound(error)) {
-      return { user, profile: null, profileMissing: true };
-    }
-    throw error;
+    const avatarPreviewUrl = /^https?:\/\//.test(user.avatarUrl) ? user.avatarUrl : await userApi.getAvatarUrl();
+    return { user, ...profileResult, avatarPreviewUrl };
+  } catch {
+    // 头像读取失败不应阻断账户资料；Avatar 组件会稳定回退为昵称渐变头像。
+    return { user, ...profileResult, avatarPreviewUrl: null };
   }
 }
 
@@ -50,6 +76,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   tokens: null,
   user: null,
   profile: null,
+  avatarPreviewUrl: null,
   profileMissing: false,
   error: null,
 
@@ -90,12 +117,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   refreshUserData: async () => {
-    const data = await loadUserData();
+    const data = await loadUserData(get());
     set(data);
   },
 
-  setUser: user => set({ user }),
+  setUser: user => set(state => ({
+    user,
+    avatarPreviewUrl: state.user?.avatarUrl === user.avatarUrl ? state.avatarPreviewUrl : null,
+  })),
   setProfile: profile => set({ profile, profileMissing: false }),
+  setAvatarPreviewUrl: avatarPreviewUrl => set({ avatarPreviewUrl }),
 
   signOut: async () => {
     const refreshToken = get().tokens?.refreshToken;
@@ -118,6 +149,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       tokens: null,
       user: null,
       profile: null,
+      avatarPreviewUrl: null,
       profileMissing: false,
       error: null,
     });

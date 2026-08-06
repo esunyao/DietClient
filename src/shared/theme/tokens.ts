@@ -19,7 +19,9 @@ export const colors = {
   greenSoft: '#EAF9EF',
   amberSoft: '#FFF5E8',
   redSoft: '#FFF0EF',
-  glass: 'rgba(255, 255, 255, 0.88)',
+  glass: 'rgba(255, 255, 255, 0.58)',
+  glassStrong: 'rgba(255, 255, 255, 0.78)',
+  glassBorder: 'rgba(255, 255, 255, 0.88)',
 };
 
 export const radii = {

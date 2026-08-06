@@ -69,3 +69,19 @@ export interface ProfileUpdatePayload {
   dailyWaterMl?: number;
   preferredCuisine?: string[];
 }
+
+/** 对象存储预签名上传与确认接口的数据结构。 */
+export interface AvatarPresignPayload {
+  fileName: string;
+  contentType: 'image/jpeg' | 'image/png' | 'image/webp';
+}
+
+export interface AvatarPresignResult {
+  uploadUrl: string;
+  objectKey: string;
+  expiresIn: number;
+}
+
+export interface AvatarConfirmResult {
+  avatarUrl: string;
+}

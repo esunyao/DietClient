@@ -46,6 +46,11 @@ export function getErrorMessage(error: unknown): string {
     return body?.message || error.message || '网络连接失败，请检查服务是否已启动';
   }
 
+  // 本地文件校验、对象存储状态等客户端错误也需要把具体修复建议呈现给用户。
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
   return '操作未完成，请稍后重试';
 }
 

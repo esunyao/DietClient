@@ -1,15 +1,16 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { BarChart3, Camera, FileText, Home, Sparkles, UserRound } from 'lucide-react-native';
 
 import { LoginScreen, RegisterScreen } from '../features/auth/screens/AuthScreens';
 import { useSessionStore } from '../features/auth/store/sessionStore';
 import { HomeScreen, MealPlanScreen, RecognitionScreen, ReportsScreen, ScoreDetailScreen, TrendsScreen } from '../features/diet/screens/StaticScreens';
 import { ChangePasswordScreen, EditProfileScreen, ProfileScreen } from '../features/profile/screens/ProfileScreens';
 import { colors, fonts } from '../shared/theme/tokens';
+import { FrostedTabBar } from './components/FrostedTabBar';
 import type { AppTabParamList, AuthStackParamList, HomeStackParamList, ProfileStackParamList } from './types';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -40,6 +41,10 @@ function HomeNavigator() {
   );
 }
 
+function renderFrostedTabBar(props: BottomTabBarProps) {
+  return <FrostedTabBar {...props} />;
+}
+
 function ProfileNavigator() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
@@ -50,31 +55,14 @@ function ProfileNavigator() {
   );
 }
 
-function tabIcon(name: keyof AppTabParamList, color: string, size: number) {
-  const iconProps = { color, size, strokeWidth: 2.3 };
-  switch (name) {
-    case 'HomeTab': return <Home {...iconProps} />;
-    case 'RecognitionTab': return <Camera {...iconProps} />;
-    case 'MealTab': return <Sparkles {...iconProps} />;
-    case 'TrendsTab': return <BarChart3 {...iconProps} />;
-    case 'ReportsTab': return <FileText {...iconProps} />;
-    case 'ProfileTab': return <UserRound {...iconProps} />;
-  }
-}
-
 function MainNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      tabBar={renderFrostedTabBar}
+      screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.blue,
-        tabBarInactiveTintColor: '#7A8BA0',
         tabBarHideOnKeyboard: true,
-        tabBarIcon: ({ color, size }) => tabIcon(route.name, color, size),
-        tabBarLabelStyle: styles.tabLabel,
-        tabBarStyle: styles.tabBar,
-        tabBarItemStyle: styles.tabItem,
-      })}
+      }}
     >
       <Tab.Screen name="HomeTab" component={HomeNavigator} options={{ title: '首页' }} />
       <Tab.Screen name="RecognitionTab" component={RecognitionScreen} options={{ title: '识别' }} />
@@ -87,7 +75,7 @@ function MainNavigator() {
 }
 
 function SessionSplash() {
-  return <View style={styles.splash}><View style={styles.splashDot} /><Text style={styles.splashText}>正在准备健康档案…</Text></View>;
+  return <View style={styles.splash}><View style={styles.splashOrb} /><ActivityIndicator color={colors.blue} size="large" /><Text style={styles.splashText}>正在准备健康档案…</Text></View>;
 }
 
 /** 根路由通过会话状态切换认证区与主应用，无需在每个页面重复做登录判断。 */
@@ -107,10 +95,7 @@ export function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
-  splash: { flex: 1, backgroundColor: colors.canvas, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  splashDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.green, boxShadow: '0 0 15px rgba(52, 199, 89, 0.50)' },
+  splash: { flex: 1, backgroundColor: colors.canvas, alignItems: 'center', justifyContent: 'center', gap: 14, overflow: 'hidden' },
+  splashOrb: { position: 'absolute', width: 210, height: 210, borderRadius: 105, backgroundColor: 'rgba(0,113,227,0.12)' },
   splashText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },
-  tabBar: { position: 'absolute', left: 12, right: 12, bottom: 12, height: 66, borderRadius: 24, borderTopWidth: 0, backgroundColor: 'rgba(255,255,255,0.96)', paddingTop: 7, paddingBottom: 5, boxShadow: '0 8px 22px rgba(58, 90, 120, 0.16)' },
-  tabItem: { borderRadius: 18 },
-  tabLabel: { fontFamily: fonts.body, fontSize: 10, fontWeight: '700', marginTop: -3 },
 });
