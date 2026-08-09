@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm, type Control, type FieldPath, type FieldValues, type RegisterOptions } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ArrowRight, Eye, EyeOff, Sparkles } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -101,6 +110,15 @@ export function LoginScreen({ navigation, route }: LoginProps) {
     try {
       await signIn(values);
     } catch (error) {
+      let errorMsg = '未知错误';
+
+      if (error instanceof Error) {
+        errorMsg = error.message; // 此时 TypeScript 知道它有 message 属性
+      } else if (typeof error === 'string') {
+        errorMsg = error;
+      }
+
+      Alert.alert('网络请求失败', `Error Message: ${errorMsg}`);
       setSubmitError(getErrorMessage(error));
     } finally {
       setSubmitting(false);

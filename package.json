@@ -29,6 +29,7 @@
     "react-hook-form": "^7.83.0",
     "react-native": "0.86.0",
     "react-native-blob-util": "^0.24.10",
+    "react-native-config": "^1.6.1",
     "react-native-gesture-handler": "3.1.0",
     "react-native-image-picker": "^8.2.1",
     "react-native-reanimated": "^4.5.3",

@@ -83,6 +83,9 @@ dist/
 # Claude Code文件
 .claude/*
 
+# 环境
+src/shared/config/appConfig.ts
+
 # codex文件
 .codex
 
