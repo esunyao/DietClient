@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -14,7 +14,9 @@ import {
   TrendingUp,
   Utensils,
 } from 'lucide-react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 
+import { durations, springGentle, timing } from '../../../shared/animation/config';
 import type { HomeStackParamList } from '../../../navigation/types';
 import { AppButton, AppScreen, GlassCard, MetricProgress, ScoreRing, SectionTitle, Tag } from '../../../shared/components/ui';
 import { useToast } from '../../../shared/components/Toast';
@@ -158,7 +160,7 @@ export function RecognitionScreen() {
     <AppScreen>
       <StaticPageHeading eyebrow="饮食记录" title="识别这一餐" description="拍照、上传图片或手动添加菜品。当前为静态演示流程。" icon={<Camera color={colors.blue} size={15} />} />
       <GlassCard style={styles.scanCard}>
-        <View style={styles.scanFrame}><Camera color={colors.blue} size={33} /><View style={styles.scanLine} /></View>
+        <View style={styles.scanFrame}><Camera color={colors.blue} size={33} /><ScanLine /></View>
         <Text style={styles.scanTitle}>把餐盘放进取景框</Text>
         <Text style={styles.scanDescription}>清晰拍摄食物整体，AI 将识别菜品、份量与营养组成。</Text>
         <AppButton label="选择演示图片" onPress={() => show('这是静态识别页面，尚未上传图片。')} />
@@ -227,7 +229,7 @@ export function TrendsScreen() {
       <View style={styles.rangeSwitch}>{['周', '月', '季'].map(item => <Pressable key={item} onPress={() => setRange(item)} style={[styles.rangeItem, range === item && styles.rangeItemActive]}><Text style={[styles.rangeText, range === item && styles.rangeTextActive]}>{item}</Text></Pressable>)}</View>
       <GlassCard>
         <View style={styles.chartHead}><View><Text style={styles.chartTitle}>综合健康评分</Text><Text style={styles.chartDescription}>当前 78 · 较周期开始 +6</Text></View><Tag label="稳步改善" tone="green" /></View>
-        <View style={styles.chart}>{values.map((value, index) => <View key={`${value}-${index}`} style={styles.barColumn}><Text style={styles.barValue}>{value}</Text><View style={[styles.bar, { height: `${value}%`, backgroundColor: index === values.length - 1 ? colors.green : colors.blue }]} /><Text style={styles.barLabel}>{index + 1}</Text></View>)}</View>
+        <View style={styles.chart}>{values.map((value, index) => <View key={`${value}-${index}`} style={styles.barColumn}><Text style={styles.barValue}>{value}</Text><GrowingBar value={value} color={index === values.length - 1 ? colors.green : colors.blue} /><Text style={styles.barLabel}>{index + 1}</Text></View>)}</View>
       </GlassCard>
       <SectionTitle title="本周期执行反馈" />
       <GlassCard style={styles.metricList}>
@@ -281,6 +283,29 @@ export function ScoreDetailScreen({ navigation }: ScoreProps) {
       <GlassCard style={styles.scoreTip}><Activity color={colors.blue} size={21} /><View style={styles.scoreTipCopy}><Text style={styles.scoreTipTitle}>下一步建议</Text><Text style={styles.scoreTipText}>晚餐增加一份优质蛋白，并避免额外酱料。评分页是静态示例，不会写入健康数据。</Text></View></GlassCard>
     </AppScreen>
   );
+}
+
+/** 识别页取景框内的扫描线：reanimated 驱动 translateY 上下往返。 */
+function ScanLine() {
+  const y = useSharedValue(0);
+  useEffect(() => {
+    y.value = withRepeat(withTiming(44, timing(durations.scanSweep)), -1, true);
+  }, [y]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  return <Animated.View style={[styles.scanLine, style]} />;
+}
+
+/** 趋势图柱：scaleY 从底部生长（transform 驱动，不动 height）。 */
+function GrowingBar({ value, color }: { value: number; color: string }) {
+  const scale = useSharedValue(0);
+  useEffect(() => {
+    scale.value = withSpring(1, springGentle);
+  }, [scale]);
+  const style = useAnimatedStyle(() => ({
+    transformOrigin: 'bottom center',
+    transform: [{ scaleY: scale.value }],
+  }));
+  return <Animated.View style={[styles.bar, { height: `${value}%`, backgroundColor: color }, style]} />;
 }
 
 const styles = StyleSheet.create({

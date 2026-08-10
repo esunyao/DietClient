@@ -16,6 +16,7 @@ import { ArrowRight, Eye, EyeOff, Sparkles } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '../../../shared/api/client';
+import { ScreenTransition } from '../../../shared/animation/ScreenTransition';
 import { AppButton, LogoMark, inputStyle } from '../../../shared/components/ui';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { AuthStackParamList } from '../../../navigation/types';
@@ -84,11 +85,13 @@ function FormField<T extends FieldValues>({
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', default: undefined })} style={styles.keyboard}>
-        <View style={styles.orbOne} />
-        <View style={styles.orbTwo} />
-        <View style={styles.content}>{children}</View>
-      </KeyboardAvoidingView>
+      <ScreenTransition style={styles.screenTransition}>
+        <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', default: undefined })} style={styles.keyboard}>
+          <View style={styles.orbOne} />
+          <View style={styles.orbTwo} />
+          <View style={styles.content}>{children}</View>
+        </KeyboardAvoidingView>
+      </ScreenTransition>
     </SafeAreaView>
   );
 }
@@ -247,6 +250,7 @@ export function RegisterScreen({ navigation }: RegisterProps) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.canvas },
+  screenTransition: { flex: 1 },
   keyboard: { flex: 1, justifyContent: 'center' },
   content: { paddingHorizontal: spacing.xl, zIndex: 1 },
   orbOne: { position: 'absolute', top: 38, right: -55, width: 170, height: 170, borderRadius: 85, backgroundColor: '#D7F3E2', opacity: 0.72 },

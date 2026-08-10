@@ -1,7 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   Image,
   Platform,
   Pressable,
@@ -19,7 +18,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, Sparkles, Utensils } from 'lucide-react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { PressableScale } from '../animation/PressableScale';
+import { ScreenTransition } from '../animation/ScreenTransition';
+import { durations, timing } from '../animation/config';
 import { colors, fonts, glow, radii, shadows, spacing } from '../theme/tokens';
 import { GlassSurface } from './GlassSurface';
 import { useTabBarVisibility } from '../store/tabBarVisibility';
@@ -101,11 +104,13 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.fill, { paddingTop: contentTop }, contentStyle]}>{children}</View>
+    <View style={[styles.fill, { paddingTop: contentTop }, contentStyle]}>
+      {children}
+    </View>
   );
 
   return (
-    <View style={styles.screen}>
+    <ScreenTransition style={styles.screen}>
       <View pointerEvents="none" style={styles.canvasGlowOne} />
       <View pointerEvents="none" style={styles.canvasGlowTwo} />
       {content}
@@ -116,7 +121,7 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
           </HeaderCollapsedContext.Provider>
         </View>
       ) : null}
-    </View>
+    </ScreenTransition>
   );
 }
 
@@ -141,23 +146,22 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   action?: React.ReactNode;
 }) {
   const collapsed = useContext(HeaderCollapsedContext);
-  const progress = useRef(new Animated.Value(0)).current;
+  const progress = useSharedValue(0);
 
   useEffect(() => {
-    Animated.timing(progress, {
-      toValue: collapsed ? 1 : 0,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
+    progress.value = withTiming(collapsed ? 1 : 0, timing(durations.headerCollapse));
   }, [collapsed, progress]);
 
-  const expandedOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
-  const compactOpacity = progress;
-  const compactScale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
+  const expandedStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  const compactStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.9, 1]) }],
+  }));
+  const sideStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
   return (
     <View style={styles.headerShell}>
-      <Animated.View pointerEvents={collapsed ? 'none' : 'auto'} style={[styles.headerExpanded, { opacity: expandedOpacity }]}>
+      <Animated.View pointerEvents={collapsed ? 'none' : 'auto'} style={[styles.headerExpanded, expandedStyle]}>
         <GlassSurface variant="navigation" intensity={68} style={styles.header}>
           {onBack ? (
             <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.backButton}>
@@ -171,13 +175,13 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
           {action ? <View style={styles.headerAction}>{action}</View> : null}
         </GlassSurface>
       </Animated.View>
-      <Animated.View pointerEvents="none" style={[styles.headerCompact, { opacity: compactOpacity, transform: [{ scale: compactScale }] }]}>
+      <Animated.View pointerEvents="none" style={[styles.headerCompact, compactStyle]}>
         <GlassSurface variant="navigation" intensity={72} style={styles.compactIsland}>
           <Text numberOfLines={1} style={styles.compactTitle}>{title}</Text>
         </GlassSurface>
       </Animated.View>
       {onBack ? (
-        <Animated.View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideLeft, { opacity: compactOpacity }]}>
+        <Animated.View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideLeft, sideStyle]}>
           <GlassSurface variant="navigation" intensity={72} style={styles.headerSideButton}>
             <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.sideButtonPressable}>
               <ArrowLeft color={colors.ink} size={17} />
@@ -186,7 +190,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
         </Animated.View>
       ) : null}
       {action ? (
-        <Animated.View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideRight, { opacity: compactOpacity }]}>
+        <Animated.View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideRight, sideStyle]}>
           <GlassSurface variant="navigation" intensity={72} style={styles.headerSideButton}>
             {action}
           </GlassSurface>
@@ -206,22 +210,21 @@ export function AppButton({ label, onPress, loading, disabled, variant = 'primar
 }) {
   const isDisabled = Boolean(disabled || loading);
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       disabled={isDisabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.button,
         variant === 'secondary' && styles.buttonSecondary,
         variant === 'danger' && styles.buttonDanger,
         isDisabled && styles.buttonDisabled,
-        pressed && !isDisabled && styles.buttonPressed,
         style,
       ]}
     >
       {loading ? <ActivityIndicator color={variant === 'secondary' ? colors.blue : '#FFFFFF'} size="small" /> : null}
       <Text style={[styles.buttonText, variant === 'secondary' && styles.buttonSecondaryText]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -245,26 +248,6 @@ export function Tag({ label, tone = 'blue', style }: { label: string; tone?: 'bl
   );
 }
 
-export function MetricProgress({ label, value, color = colors.blue, rightLabel }: {
-  label: string;
-  value: number;
-  color?: string;
-  rightLabel?: string;
-}) {
-  const safeValue = Math.max(0, Math.min(value, 100));
-  return (
-    <View style={styles.metric}>
-      <View style={styles.metricHead}>
-        <Text style={styles.metricLabel}>{label}</Text>
-        <Text style={styles.metricValue}>{rightLabel || `${safeValue}%`}</Text>
-      </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${safeValue}%`, backgroundColor: color }]} />
-      </View>
-    </View>
-  );
-}
-
 /** 三列统计小格（热量/蛋白质/钠上限等），对齐 htmlTest 的个性化营养目标统计。 */
 export function StatCell({ label, value, unit, style }: {
   label: string;
@@ -279,44 +262,6 @@ export function StatCell({ label, value, unit, style }: {
         {value}
         {unit ? <Text style={styles.statCellUnit}> {unit}</Text> : null}
       </Text>
-    </View>
-  );
-}
-
-/** 首页与评分页的标志性“营养轨道”，以原型评分环转化成跨端 SVG。 */
-export function ScoreRing({ score, size = 104, caption = '综合评分' }: { score: number; size?: number; caption?: string }) {
-  const radius = 42;
-  const circumference = 2 * Math.PI * radius;
-  const progress = Math.max(0, Math.min(score, 100));
-  const containerStyle = { width: size, height: size, alignItems: 'center' as const, justifyContent: 'center' as const };
-
-  return (
-    <View style={containerStyle}>
-      <Svg width={size} height={size} viewBox="0 0 100 100" style={styles.ringSvg}>
-        <Defs>
-          <LinearGradient id="nutritionOrbit" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={colors.blue} />
-            <Stop offset="1" stopColor={colors.green} />
-          </LinearGradient>
-        </Defs>
-        <Circle cx="50" cy="50" r={radius} stroke="#DDEAF7" strokeWidth="7" fill="none" />
-        <Circle
-          cx="50"
-          cy="50"
-          r={radius}
-          stroke="url(#nutritionOrbit)"
-          strokeWidth="7"
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={circumference - (progress / 100) * circumference}
-          transform="rotate(-90 50 50)"
-        />
-      </Svg>
-      <View style={styles.ringCenter}>
-        <Text style={styles.ringNumber}>{score}</Text>
-        <Text style={styles.ringCaption}>{caption}</Text>
-      </View>
     </View>
   );
 }
@@ -454,7 +399,6 @@ const styles = StyleSheet.create({
   buttonSecondary: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#D5E9FC' },
   buttonDanger: { backgroundColor: colors.red },
   buttonDisabled: { opacity: 0.55 },
-  buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
   buttonText: { color: '#FFFFFF', fontFamily: fonts.body, fontWeight: '700', fontSize: 15 },
   buttonSecondaryText: { color: colors.blue },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
@@ -471,20 +415,10 @@ const styles = StyleSheet.create({
   tagAmberText: { color: '#B76600' },
   tagRedText: { color: '#C93025' },
   tagPlainText: { color: colors.muted },
-  metric: { gap: 6 },
-  metricHead: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
-  metricLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '600' },
-  metricValue: { color: colors.muted, fontFamily: fonts.mono, fontSize: 12, fontWeight: '700' },
-  progressTrack: { height: 6, borderRadius: radii.pill, backgroundColor: '#E8EFF6', overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: radii.pill },
   statCell: { alignItems: 'center', gap: 3 },
   statCellLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, letterSpacing: 0.4 },
   statCellValue: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
   statCellUnit: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, fontWeight: '600' },
-  ringSvg: { position: 'absolute' },
-  ringCenter: { alignItems: 'center', justifyContent: 'center' },
-  ringNumber: { color: colors.ink, fontFamily: fonts.display, fontSize: 27, fontWeight: '800', letterSpacing: -1 },
-  ringCaption: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, marginTop: -2 },
   logoIcon: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   avatarWrap: { position: 'relative', overflow: 'visible' },
   avatarPressable: { width: '100%', height: '100%', borderRadius: radii.pill },
@@ -498,3 +432,7 @@ const styles = StyleSheet.create({
   emptyDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, textAlign: 'center', lineHeight: 20, marginTop: spacing.sm },
   emptyAction: { marginTop: spacing.lg, alignSelf: 'stretch' },
 });
+
+// 动画实现（reanimated 驱动）集中在 shared/animation，对调用方保持原签名不变。
+export { AnimatedProgress as MetricProgress } from '../animation/AnimatedProgress';
+export { AnimatedScoreRing as ScoreRing } from '../animation/AnimatedScoreRing';

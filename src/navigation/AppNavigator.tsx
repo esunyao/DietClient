@@ -5,6 +5,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { enableFreeze } from 'react-native-screens';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+
+import { durations, timing } from '../shared/animation/config';
 
 // 认证相关页面
 import {
@@ -99,9 +102,9 @@ function ProfileNavigator() {
   return (
     <ProfileStack.Navigator
       initialRouteName={profile?.profileCompletedAt ? 'ProfileMain' : 'EditProfile'}
-      // Android 上 `fade` 与冻结页面组合在 pop 时会留下半透明的过渡层。
-      // 健康档案管理页包含长列表，直接切换既避免白闪也避免移动整张卡片合成。
-      screenOptions={{ headerShown: false, animation: 'none', freezeOnBlur: false }}
+      // Android 上 `fade` 与冻结页面组合在 pop 时会留下半透明的过渡层，
+      // 因此用 slide_from_right 提供原生 push 过渡；freezeOnBlur 关闭避免冻结帧残留。
+      screenOptions={{ headerShown: false, animation: 'slide_from_right', freezeOnBlur: false }}
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} initialParams={{ onboarding: !profile?.profileCompletedAt }} />
@@ -160,11 +163,26 @@ function MainNavigator() {
   );
 }
 
+/** 启动闪屏的光球：reanimated 驱动缩放与透明度呼吸。 */
+function BreathingOrb() {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    scale.value = withRepeat(withTiming(1.15, timing(durations.breath)), -1, true);
+    opacity.value = withRepeat(withTiming(0.7, timing(durations.breath)), -1, true);
+  }, [scale, opacity]);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+  return <Animated.View style={[styles.splashOrb, style]} />;
+}
+
 // 加载等待闪屏
 function SessionSplash() {
   return (
     <View style={styles.splash}>
-      <View style={styles.splashOrb} />
+      <BreathingOrb />
       <ActivityIndicator color={colors.blue} size="large" />
       <Text style={styles.splashText}>正在准备健康档案…</Text>
     </View>

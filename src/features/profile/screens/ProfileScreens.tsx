@@ -45,6 +45,7 @@ import {
 
 import type { ProfileStackParamList } from '../../../navigation/types';
 import { getErrorMessage } from '../../../shared/api/client';
+import { PressableScale } from '../../../shared/animation/PressableScale';
 import {
   AppButton,
   AppScreen,
@@ -144,10 +145,10 @@ function ProfileAction({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.profileAction, pressed && styles.pressed]}
+      style={styles.profileAction}
     >
       <View style={styles.profileActionIcon}>{icon}</View>
       <Text
@@ -158,7 +159,7 @@ function ProfileAction({
         {label}
       </Text>
       <ChevronRight color={colors.muted} size={16} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -817,7 +818,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
   },
-  pressed: { opacity: 0.72 },
   editText: {
     color: colors.blue,
     fontFamily: fonts.body,

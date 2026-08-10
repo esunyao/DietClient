@@ -1,22 +1,27 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 
+import { durations } from '../animation/config';
 import { colors, fonts, radii, spacing } from '../theme/tokens';
 
 type ToastTone = 'success' | 'error' | 'info';
+type ToastItem = { id: number; message: string; tone: ToastTone };
 type ToastApi = { show: (message: string, tone?: ToastTone) => void };
 
 const ToastContext = createContext<ToastApi | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toast, setToast] = useState<{ message: string; tone: ToastTone } | null>(null);
+  const [toast, setToast] = useState<ToastItem | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 自增 id：相同文案连续触发时 key 变化，reanimated 才能重放进出场。
+  const nextId = useRef(1);
 
   const show = useCallback((message: string, tone: ToastTone = 'info') => {
     if (timer.current) {
       clearTimeout(timer.current);
     }
-    setToast({ message, tone });
+    setToast({ id: nextId.current++, message, tone });
     timer.current = setTimeout(() => setToast(null), 2_600);
   }, []);
 
@@ -27,7 +32,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <View style={styles.host}>
         {children}
         {toast ? (
-          <View pointerEvents="none" style={styles.layer}>
+          <Animated.View
+            key={toast.id}
+            pointerEvents="none"
+            entering={FadeInDown.duration(durations.toastIn)}
+            exiting={FadeOutUp.duration(durations.toastOut)}
+            style={styles.layer}
+          >
             <View
               style={[
                 styles.toast,
@@ -37,7 +48,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             >
               <Text style={styles.message}>{toast.message}</Text>
             </View>
-          </View>
+          </Animated.View>
         ) : null}
       </View>
     </ToastContext.Provider>

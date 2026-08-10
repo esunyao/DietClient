@@ -6,6 +6,7 @@ import { ChevronRight, Ruler, Scale, ShieldAlert, Stethoscope, Target, Trash2, U
 
 import type { ProfileStackParamList } from '../../../navigation/types';
 import { getErrorMessage } from '../../../shared/api/client';
+import { PressableScale } from '../../../shared/animation/PressableScale';
 import { AppButton, AppScreen, EmptyState, GlassCard, ScreenHeader, SectionTitle, inputStyle } from '../../../shared/components/ui';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { Allergy, BodyMeasurement, DietaryRestriction, HealthGoal, MedicalCondition } from '../../../shared/types/api';
@@ -36,12 +37,12 @@ function customCode(): string {
 }
 
 function RecordSection({ icon, title, detail, count, onPress }: { icon: React.ReactNode; title: string; detail: string; count: number; onPress: () => void }) {
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.recordSection, pressed && styles.pressed]}>
+  return <PressableScale accessibilityRole="button" onPress={onPress} style={styles.recordSection}>
     <View style={styles.recordIcon}>{icon}</View>
     <View style={styles.recordCopy}><Text style={styles.recordTitle}>{title}</Text><Text style={styles.recordDetail}>{detail}</Text></View>
     <View style={styles.count}><Text style={styles.countText}>{count} 条</Text></View>
     <ChevronRight color={colors.muted} size={18} />
-  </Pressable>;
+  </PressableScale>;
 }
 
 export function HealthRecordsScreen({ navigation, route }: HealthProps) {
@@ -87,7 +88,7 @@ export function HealthRecordsScreen({ navigation, route }: HealthProps) {
 }
 
 function RecordRow({ title, detail, onPress }: { title: string; detail: string; onPress: () => void }) {
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.recordRow, pressed && styles.pressed]}><View style={styles.recordRowCopy}><Text style={styles.rowTitle}>{title}</Text><Text numberOfLines={1} style={styles.rowDetail}>{detail}</Text></View><ChevronRight color={colors.muted} size={17} /></Pressable>;
+  return <PressableScale accessibilityRole="button" onPress={onPress} style={styles.recordRow}><View style={styles.recordRowCopy}><Text style={styles.rowTitle}>{title}</Text><Text numberOfLines={1} style={styles.rowDetail}>{detail}</Text></View><ChevronRight color={colors.muted} size={17} /></PressableScale>;
 }
 
 function Field({ label, value, onChange, placeholder, numeric = false, multiline = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; numeric?: boolean; multiline?: boolean }) {
@@ -155,5 +156,5 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
 }
 
 const styles = StyleSheet.create({
-  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, pressed: { opacity: 0.72 }, recordRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordRowCopy: { flex: 1 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, formCard: { gap: spacing.md }, existingCard: { marginBottom: spacing.sm }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
+  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, recordRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordRowCopy: { flex: 1 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, formCard: { gap: spacing.md }, existingCard: { marginBottom: spacing.sm }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
 });

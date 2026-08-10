@@ -6,7 +6,6 @@
 const path = require('path');
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const NodePolyfillPlugin = require('node-polyfill-webpack-plugin');
 
 const appDirectory = path.resolve(__dirname, '..');
@@ -43,7 +42,7 @@ module.exports = {
         appDirectory,
         'node_modules/@react-native-async-storage/async-storage/lib/module/index.js',
       ),
-      // Skia 的 Web 图形模块会用到 Node 兼容项；交由 polyfill 插件提供浏览器实现。
+      // reanimated 的 Web 运行时通过该别名读取包版本信息。
       'react-native-reanimated/package.json$': path.resolve(appDirectory, 'node_modules/react-native-reanimated/package.json'),
     },
   },
@@ -79,15 +78,6 @@ module.exports = {
     // React Native 生态包会在运行时读取此编译期常量；Webpack 默认不会像 Metro 一样注入它。
     new webpack.DefinePlugin({ __DEV__: JSON.stringify(!isProduction) }),
     new NodePolyfillPlugin(),
-    // WithSkiaWeb 延迟加载 CanvasKit；WASM 单独复制后可被 locateFile('/canvaskit.wasm') 找到。
-    new CopyWebpackPlugin({
-      patterns: [
-        {
-          from: require.resolve('canvaskit-wasm/bin/full/canvaskit.wasm'),
-          to: 'canvaskit.wasm',
-        },
-      ],
-    }),
     // NODE_ENV 由 webpack 的 mode 自动注入，无需手动 DefinePlugin
     new HtmlWebpackPlugin({
       template: path.resolve(__dirname, 'index.html'),
