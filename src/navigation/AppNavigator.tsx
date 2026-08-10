@@ -4,6 +4,7 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { enableFreeze } from 'react-native-screens';
 
 // 认证相关页面
 import {
@@ -26,6 +27,7 @@ import {
   EditProfileScreen,
   ProfileScreen,
 } from '../features/profile/screens/ProfileScreens';
+import { HealthRecordFormScreen, HealthRecordsScreen } from '../features/profile/screens/HealthRecords';
 // 主题 Token
 import { colors, fonts } from '../shared/theme/tokens';
 // 自定义毛玻璃 TabBar
@@ -42,6 +44,8 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
+
+enableFreeze(true);
 
 /**
  * 底部 `Tab` 设定
@@ -76,7 +80,7 @@ function AuthNavigator() {
 function HomeNavigator() {
   return (
     <HomeStack.Navigator
-      screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+      screenOptions={{ headerShown: false, animation: 'fade', freezeOnBlur: true }}
     >
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="ScoreDetail" component={ScoreDetailScreen} />
@@ -91,12 +95,18 @@ function renderFrostedTabBar(props: BottomTabBarProps) {
 
 // 个人中心 Stack
 function ProfileNavigator() {
+  const profile = useSessionStore(state => state.profile);
   return (
     <ProfileStack.Navigator
-      screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+      initialRouteName={profile?.profileCompletedAt ? 'ProfileMain' : 'EditProfile'}
+      // Android 上 `fade` 与冻结页面组合在 pop 时会留下半透明的过渡层。
+      // 健康档案管理页包含长列表，直接切换既避免白闪也避免移动整张卡片合成。
+      screenOptions={{ headerShown: false, animation: 'none', freezeOnBlur: false }}
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
-      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} initialParams={{ onboarding: !profile?.profileCompletedAt }} />
+      <ProfileStack.Screen name="HealthRecords" component={HealthRecordsScreen} />
+      <ProfileStack.Screen name="HealthRecordForm" component={HealthRecordFormScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -104,13 +114,16 @@ function ProfileNavigator() {
 // 主应用 Tab 导航
 // 底部Tab
 function MainNavigator() {
+  const profile = useSessionStore(state => state.profile);
   return (
     <Tab.Navigator
+      initialRouteName={profile?.profileCompletedAt ? 'HomeTab' : 'ProfileTab'}
       tabBar={renderFrostedTabBar}
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
         lazy: true,
+        freezeOnBlur: true,
       }}
     >
       <Tab.Screen

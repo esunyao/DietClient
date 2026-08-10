@@ -8,6 +8,7 @@ import {
   AUTHENTIK_CLIENT_ID,
   AUTHENTIK_ENROLLMENT_FLOW_SLUG,
   AUTHENTIK_REDIRECT_URI,
+  AUTHENTIK_SCOPES,
 } from '../../../shared/config/appConfig';
 import { tokenStorage } from '../../../shared/api/tokenStorage';
 import type { OidcTokenSet } from '../../../shared/types/api';
@@ -220,7 +221,7 @@ function createAuthorizationQuery(pkce: { challenge: string }): {
     client_id: AUTHENTIK_CLIENT_ID,
     redirect_uri: AUTHENTIK_REDIRECT_URI,
     response_type: 'code',
-    scope: 'openid email profile',
+    scope: AUTHENTIK_SCOPES,
     state,
     nonce,
     code_challenge: pkce.challenge,

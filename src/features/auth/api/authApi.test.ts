@@ -74,6 +74,8 @@ describe('authApi.login', () => {
 
     expect(tokens.accessToken).toBe('access-token');
     expect(requests).toHaveLength(5);
+    const flowQuery = new URL(requests[0].url).searchParams.get('query') || '';
+    expect(new URLSearchParams(flowQuery).get('scope')).toBe('openid email profile offline_access');
     expect(requests[1].init?.credentials).toBe('omit');
     expect((requests[1].init?.headers as Record<string, string>).Cookie).toContain('authentik_session=temporary');
     expect((requests[3].init as RequestInit & { redirect?: string }).redirect).toBe('manual');

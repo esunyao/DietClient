@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { create } from 'zustand';
+import { AppState } from 'react-native';
 
-import { ApiError, getErrorMessage, setApiAccessToken, setSessionInvalidHandler } from '../../../shared/api/client';
+import { ApiError, getErrorMessage, refreshApiTokens, setApiAccessToken, setSessionInvalidHandler, setTokensRefreshedHandler } from '../../../shared/api/client';
 import { tokenStorage } from '../../../shared/api/tokenStorage';
 import type { OidcTokenSet, User, UserProfile } from '../../../shared/types/api';
 import { userApi } from '../../profile/api/userApi';
@@ -26,6 +27,27 @@ interface SessionState {
   setAvatarPreviewUrl: (url: string | null) => void;
   signOut: () => Promise<void>;
   clearLocalSession: () => Promise<void>;
+}
+
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearRefreshTimer(): void {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = null;
+}
+
+function scheduleRefresh(set: (state: Partial<SessionState>) => void, tokens: OidcTokenSet): void {
+  clearRefreshTimer();
+  if (!tokens.refreshToken) return;
+  const delay = Math.max(1_000, tokens.obtainedAt + tokens.expiresIn * 1_000 - Date.now() - 60_000);
+  refreshTimer = setTimeout(() => {
+    refreshApiTokens()
+      .then(next => {
+        set({ tokens: next });
+        scheduleRefresh(set, next);
+      })
+      .catch(() => undefined);
+  }, delay);
 }
 
 function isProfileNotFound(error: unknown): boolean {
@@ -82,6 +104,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       return;
     }
     setApiAccessToken(tokens.accessToken);
+    scheduleRefresh(set, tokens);
     try {
       const data = await loadUserData();
       set({ status: 'signedIn', tokens, ...data });
@@ -96,6 +119,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const tokens = await authApi.login(payload);
     await tokenStorage.save(tokens);
     setApiAccessToken(tokens.accessToken);
+    scheduleRefresh(set, tokens);
     try {
       const data = await loadUserData();
       set({ status: 'signedIn', tokens, ...data, error: null });
@@ -128,6 +152,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   clearLocalSession: async () => {
+    clearRefreshTimer();
     await tokenStorage.clear();
     setApiAccessToken(null);
     set({
@@ -144,4 +169,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
 setSessionInvalidHandler(() => {
   useSessionStore.getState().clearLocalSession().catch(() => undefined);
+});
+
+setTokensRefreshedHandler(tokens => {
+  useSessionStore.setState({ tokens });
+  scheduleRefresh(useSessionStore.setState, tokens);
+});
+
+AppState.addEventListener('change', state => {
+  if (state !== 'active') return;
+  const tokens = useSessionStore.getState().tokens;
+  if (tokens?.refreshToken && tokens.obtainedAt + tokens.expiresIn * 1_000 - Date.now() <= 60_000) {
+    refreshApiTokens().catch(() => undefined);
+  }
 });

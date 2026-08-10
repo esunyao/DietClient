@@ -24,6 +24,7 @@ import {
 import {
   Platform,
   Pressable,
+  InteractionManager,
   StyleSheet,
   Text,
   TextInput,
@@ -106,25 +107,29 @@ function InfoRow({
   label,
   value,
   accent,
+  showDivider = true,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   accent?: 'green' | 'amber' | 'red';
+  showDivider?: boolean;
 }) {
   return (
-    <View style={styles.infoRow}>
+    <View style={[styles.infoRow, !showDivider && styles.infoRowLast]}>
       <View style={styles.infoLead}>
         <View style={styles.infoIcon}>{icon}</View>
         <Text style={styles.infoLabel}>{label}</Text>
       </View>
-      {accent ? (
-        <Tag label={value} tone={accent} />
-      ) : (
-        <Text numberOfLines={2} style={styles.infoValue}>
-          {value}
-        </Text>
-      )}
+      <View style={styles.infoValueSlot}>
+        {accent ? (
+          <Tag label={value} tone={accent} style={styles.infoValueTag} />
+        ) : (
+          <Text numberOfLines={2} style={styles.infoValue}>
+            {value}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -170,6 +175,11 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
   const { show } = useToast();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [sheetMounted, setSheetMounted] = useState(false);
+
+  useEffect(() => {
+    if (sheetMounted) sheetRef.current?.present();
+  }, [sheetMounted]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -246,7 +256,7 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
           onPress={() => {
             if (!uploading) {
               setTabBarHidden(true);
-              sheetRef.current?.present();
+              setSheetMounted(true);
             }
           }}
           showEditBadge
@@ -256,13 +266,16 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
           <Text style={styles.uploadProgressText}>上传中 {progress}%</Text>
         ) : null}
       </View>
-      <BottomSheetModal
+      {sheetMounted ? <BottomSheetModal
         ref={sheetRef}
         backdropComponent={renderBackdrop}
         enableDynamicSizing
         enablePanDownToClose
         onChange={index => setTabBarHidden(index >= 0)}
-        onDismiss={() => setTabBarHidden(false)}
+        onDismiss={() => {
+          setTabBarHidden(false);
+          setSheetMounted(false);
+        }}
         backgroundStyle={styles.sheetBackground}
         handleIndicatorStyle={styles.sheetHandle}
       >
@@ -287,7 +300,7 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
             />
           </View>
         </BottomSheetView>
-      </BottomSheetModal>
+      </BottomSheetModal> : null}
     </>
   );
 }
@@ -335,7 +348,10 @@ export function ProfileScreen({ navigation }: ProfileProps) {
   }, []);
 
   useEffect(() => {
-    loadHealthSummary().catch(() => undefined);
+    const task = InteractionManager.runAfterInteractions(() => {
+      loadHealthSummary().catch(() => undefined);
+    });
+    return () => task.cancel();
   }, [loadHealthSummary]);
 
   const refresh = async () => {
@@ -426,7 +442,7 @@ export function ProfileScreen({ navigation }: ProfileProps) {
           </Pressable>
         }
       />
-      <GlassCard style={styles.infoCard}>
+      <GlassCard elevated={false} variant="soft" style={styles.infoCard}>
         <InfoRow
           icon={<UserRound color={colors.muted} size={17} />}
           label="性别"
@@ -455,11 +471,16 @@ export function ProfileScreen({ navigation }: ProfileProps) {
           icon={<Droplets color={colors.muted} size={17} />}
           label="每日饮水目标"
           value={displayValue(profile?.dailyWaterTargetMl, ' ml')}
+          showDivider={false}
         />
       </GlassCard>
 
-      <SectionTitle title="健康记录" detail="数据来自 Orion 用户服务" />
-      <GlassCard style={styles.infoCard}>
+      <SectionTitle
+        title="健康记录"
+        detail="可随时补充与更新健康信息"
+        action={<Pressable onPress={() => navigation.navigate('HealthRecords')}><Text style={styles.editText}>管理</Text></Pressable>}
+      />
+      <GlassCard elevated={false} variant="soft" style={styles.infoCard}>
         <InfoRow
           icon={<Scale color={colors.muted} size={17} />}
           label="最近体重"
@@ -491,6 +512,7 @@ export function ProfileScreen({ navigation }: ProfileProps) {
           icon={<HeartPulse color={colors.muted} size={17} />}
           label="健康目标"
           value={`${resourceCounts.goals} 条`}
+          showDivider={false}
         />
       </GlassCard>
 
@@ -596,7 +618,7 @@ function ChoiceGroup<T extends string>({
   );
 }
 
-export function EditProfileScreen({ navigation }: EditProps) {
+export function EditProfileScreen({ navigation, route }: EditProps) {
   const profile = useSessionStore(state => state.profile);
   const setProfile = useSessionStore(state => state.setProfile);
   const { show } = useToast();
@@ -639,7 +661,11 @@ export function EditProfileScreen({ navigation }: EditProps) {
       const nextProfile = await userApi.updateProfile(payload);
       setProfile(nextProfile);
       show('基础档案已保存', 'success');
-      navigation.goBack();
+      if (route.params?.onboarding) {
+        navigation.replace('HealthRecords', { onboarding: true });
+      } else {
+        navigation.goBack();
+      }
     } catch (error) {
       setSaveError(getErrorMessage(error));
     } finally {
@@ -665,7 +691,7 @@ export function EditProfileScreen({ navigation }: EditProps) {
       header={
         <ScreenHeader
           title="编辑基础档案"
-          subtitle="显示名和密码由 Authentik 管理"
+          subtitle="填写基础数据，生成更贴合你的健康建议"
           onBack={() => navigation.goBack()}
         />
       }
@@ -809,15 +835,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(230,237,245,0.72)',
   },
+  infoRowLast: { borderBottomWidth: 0 },
   infoLead: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   infoIcon: { width: 20, alignItems: 'center' },
   infoLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
+  infoValueSlot: { width: 108, alignItems: 'flex-end' },
+  infoValueTag: { alignSelf: 'flex-end' },
   infoValue: {
     color: colors.ink,
     fontFamily: fonts.body,
     fontSize: 13,
     fontWeight: '700',
-    maxWidth: '62%',
+    width: '100%',
     textAlign: 'right',
   },
   logoutButton: { marginTop: spacing.sm },

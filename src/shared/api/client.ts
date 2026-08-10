@@ -62,6 +62,7 @@ export const apiClient = axios.create({
 
 let refreshInFlight: Promise<OidcTokenSet> | null = null;
 let onSessionInvalid: (() => void) | null = null;
+let onTokensRefreshed: ((tokens: OidcTokenSet) => void) | null = null;
 let activeAccessToken: string | null = null;
 
 export function buildAuthorizationHeader(accessToken?: string): Record<string, string> {
@@ -91,11 +92,26 @@ export function setSessionInvalidHandler(handler: () => void): void {
   onSessionInvalid = handler;
 }
 
+export function setTokensRefreshedHandler(handler: (tokens: OidcTokenSet) => void): void {
+  onTokensRefreshed = handler;
+}
+
 async function refreshTokens(): Promise<OidcTokenSet> {
   const nextTokens = await refreshAccessToken();
   await tokenStorage.save(nextTokens);
   setApiAccessToken(nextTokens.accessToken);
+  onTokensRefreshed?.(nextTokens);
   return nextTokens;
+}
+
+/** Reused by scheduled refreshes and 401 recovery so a session only refreshes once. */
+export async function refreshApiTokens(): Promise<OidcTokenSet> {
+  refreshInFlight ??= refreshTokens();
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
 }
 
 apiClient.interceptors.request.use(config => {
@@ -118,8 +134,7 @@ apiClient.interceptors.response.use(
 
     request._hasRetried = true;
     try {
-      refreshInFlight ??= refreshTokens();
-      const tokens = await refreshInFlight;
+      const tokens = await refreshApiTokens();
       const headers = new AxiosHeaders();
       if (request.headers) {
         Object.entries(request.headers as Record<string, unknown>).forEach(([name, value]) => {
@@ -129,14 +144,12 @@ apiClient.interceptors.response.use(
       headers.set('Authorization', `Bearer ${tokens.accessToken}`);
       request.headers = headers;
       return apiClient(request);
-    } catch (refreshError) {
+    } catch {
       await tokenStorage.clear();
       setApiAccessToken(null);
       onSessionInvalid?.();
       // 当前请求的真实失败原因是 Gateway 的 401；刷新失败仅代表无法恢复该会话。
       return Promise.reject(error);
-    } finally {
-      refreshInFlight = null;
     }
   },
 );

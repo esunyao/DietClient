@@ -26,7 +26,7 @@ import { useTabBarVisibility } from '../store/tabBarVisibility';
 
 const HEADER_COLLAPSE_OFFSET = 56;
 const HEADER_EXPAND_OFFSET = 24;
-const HEADER_SAFE_GAP = 8;
+const HEADER_SAFE_GAP = 4;
 const HEADER_HEIGHT = 44;
 const COMPACT_HEADER_WIDTH = 136;
 const COMPACT_HEADER_HEIGHT = 34;
@@ -121,12 +121,13 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
 }
 
 // 玻璃卡片组件
-export function GlassCard({ children, style, variant = 'frosted' }: {
+export function GlassCard({ children, style, variant = 'frosted', elevated = true }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   variant?: 'frosted' | 'soft';
+  elevated?: boolean;
 }) {
-  return <GlassSurface variant={variant} style={[styles.card, style]}>{children}</GlassSurface>;
+  return <GlassSurface variant={variant} style={[styles.card, elevated && styles.cardElevated, style]}>{children}</GlassSurface>;
 }
 
 /**
@@ -236,9 +237,9 @@ export function SectionTitle({ title, detail, action }: { title: string; detail?
   );
 }
 
-export function Tag({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'plain' }) {
+export function Tag({ label, tone = 'blue', style }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'plain'; style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={[styles.tag, tone === 'green' && styles.tagGreen, tone === 'amber' && styles.tagAmber, tone === 'red' && styles.tagRed, tone === 'plain' && styles.tagPlain]}>
+    <View style={[styles.tag, tone === 'green' && styles.tagGreen, tone === 'amber' && styles.tagAmber, tone === 'red' && styles.tagRed, tone === 'plain' && styles.tagPlain, style]}>
       <Text style={[styles.tagText, tone === 'green' && styles.tagGreenText, tone === 'amber' && styles.tagAmberText, tone === 'red' && styles.tagRedText, tone === 'plain' && styles.tagPlainText]}>{label}</Text>
     </View>
   );
@@ -430,11 +431,13 @@ const styles = StyleSheet.create({
   canvasGlowTwo: { position: 'absolute', width: 210, height: 210, borderRadius: 105, bottom: 100, left: -110, backgroundColor: glow.orbGreen },
   card: {
     padding: spacing.lg,
+  },
+  cardElevated: {
     boxShadow: shadows.card,
   },
   headerShell: { height: HEADER_HEIGHT, justifyContent: 'center' },
   headerExpanded: { height: HEADER_HEIGHT, width: '100%' },
-  headerCompact: { position: 'absolute', top: (HEADER_HEIGHT - COMPACT_HEADER_HEIGHT) / 2, alignSelf: 'center', width: COMPACT_HEADER_WIDTH, height: COMPACT_HEADER_HEIGHT },
+  headerCompact: { position: 'absolute', top: 0, alignSelf: 'center', width: COMPACT_HEADER_WIDTH, height: COMPACT_HEADER_HEIGHT },
   header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, boxShadow: shadows.soft },
   compactIsland: { height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, boxShadow: shadows.soft },
   backButton: { position: 'absolute', left: 6, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.6)' },
@@ -443,8 +446,8 @@ const styles = StyleSheet.create({
   headerSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 9, marginTop: 1 },
   headerAction: { position: 'absolute', right: 6 },
   compactTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
-  headerSideLeft: { position: 'absolute', left: 0, top: (HEADER_HEIGHT - COMPACT_HEADER_HEIGHT) / 2 },
-  headerSideRight: { position: 'absolute', right: 0, top: (HEADER_HEIGHT - COMPACT_HEADER_HEIGHT) / 2 },
+  headerSideLeft: { position: 'absolute', left: 0, top: 0 },
+  headerSideRight: { position: 'absolute', right: 0, top: 0 },
   headerSideButton: { width: COMPACT_HEADER_HEIGHT, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', boxShadow: shadows.soft },
   sideButtonPressable: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: COMPACT_HEADER_HEIGHT / 2 },
   button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderRadius: radii.md, backgroundColor: colors.blue, paddingHorizontal: spacing.lg },

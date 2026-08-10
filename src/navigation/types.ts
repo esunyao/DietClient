@@ -10,7 +10,9 @@ export type HomeStackParamList = {
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
-  EditProfile: undefined;
+  EditProfile: { onboarding?: boolean } | undefined;
+  HealthRecords: { onboarding?: boolean } | undefined;
+  HealthRecordForm: { kind: 'measurement' | 'goal' | 'allergy' | 'condition' | 'restriction'; id?: string; create?: boolean };
 };
 
 export type AppTabParamList = {

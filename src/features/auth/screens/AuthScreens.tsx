@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -23,6 +24,7 @@ import type { FlowChallenge, LoginPayload, RegisterPayload } from '../api/authAp
 
 type LoginProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 type RegisterProps = NativeStackScreenProps<AuthStackParamList, 'Register'>;
+type RegisterForm = RegisterPayload & { confirmPassword: string };
 
 function FormField<T extends FieldValues>({
   control,
@@ -192,16 +194,26 @@ export function LoginScreen({ navigation, route }: LoginProps) {
 
 export function RegisterScreen({ navigation }: RegisterProps) {
   const register = useSessionStore(state => state.register);
-  const { control, handleSubmit } = useForm<RegisterPayload>({ defaultValues: { username: '', email: '', password: '', displayName: '' } });
+  const { control, handleSubmit } = useForm<RegisterForm>({ defaultValues: { username: '', email: '', password: '', confirmPassword: '', displayName: '' } });
   const { challenge, waitForChallenge, submitChallenge } = useChallengeResolver();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const submit = handleSubmit(async values => {
+    if (values.password !== values.confirmPassword) {
+      setSubmitError('两次输入的密码不一致');
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await register({ ...values, onChallenge: waitForChallenge });
+      await register({
+        username: values.username,
+        email: values.email,
+        password: values.password,
+        displayName: values.displayName,
+        onChallenge: waitForChallenge,
+      });
       Alert.alert('注册成功', '请先查收 Authentik 验证邮件，完成邮箱验证后再登录。', [{ text: '去登录', onPress: () => navigation.replace('Login', { registeredUsername: values.username }) }]);
     } catch (error) {
       setSubmitError(getErrorMessage(error));
@@ -212,17 +224,23 @@ export function RegisterScreen({ navigation }: RegisterProps) {
 
   return (
     <AuthShell>
-      <Pressable accessibilityLabel="返回登录" onPress={() => navigation.goBack()} style={styles.backText}><Text style={styles.backTextLabel}>← 返回登录</Text></Pressable>
-      <View style={styles.registerBrand}><LogoMark size={50} /><Text style={styles.registerTitle}>建立你的健康档案</Text><Text style={styles.registerDescription}>密码由 Authentik 管理，健康画像可在登录后完善。</Text></View>
-      <View style={[styles.authCard, styles.registerCard]}>
-        <FormField control={control} name="username" label="用户名" placeholder="2–50 个字符" rules={{ required: '请输入用户名', minLength: { value: 2, message: '用户名至少 2 个字符' }, maxLength: { value: 50, message: '用户名最多 50 个字符' } }} />
-        <FormField control={control} name="email" label="邮箱" placeholder="name@example.com" keyboardType="email-address" rules={{ required: '请输入邮箱', pattern: { value: /^\S+@\S+\.\S+$/, message: '请输入正确的邮箱地址' } }} />
-        <FormField control={control} name="displayName" label="显示名（选填）" placeholder="不填则使用用户名" autoCapitalize="words" />
-        <FormField control={control} name="password" label="密码" placeholder="至少 6 个字符" secureTextEntry rules={{ required: '请设置密码', minLength: { value: 6, message: '密码至少 6 个字符' }, maxLength: { value: 100, message: '密码最多 100 个字符' } }} />
+      <ScrollView contentContainerStyle={styles.registerScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Pressable accessibilityLabel="返回登录" onPress={() => navigation.goBack()} style={styles.backText}><Text style={styles.backTextLabel}>← 返回登录</Text></Pressable>
+        <View style={styles.registerBrand}><LogoMark size={50} /><Text style={styles.registerTitle}>从今天开始记录健康</Text><Text style={styles.registerDescription}>先创建账号，验证并登录后即可完成健康资料。</Text></View>
+        <View style={[styles.authCard, styles.registerCard]}>
+          <Text style={styles.registerCardTitle}>创建账号</Text>
+          <Text style={styles.registerCardCaption}>这些信息用于登录和找回账号。</Text>
+          <FormField control={control} name="username" label="用户名" placeholder="2–50 个字符" rules={{ required: '请输入用户名', minLength: { value: 2, message: '用户名至少 2 个字符' }, maxLength: { value: 50, message: '用户名最多 50 个字符' } }} />
+          <FormField control={control} name="email" label="邮箱" placeholder="name@example.com" keyboardType="email-address" rules={{ required: '请输入邮箱', pattern: { value: /^\S+@\S+\.\S+$/, message: '请输入正确的邮箱地址' } }} />
+          <FormField control={control} name="displayName" label="显示名（选填）" placeholder="不填则使用用户名" autoCapitalize="words" />
+          <FormField control={control} name="password" label="设置密码" placeholder="至少 6 个字符" secureTextEntry rules={{ required: '请设置密码', minLength: { value: 6, message: '密码至少 6 个字符' }, maxLength: { value: 100, message: '密码最多 100 个字符' } }} />
+          <FormField control={control} name="confirmPassword" label="确认密码" placeholder="再次输入密码" secureTextEntry rules={{ required: '请再次输入密码' }} />
+        </View>
+        <View style={[styles.authCard, styles.healthGuideCard]}><Text style={styles.registerCardTitle}>接下来完善健康资料</Text><Text style={styles.healthGuideText}>完成邮箱验证并首次登录后，我们会引导你填写基础档案、身体测量、健康目标与饮食提醒。所有内容都可以之后再编辑。</Text></View>
         {challenge ? <ChallengeCard challenge={challenge} onSubmit={submitChallenge} /> : null}
         {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
-        <AppButton label="创建账号" loading={submitting} disabled={Boolean(challenge)} onPress={submit} />
-      </View>
+        <AppButton label="创建账号并继续" loading={submitting} disabled={Boolean(challenge)} onPress={submit} />
+      </ScrollView>
     </AuthShell>
   );
 }
@@ -238,6 +256,11 @@ const styles = StyleSheet.create({
   brandSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, marginTop: 5 },
   authCard: { backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: radii.lg, padding: spacing.xl, borderWidth: 1, borderColor: '#FFFFFF', boxShadow: '0 12px 24px rgba(76, 108, 138, 0.14)' },
   registerCard: { paddingVertical: spacing.lg },
+  registerScroll: { gap: spacing.md, paddingBottom: spacing.xxl },
+  registerCardTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' },
+  registerCardCaption: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginBottom: spacing.lg, marginTop: 3 },
+  healthGuideCard: { gap: spacing.sm, backgroundColor: '#F7FBFF' },
+  healthGuideText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 19 },
   cardHeading: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', marginBottom: spacing.xl },
   headingIcon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blueSoft },
   cardTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },

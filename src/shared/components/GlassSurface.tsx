@@ -45,7 +45,7 @@ export function GlassSurface({
       blurAmount={intensity}
       blurRounds={6}
       blurType="systemUltraThinMaterialLight"
-      overlayColor="rgba(255, 255, 255, 0.50)"
+      overlayColor="rgba(255, 255, 255, 0.30)"
       reducedTransparencyFallbackColor="#FFFFFF"
       style={[
         styles.surface,
@@ -69,9 +69,10 @@ const styles = StyleSheet.create({
   },
   softSurface: {
     backgroundColor: glass.tintSoft,
+    borderColor: 'rgba(255, 255, 255, 0.78)',
   },
   navigationSurface: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    backgroundColor: 'rgba(255, 255, 255, 0.66)',
     borderColor: 'rgba(148, 163, 184, 0.48)',
   },
   /** 顶部细内高光：仿 iOS 材质的高光描边，让玻璃轮廓更分明。 */
@@ -84,6 +85,6 @@ const styles = StyleSheet.create({
     backgroundColor: glass.sheen,
   },
   navigationSheen: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    backgroundColor: 'rgba(255, 255, 255, 0.68)',
   },
 });
