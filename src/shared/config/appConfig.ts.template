@@ -1,4 +1,8 @@
 /** 所有服务地址集中在这里，页面和业务模块禁止拼接 host。 */
-export const API_BASE_URL = 'http://xxx.xxx.xxx.xxx:8091/';
-
-export const TOKEN_STORAGE_KEY = '@nutri_ai/session';
+export const API_BASE_URL = 'https://api.lovedage.com:8443/';
+export const AUTHENTIK_BASE_URL = 'https://auth.lovedage.com:8093';
+export const AUTHENTIK_PROVIDER_SLUG = 'diet-health';
+export const AUTHENTIK_AUTHENTICATION_FLOW_SLUG = 'default-authentication-flow';
+export const AUTHENTIK_ENROLLMENT_FLOW_SLUG = 'email-registration';
+export const AUTHENTIK_REDIRECT_URI = 'diethealth://oauth/callback/';
+export const AUTHENTIK_CLIENT_ID = 'replace-with-public-client-id';

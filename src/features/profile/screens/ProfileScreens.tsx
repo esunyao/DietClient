@@ -1,5 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Controller, useForm, type Control, type RegisterOptions } from 'react-hook-form';
+import {
+  Controller,
+  useForm,
+  type Control,
+  type RegisterOptions,
+} from 'react-hook-form';
 import {
   Activity,
   Ban,
@@ -31,7 +36,11 @@ import {
   BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { launchCamera, launchImageLibrary, type Asset } from 'react-native-image-picker';
+import {
+  launchCamera,
+  launchImageLibrary,
+  type Asset,
+} from 'react-native-image-picker';
 
 import type { ProfileStackParamList } from '../../../navigation/types';
 import { getErrorMessage } from '../../../shared/api/client';
@@ -49,16 +58,32 @@ import {
 import { useToast } from '../../../shared/components/Toast';
 import { useTabBarVisibility } from '../../../shared/store/tabBarVisibility';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
-import type { ActivityLevel, BodyMeasurement, Gender, UserProfileUpdatePayload } from '../../../shared/types/api';
+import type {
+  ActivityLevel,
+  BodyMeasurement,
+  Gender,
+  UserProfileUpdatePayload,
+} from '../../../shared/types/api';
 import { useSessionStore } from '../../auth/store/sessionStore';
 import { healthApi } from '../api/healthApi';
 import { userApi } from '../api/userApi';
-import { prepareAvatarFile, uploadAvatarBinary } from '../services/avatarUpload';
+import {
+  prepareAvatarFile,
+  uploadAvatarBinary,
+} from '../services/avatarUpload';
 
-type ProfileProps = NativeStackScreenProps<ProfileStackParamList, 'ProfileMain'>;
+type ProfileProps = NativeStackScreenProps<
+  ProfileStackParamList,
+  'ProfileMain'
+>;
 type EditProps = NativeStackScreenProps<ProfileStackParamList, 'EditProfile'>;
 
-const genderLabels: Record<Gender, string> = { male: '男', female: '女', other: '其他', unknown: '未说明' };
+const genderLabels: Record<Gender, string> = {
+  male: '男',
+  female: '女',
+  other: '其他',
+  unknown: '未说明',
+};
 const activityLabels: Record<ActivityLevel, string> = {
   sedentary: '久坐',
   light: '轻度活动',
@@ -67,24 +92,66 @@ const activityLabels: Record<ActivityLevel, string> = {
   very_active: '高强度活动',
 };
 
-function displayValue(value: string | number | null | undefined, suffix = ''): string {
-  return value === null || value === undefined || value === '' ? '待完善' : `${value}${suffix}`;
+function displayValue(
+  value: string | number | null | undefined,
+  suffix = '',
+): string {
+  return value === null || value === undefined || value === ''
+    ? '待完善'
+    : `${value}${suffix}`;
 }
 
-function InfoRow({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: 'green' | 'amber' | 'red' }) {
+function InfoRow({
+  icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  accent?: 'green' | 'amber' | 'red';
+}) {
   return (
     <View style={styles.infoRow}>
-      <View style={styles.infoLead}><View style={styles.infoIcon}>{icon}</View><Text style={styles.infoLabel}>{label}</Text></View>
-      {accent ? <Tag label={value} tone={accent} /> : <Text numberOfLines={2} style={styles.infoValue}>{value}</Text>}
+      <View style={styles.infoLead}>
+        <View style={styles.infoIcon}>{icon}</View>
+        <Text style={styles.infoLabel}>{label}</Text>
+      </View>
+      {accent ? (
+        <Tag label={value} tone={accent} />
+      ) : (
+        <Text numberOfLines={2} style={styles.infoValue}>
+          {value}
+        </Text>
+      )}
     </View>
   );
 }
 
-function ProfileAction({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress: () => void }) {
+function ProfileAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onPress: () => void;
+}) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.profileAction, pressed && styles.pressed]}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.profileAction, pressed && styles.pressed]}
+    >
       <View style={styles.profileActionIcon}>{icon}</View>
-      <Text style={styles.profileActionLabel}>{label}</Text>
+      <Text
+        numberOfLines={1}
+        style={styles.profileActionLabel}
+        adjustsFontSizeToFit={true}
+      >
+        {label}
+      </Text>
       <ChevronRight color={colors.muted} size={16} />
     </Pressable>
   );
@@ -96,47 +163,74 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
   const user = useSessionStore(state => state.user);
   const avatarPreviewUrl = useSessionStore(state => state.avatarPreviewUrl);
   const setUser = useSessionStore(state => state.setUser);
-  const setAvatarPreviewUrl = useSessionStore(state => state.setAvatarPreviewUrl);
+  const setAvatarPreviewUrl = useSessionStore(
+    state => state.setAvatarPreviewUrl,
+  );
   const refreshUserData = useSessionStore(state => state.refreshUserData);
   const { show } = useToast();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const renderBackdrop = useCallback((props: BottomSheetBackdropProps) => (
-    <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.28} pressBehavior="close" />
-  ), []);
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.28}
+        pressBehavior="close"
+      />
+    ),
+    [],
+  );
 
-  const upload = useCallback(async (asset?: Asset) => {
-    if (!asset || !user) return;
-    setUploading(true);
-    setProgress(0);
-    try {
-      const file = await prepareAvatarFile(asset);
-      const presign = await userApi.createAvatarUpload({ fileName: file.fileName, contentType: file.contentType });
-      await uploadAvatarBinary(file, presign.uploadUrl, setProgress);
-      const confirmed = await userApi.confirmAvatarUpload(presign.objectKey);
-      setUser({ ...user, avatarUrl: confirmed.avatarUrl });
-      setAvatarPreviewUrl(confirmed.avatarUrl);
-      refreshUserData().catch(() => undefined);
-      show('头像已更新', 'success');
-    } catch (error) {
-      show(getErrorMessage(error), 'error');
-    } finally {
-      setUploading(false);
+  const upload = useCallback(
+    async (asset?: Asset) => {
+      if (!asset || !user) return;
+      setUploading(true);
       setProgress(0);
-    }
-  }, [refreshUserData, setAvatarPreviewUrl, setUser, show, user]);
+      try {
+        const file = await prepareAvatarFile(asset);
+        const presign = await userApi.createAvatarUpload({
+          fileName: file.fileName,
+          contentType: file.contentType,
+        });
+        await uploadAvatarBinary(file, presign.uploadUrl, setProgress);
+        const confirmed = await userApi.confirmAvatarUpload(presign.objectKey);
+        setUser({ ...user, avatarUrl: confirmed.avatarUrl });
+        setAvatarPreviewUrl(confirmed.avatarUrl);
+        refreshUserData().catch(() => undefined);
+        show('头像已更新', 'success');
+      } catch (error) {
+        show(getErrorMessage(error), 'error');
+      } finally {
+        setUploading(false);
+        setProgress(0);
+      }
+    },
+    [refreshUserData, setAvatarPreviewUrl, setUser, show, user],
+  );
 
   const pickFromLibrary = useCallback(async () => {
     sheetRef.current?.dismiss();
-    const response = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1, quality: 0.9, assetRepresentationMode: 'compatible' });
+    const response = await launchImageLibrary({
+      mediaType: 'photo',
+      selectionLimit: 1,
+      quality: 0.9,
+      assetRepresentationMode: 'compatible',
+    });
     if (response.errorMessage) return show(response.errorMessage, 'error');
     await upload(response.assets?.[0]);
   }, [show, upload]);
 
   const takePhoto = useCallback(async () => {
     sheetRef.current?.dismiss();
-    const response = await launchCamera({ mediaType: 'photo', quality: 0.9, saveToPhotos: false, assetRepresentationMode: 'compatible' });
+    const response = await launchCamera({
+      mediaType: 'photo',
+      quality: 0.9,
+      saveToPhotos: false,
+      assetRepresentationMode: 'compatible',
+    });
     if (response.errorMessage) return show(response.errorMessage, 'error');
     await upload(response.assets?.[0]);
   }, [show, upload]);
@@ -145,16 +239,52 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
   return (
     <>
       <View style={styles.avatarEditor}>
-        <Avatar avatarUrl={avatarPreviewUrl} name={user.displayName || user.username} onImageError={() => setAvatarPreviewUrl(null)} onPress={() => { if (!uploading) { setTabBarHidden(true); sheetRef.current?.present(); } }} showEditBadge size={size} />
-        {uploading ? <Text style={styles.uploadProgressText}>上传中 {progress}%</Text> : null}
+        <Avatar
+          avatarUrl={avatarPreviewUrl}
+          name={user.displayName || user.username}
+          onImageError={() => setAvatarPreviewUrl(null)}
+          onPress={() => {
+            if (!uploading) {
+              setTabBarHidden(true);
+              sheetRef.current?.present();
+            }
+          }}
+          showEditBadge
+          size={size}
+        />
+        {uploading ? (
+          <Text style={styles.uploadProgressText}>上传中 {progress}%</Text>
+        ) : null}
       </View>
-      <BottomSheetModal ref={sheetRef} backdropComponent={renderBackdrop} enableDynamicSizing enablePanDownToClose onChange={index => setTabBarHidden(index >= 0)} onDismiss={() => setTabBarHidden(false)} backgroundStyle={styles.sheetBackground} handleIndicatorStyle={styles.sheetHandle}>
+      <BottomSheetModal
+        ref={sheetRef}
+        backdropComponent={renderBackdrop}
+        enableDynamicSizing
+        enablePanDownToClose
+        onChange={index => setTabBarHidden(index >= 0)}
+        onDismiss={() => setTabBarHidden(false)}
+        backgroundStyle={styles.sheetBackground}
+        handleIndicatorStyle={styles.sheetHandle}
+      >
         <BottomSheetView style={styles.sheetContent}>
           <Text style={styles.sheetTitle}>更新头像</Text>
-          <Text style={styles.sheetCaption}>支持 JPG、PNG、WebP，图片不超过 5 MB</Text>
+          <Text style={styles.sheetCaption}>
+            支持 JPG、PNG、WebP，图片不超过 5 MB
+          </Text>
           <View style={styles.sheetActions}>
-            {Platform.OS !== 'web' ? <AppButton label="拍照" onPress={takePhoto} variant="secondary" style={styles.sheetButton} /> : null}
-            <AppButton label="从相册选择" onPress={pickFromLibrary} style={styles.sheetButton} />
+            {Platform.OS !== 'web' ? (
+              <AppButton
+                label="拍照"
+                onPress={takePhoto}
+                variant="secondary"
+                style={styles.sheetButton}
+              />
+            ) : null}
+            <AppButton
+              label="从相册选择"
+              onPress={pickFromLibrary}
+              style={styles.sheetButton}
+            />
           </View>
         </BottomSheetView>
       </BottomSheetModal>
@@ -168,30 +298,45 @@ export function ProfileScreen({ navigation }: ProfileProps) {
   const profile = useSessionStore(state => state.profile);
   const refreshUserData = useSessionStore(state => state.refreshUserData);
   const signOut = useSessionStore(state => state.signOut);
-  const [latestMeasurement, setLatestMeasurement] = useState<BodyMeasurement | null>(null);
-  const [resourceCounts, setResourceCounts] = useState({ goals: 0, allergies: 0, conditions: 0, restrictions: 0 });
+  const [latestMeasurement, setLatestMeasurement] =
+    useState<BodyMeasurement | null>(null);
+  const [resourceCounts, setResourceCounts] = useState({
+    goals: 0,
+    allergies: 0,
+    conditions: 0,
+    restrictions: 0,
+  });
   const [refreshing, setRefreshing] = useState(false);
 
   const loadHealthSummary = useCallback(async () => {
-    const [measurements, goals, allergies, conditions, restrictions] = await Promise.allSettled([
-      healthApi.bodyMeasurements.list(),
-      healthApi.healthGoals.list(),
-      healthApi.allergies.list(),
-      healthApi.medicalConditions.list(),
-      healthApi.dietaryRestrictions.list(),
-    ]);
+    const [measurements, goals, allergies, conditions, restrictions] =
+      await Promise.allSettled([
+        healthApi.bodyMeasurements.list(),
+        healthApi.healthGoals.list(),
+        healthApi.allergies.list(),
+        healthApi.medicalConditions.list(),
+        healthApi.dietaryRestrictions.list(),
+      ]);
     if (measurements.status === 'fulfilled') {
-      setLatestMeasurement([...measurements.value].sort((a, b) => b.measuredAt.localeCompare(a.measuredAt))[0] || null);
+      setLatestMeasurement(
+        [...measurements.value].sort((a, b) =>
+          b.measuredAt.localeCompare(a.measuredAt),
+        )[0] || null,
+      );
     }
     setResourceCounts({
       goals: goals.status === 'fulfilled' ? goals.value.length : 0,
       allergies: allergies.status === 'fulfilled' ? allergies.value.length : 0,
-      conditions: conditions.status === 'fulfilled' ? conditions.value.length : 0,
-      restrictions: restrictions.status === 'fulfilled' ? restrictions.value.length : 0,
+      conditions:
+        conditions.status === 'fulfilled' ? conditions.value.length : 0,
+      restrictions:
+        restrictions.status === 'fulfilled' ? restrictions.value.length : 0,
     });
   }, []);
 
-  useEffect(() => { loadHealthSummary().catch(() => undefined); }, [loadHealthSummary]);
+  useEffect(() => {
+    loadHealthSummary().catch(() => undefined);
+  }, [loadHealthSummary]);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -206,47 +351,161 @@ export function ProfileScreen({ navigation }: ProfileProps) {
   };
 
   if (!user) {
-    return <AppScreen><EmptyState title="暂时无法读取账户" description="请刷新页面，或退出后重新登录。" action={<AppButton label="重新加载" onPress={refresh} />} /></AppScreen>;
+    return (
+      <AppScreen>
+        <EmptyState
+          title="暂时无法读取账户"
+          description="请刷新页面，或退出后重新登录。"
+          action={<AppButton label="重新加载" onPress={refresh} />}
+        />
+      </AppScreen>
+    );
   }
 
   return (
-    <AppScreen header={<ScreenHeader title="我的" subtitle="你的健康档案" onBack={() => navigation.getParent()?.navigate('HomeTab' as never)} action={<Pressable accessibilityLabel="刷新资料" onPress={refresh} style={styles.refreshButton}><RefreshCw color={colors.blue} size={16} /></Pressable>} />}>
+    <AppScreen
+      header={
+        <ScreenHeader
+          title="我的"
+          subtitle="你的健康档案"
+          onBack={() => navigation.getParent()?.navigate('HomeTab' as never)}
+          action={
+            <Pressable
+              accessibilityLabel="刷新资料"
+              onPress={refresh}
+              style={styles.refreshButton}
+            >
+              <RefreshCw color={colors.blue} size={16} />
+            </Pressable>
+          }
+        />
+      }
+    >
+
+      {/*邮箱验证*/}
       <GlassCard variant="frosted" style={styles.identityCard}>
         <AvatarEditor size={56} />
         <View style={styles.identityCopy}>
-          <Text style={styles.identityName}>{user.displayName || user.username}</Text>
-          <Text style={styles.identityMeta}>ID · {user.userId.slice(0, 8)} · {profile?.gender ? genderLabels[profile.gender] : '未设置'}</Text>
-          <Text numberOfLines={1} style={styles.identityEmail}>{user.email || '未绑定邮箱'}</Text>
+          <Text style={styles.identityName}>
+            {user.displayName || user.username}
+          </Text>
+          <Text style={styles.identityMeta}>
+            ID · {user.userId.slice(0, 8)} ·{' '}
+            {profile?.gender ? genderLabels[profile.gender] : '未设置'}
+          </Text>
+          <Text numberOfLines={1} style={styles.identityEmail}>
+            {user.email || '未绑定邮箱'}
+          </Text>
         </View>
-        <Tag label={user.emailVerified ? '邮箱已验证' : '待验证'} tone={user.emailVerified ? 'green' : 'amber'} />
+        <Tag
+          label={user.emailVerified ? '邮箱已验证' : '待验证'}
+          tone={user.emailVerified ? 'green' : 'amber'}
+        />
       </GlassCard>
 
       <View style={styles.actionGrid}>
-        <ProfileAction icon={<Pencil color={colors.blue} size={18} />} label="编辑基础档案" onPress={() => navigation.navigate('EditProfile')} />
-        <ProfileAction icon={<FileText color={colors.blue} size={18} />} label="我的报告" onPress={() => navigation.getParent()?.navigate('ReportsTab' as never)} />
+        <ProfileAction
+          icon={<Pencil color={colors.blue} size={18} />}
+          label="编辑基础档案"
+          onPress={() => navigation.navigate('EditProfile')}
+        />
+        <ProfileAction
+          icon={<FileText color={colors.blue} size={18} />}
+          label="我的报告"
+          onPress={() =>
+            navigation.getParent()?.navigate('ReportsTab' as never)
+          }
+        />
       </View>
 
-      <SectionTitle title="基础档案" action={<Pressable onPress={() => navigation.navigate('EditProfile')}><Text style={styles.editText}>编辑</Text></Pressable>} />
+      <SectionTitle
+        title="基础档案"
+        action={
+          <Pressable onPress={() => navigation.navigate('EditProfile')}>
+            <Text style={styles.editText}>编辑</Text>
+          </Pressable>
+        }
+      />
       <GlassCard style={styles.infoCard}>
-        <InfoRow icon={<UserRound color={colors.muted} size={17} />} label="性别" value={profile?.gender ? genderLabels[profile.gender] : '待完善'} />
-        <InfoRow icon={<Cake color={colors.muted} size={17} />} label="出生日期" value={displayValue(profile?.birthDate)} />
-        <InfoRow icon={<Ruler color={colors.muted} size={17} />} label="身高" value={displayValue(profile?.heightCm, ' cm')} />
-        <InfoRow icon={<Activity color={colors.muted} size={17} />} label="活动水平" value={profile?.activityLevel ? activityLabels[profile.activityLevel] : '待完善'} />
-        <InfoRow icon={<Droplets color={colors.muted} size={17} />} label="每日饮水目标" value={displayValue(profile?.dailyWaterTargetMl, ' ml')} />
+        <InfoRow
+          icon={<UserRound color={colors.muted} size={17} />}
+          label="性别"
+          value={profile?.gender ? genderLabels[profile.gender] : '待完善'}
+        />
+        <InfoRow
+          icon={<Cake color={colors.muted} size={17} />}
+          label="出生日期"
+          value={displayValue(profile?.birthDate)}
+        />
+        <InfoRow
+          icon={<Ruler color={colors.muted} size={17} />}
+          label="身高"
+          value={displayValue(profile?.heightCm, ' cm')}
+        />
+        <InfoRow
+          icon={<Activity color={colors.muted} size={17} />}
+          label="活动水平"
+          value={
+            profile?.activityLevel
+              ? activityLabels[profile.activityLevel]
+              : '待完善'
+          }
+        />
+        <InfoRow
+          icon={<Droplets color={colors.muted} size={17} />}
+          label="每日饮水目标"
+          value={displayValue(profile?.dailyWaterTargetMl, ' ml')}
+        />
       </GlassCard>
 
       <SectionTitle title="健康记录" detail="数据来自 Orion 用户服务" />
       <GlassCard style={styles.infoCard}>
-        <InfoRow icon={<Scale color={colors.muted} size={17} />} label="最近体重" value={displayValue(latestMeasurement?.weightKg, ' kg')} />
-        <InfoRow icon={<HeartPulse color={colors.muted} size={17} />} label="最近心率" value={displayValue(latestMeasurement?.restingHeartRate, ' bpm')} />
-        <InfoRow icon={<ShieldAlert color={colors.muted} size={17} />} label="过敏记录" value={`${resourceCounts.allergies} 条`} accent={resourceCounts.allergies ? 'amber' : undefined} />
-        <InfoRow icon={<Stethoscope color={colors.muted} size={17} />} label="疾病记录" value={`${resourceCounts.conditions} 条`} accent={resourceCounts.conditions ? 'red' : undefined} />
-        <InfoRow icon={<Ban color={colors.muted} size={17} />} label="饮食限制" value={`${resourceCounts.restrictions} 条`} />
-        <InfoRow icon={<HeartPulse color={colors.muted} size={17} />} label="健康目标" value={`${resourceCounts.goals} 条`} />
+        <InfoRow
+          icon={<Scale color={colors.muted} size={17} />}
+          label="最近体重"
+          value={displayValue(latestMeasurement?.weightKg, ' kg')}
+        />
+        <InfoRow
+          icon={<HeartPulse color={colors.muted} size={17} />}
+          label="最近心率"
+          value={displayValue(latestMeasurement?.restingHeartRate, ' bpm')}
+        />
+        <InfoRow
+          icon={<ShieldAlert color={colors.muted} size={17} />}
+          label="过敏记录"
+          value={`${resourceCounts.allergies} 条`}
+          accent={resourceCounts.allergies ? 'amber' : undefined}
+        />
+        <InfoRow
+          icon={<Stethoscope color={colors.muted} size={17} />}
+          label="疾病记录"
+          value={`${resourceCounts.conditions} 条`}
+          accent={resourceCounts.conditions ? 'red' : undefined}
+        />
+        <InfoRow
+          icon={<Ban color={colors.muted} size={17} />}
+          label="饮食限制"
+          value={`${resourceCounts.restrictions} 条`}
+        />
+        <InfoRow
+          icon={<HeartPulse color={colors.muted} size={17} />}
+          label="健康目标"
+          value={`${resourceCounts.goals} 条`}
+        />
       </GlassCard>
 
-      <AppButton label={refreshing ? '正在刷新…' : '刷新健康数据'} loading={refreshing} onPress={refresh} variant="secondary" />
-      <AppButton label="退出登录" onPress={signOut} variant="danger" style={styles.logoutButton} />
+      <AppButton
+        label={refreshing ? '正在刷新…' : '刷新健康数据'}
+        loading={refreshing}
+        onPress={refresh}
+        variant="secondary"
+      />
+      <AppButton
+        label="退出登录"
+        onPress={signOut}
+        variant="danger"
+        style={styles.logoutButton}
+      />
     </AppScreen>
   );
 }
@@ -259,32 +518,109 @@ type EditForm = {
   dailyWaterTargetMl: string;
 };
 
-function ProfileField({ control, name, label, placeholder, keyboardType = 'default', rules }: { control: Control<EditForm>; name: keyof EditForm; label: string; placeholder: string; keyboardType?: 'default' | 'numeric'; rules?: RegisterOptions<EditForm, keyof EditForm> }) {
+function ProfileField({
+  control,
+  name,
+  label,
+  placeholder,
+  keyboardType = 'default',
+  rules,
+}: {
+  control: Control<EditForm>;
+  name: keyof EditForm;
+  label: string;
+  placeholder: string;
+  keyboardType?: 'default' | 'numeric';
+  rules?: RegisterOptions<EditForm, keyof EditForm>;
+}) {
   return (
-    <Controller control={control} name={name} rules={rules} render={({ field: { onBlur, onChange, value }, fieldState: { error } }) => (
-      <View style={styles.formField}>
-        <Text style={styles.formLabel}>{label}</Text>
-        <TextInput onBlur={onBlur} onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#94A3B8" keyboardType={keyboardType} style={[inputStyle, error && styles.formInputError]} value={value} />
-        {error ? <Text style={styles.formError}>{error.message}</Text> : null}
-      </View>
-    )} />
+    <Controller
+      control={control}
+      name={name}
+      rules={rules}
+      render={({
+        field: { onBlur, onChange, value },
+        fieldState: { error },
+      }) => (
+        <View style={styles.formField}>
+          <Text style={styles.formLabel}>{label}</Text>
+          <TextInput
+            onBlur={onBlur}
+            onChangeText={onChange}
+            placeholder={placeholder}
+            placeholderTextColor="#94A3B8"
+            keyboardType={keyboardType}
+            style={[inputStyle, error && styles.formInputError]}
+            value={value}
+          />
+          {error ? <Text style={styles.formError}>{error.message}</Text> : null}
+        </View>
+      )}
+    />
   );
 }
 
-function ChoiceGroup<T extends string>({ label, value, onChange, options }: { label: string; value: T | ''; onChange: (value: T) => void; options: Array<{ value: T; label: string }> }) {
-  return <View style={styles.formField}><Text style={styles.formLabel}>{label}</Text><View style={styles.choiceGroup}>{options.map(item => <Pressable key={item.value} onPress={() => onChange(item.value)} style={[styles.choice, value === item.value && styles.choiceActive]}><Text style={[styles.choiceText, value === item.value && styles.choiceTextActive]}>{item.label}</Text></Pressable>)}</View></View>;
+function ChoiceGroup<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T | '';
+  onChange: (value: T) => void;
+  options: Array<{ value: T; label: string }>;
+}) {
+  return (
+    <View style={styles.formField}>
+      <Text style={styles.formLabel}>{label}</Text>
+      <View style={styles.choiceGroup}>
+        {options.map(item => (
+          <Pressable
+            key={item.value}
+            onPress={() => onChange(item.value)}
+            style={[styles.choice, value === item.value && styles.choiceActive]}
+          >
+            <Text
+              style={[
+                styles.choiceText,
+                value === item.value && styles.choiceTextActive,
+              ]}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
 }
 
 export function EditProfileScreen({ navigation }: EditProps) {
   const profile = useSessionStore(state => state.profile);
   const setProfile = useSessionStore(state => state.setProfile);
   const { show } = useToast();
-  const { control, handleSubmit, reset, watch, setValue } = useForm<EditForm>({ defaultValues: { birthDate: '', gender: '', heightCm: '', activityLevel: '', dailyWaterTargetMl: '' } });
+  const { control, handleSubmit, reset, watch, setValue } = useForm<EditForm>({
+    defaultValues: {
+      birthDate: '',
+      gender: '',
+      heightCm: '',
+      activityLevel: '',
+      dailyWaterTargetMl: '',
+    },
+  });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (profile) reset({ birthDate: profile.birthDate || '', gender: profile.gender || '', heightCm: profile.heightCm?.toString() || '', activityLevel: profile.activityLevel || '', dailyWaterTargetMl: profile.dailyWaterTargetMl?.toString() || '' });
+    if (profile)
+      reset({
+        birthDate: profile.birthDate || '',
+        gender: profile.gender || '',
+        heightCm: profile.heightCm?.toString() || '',
+        activityLevel: profile.activityLevel || '',
+        dailyWaterTargetMl: profile.dailyWaterTargetMl?.toString() || '',
+      });
   }, [profile, reset]);
 
   const save = handleSubmit(async values => {
@@ -295,7 +631,9 @@ export function EditProfileScreen({ navigation }: EditProps) {
       gender: values.gender || null,
       heightCm: values.heightCm.trim() ? Number(values.heightCm) : null,
       activityLevel: values.activityLevel || null,
-      dailyWaterTargetMl: values.dailyWaterTargetMl.trim() ? Number(values.dailyWaterTargetMl) : null,
+      dailyWaterTargetMl: values.dailyWaterTargetMl.trim()
+        ? Number(values.dailyWaterTargetMl)
+        : null,
     };
     try {
       const nextProfile = await userApi.updateProfile(payload);
@@ -309,17 +647,90 @@ export function EditProfileScreen({ navigation }: EditProps) {
     }
   });
 
-  if (!profile) return <AppScreen header={<ScreenHeader title="编辑档案" onBack={() => navigation.goBack()} />}><EmptyState title="没有可编辑的档案" description="请先返回上一页刷新。" /></AppScreen>;
+  if (!profile)
+    return (
+      <AppScreen
+        header={
+          <ScreenHeader title="编辑档案" onBack={() => navigation.goBack()} />
+        }
+      >
+        <EmptyState
+          title="没有可编辑的档案"
+          description="请先返回上一页刷新。"
+        />
+      </AppScreen>
+    );
   return (
-    <AppScreen header={<ScreenHeader title="编辑基础档案" subtitle="显示名和密码由 Authentik 管理" onBack={() => navigation.goBack()} />}>
+    <AppScreen
+      header={
+        <ScreenHeader
+          title="编辑基础档案"
+          subtitle="显示名和密码由 Authentik 管理"
+          onBack={() => navigation.goBack()}
+        />
+      }
+    >
       <GlassCard>
         <SectionTitle title="基础信息" />
         <View style={styles.formSpace}>
-          <ProfileField control={control} name="birthDate" label="出生日期" placeholder="YYYY-MM-DD" rules={{ pattern: { value: /^\d{4}-\d{2}-\d{2}$/, message: '请输入 YYYY-MM-DD' } }} />
-          <ChoiceGroup label="性别" value={watch('gender')} onChange={value => setValue('gender', value)} options={[{ value: 'male', label: '男' }, { value: 'female', label: '女' }, { value: 'other', label: '其他' }, { value: 'unknown', label: '未说明' }]} />
-          <ProfileField control={control} name="heightCm" label="身高（cm）" placeholder="例如 175" keyboardType="numeric" rules={{ validate: value => !value || (Number(value) >= 50 && Number(value) <= 300) || '请输入 50–300 cm' }} />
-          <ChoiceGroup label="活动水平" value={watch('activityLevel')} onChange={value => setValue('activityLevel', value)} options={Object.entries(activityLabels).map(([value, label]) => ({ value: value as ActivityLevel, label }))} />
-          <ProfileField control={control} name="dailyWaterTargetMl" label="每日饮水目标（ml）" placeholder="例如 2000" keyboardType="numeric" rules={{ validate: value => !value || (Number(value) >= 0 && Number(value) <= 10000) || '请输入 0–10000 ml' }} />
+          <ProfileField
+            control={control}
+            name="birthDate"
+            label="出生日期"
+            placeholder="YYYY-MM-DD"
+            rules={{
+              pattern: {
+                value: /^\d{4}-\d{2}-\d{2}$/,
+                message: '请输入 YYYY-MM-DD',
+              },
+            }}
+          />
+          <ChoiceGroup
+            label="性别"
+            value={watch('gender')}
+            onChange={value => setValue('gender', value)}
+            options={[
+              { value: 'male', label: '男' },
+              { value: 'female', label: '女' },
+              { value: 'other', label: '其他' },
+              { value: 'unknown', label: '未说明' },
+            ]}
+          />
+          <ProfileField
+            control={control}
+            name="heightCm"
+            label="身高（cm）"
+            placeholder="例如 175"
+            keyboardType="numeric"
+            rules={{
+              validate: value =>
+                !value ||
+                (Number(value) >= 50 && Number(value) <= 300) ||
+                '请输入 50–300 cm',
+            }}
+          />
+          <ChoiceGroup
+            label="活动水平"
+            value={watch('activityLevel')}
+            onChange={value => setValue('activityLevel', value)}
+            options={Object.entries(activityLabels).map(([value, label]) => ({
+              value: value as ActivityLevel,
+              label,
+            }))}
+          />
+          <ProfileField
+            control={control}
+            name="dailyWaterTargetMl"
+            label="每日饮水目标（ml）"
+            placeholder="例如 2000"
+            keyboardType="numeric"
+            rules={{
+              validate: value =>
+                !value ||
+                (Number(value) >= 0 && Number(value) <= 10000) ||
+                '请输入 0–10000 ml',
+            }}
+          />
         </View>
       </GlassCard>
       {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
@@ -329,43 +740,165 @@ export function EditProfileScreen({ navigation }: EditProps) {
 }
 
 const styles = StyleSheet.create({
-  refreshButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.62)' },
-  identityCard: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', padding: spacing.lg },
+  refreshButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+  },
+  identityCard: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
   identityCopy: { flex: 1, gap: 3 },
-  identityName: { color: colors.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: '800' },
+  identityName: {
+    color: colors.ink,
+    fontFamily: fonts.display,
+    fontSize: 20,
+    fontWeight: '800',
+  },
   identityMeta: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
   identityEmail: { color: '#94A3B8', fontFamily: fonts.body, fontSize: 10 },
   actionGrid: { flexDirection: 'row', gap: spacing.md },
-  profileAction: { flex: 1, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: radii.md, borderWidth: 1, borderColor: colors.glassBorder, backgroundColor: colors.glassStrong },
-  profileActionIcon: { width: 32, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blueSoft },
-  profileActionLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700', flex: 1 },
+  profileAction: {
+    flex: 1,
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    backgroundColor: colors.glassStrong,
+  },
+  profileActionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.blueSoft,
+  },
+  profileActionLabel: {
+    color: colors.ink,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+  },
   pressed: { opacity: 0.72 },
-  editText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' },
+  editText: {
+    color: colors.blue,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   infoCard: { paddingVertical: 4 },
-  infoRow: { minHeight: 47, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(230,237,245,0.72)' },
+  infoRow: {
+    minHeight: 47,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(230,237,245,0.72)',
+  },
   infoLead: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   infoIcon: { width: 20, alignItems: 'center' },
   infoLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
-  infoValue: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700', maxWidth: '62%', textAlign: 'right' },
+  infoValue: {
+    color: colors.ink,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '700',
+    maxWidth: '62%',
+    textAlign: 'right',
+  },
   logoutButton: { marginTop: spacing.sm },
   avatarEditor: { alignItems: 'center' },
-  uploadProgressText: { color: colors.blue, fontFamily: fonts.body, fontSize: 10, fontWeight: '800', marginTop: 6 },
-  sheetBackground: { backgroundColor: '#FFFFFF', borderColor: '#D4E2EF', borderRadius: radii.lg, borderWidth: 1 },
+  uploadProgressText: {
+    color: colors.blue,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  sheetBackground: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D4E2EF',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+  },
   sheetHandle: { backgroundColor: '#CBD5E1', width: 38 },
   sheetContent: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
-  sheetTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  sheetCaption: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, textAlign: 'center', marginTop: 6 },
-  sheetActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  sheetTitle: {
+    color: colors.ink,
+    fontFamily: fonts.display,
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  sheetCaption: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 6,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
   sheetButton: { flex: 1 },
   formSpace: { marginTop: spacing.lg, gap: spacing.md },
   formField: { marginBottom: spacing.md },
-  formLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700', marginBottom: 7 },
+  formLabel: {
+    color: colors.ink,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 7,
+  },
   formInputError: { borderColor: colors.red },
-  formError: { color: '#C93025', fontFamily: fonts.body, fontSize: 11, marginTop: 5 },
+  formError: {
+    color: '#C93025',
+    fontFamily: fonts.body,
+    fontSize: 11,
+    marginTop: 5,
+  },
   choiceGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  choice: { borderRadius: radii.pill, backgroundColor: '#F1F5F9', paddingHorizontal: 12, paddingVertical: 8 },
-  choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' },
-  choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' },
+  choice: {
+    borderRadius: radii.pill,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  choiceActive: {
+    backgroundColor: colors.blueSoft,
+    borderWidth: 1,
+    borderColor: '#B9DBFA',
+  },
+  choiceText: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
+  },
   choiceTextActive: { color: colors.blue },
-  saveError: { color: '#C93025', backgroundColor: colors.redSoft, borderRadius: radii.sm, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, padding: spacing.sm },
+  saveError: {
+    color: '#C93025',
+    backgroundColor: colors.redSoft,
+    borderRadius: radii.sm,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 18,
+    padding: spacing.sm,
+  },
 });

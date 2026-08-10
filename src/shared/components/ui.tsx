@@ -120,6 +120,7 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
   );
 }
 
+// 玻璃卡片组件
 export function GlassCard({ children, style, variant = 'frosted' }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;

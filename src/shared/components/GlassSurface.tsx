@@ -24,7 +24,12 @@ export function GlassSurface({
   intensity?: number;
   variant?: 'frosted' | 'soft' | 'navigation';
 }) {
-  const sheen = <View pointerEvents="none" style={[styles.sheen, variant === 'navigation' && styles.navigationSheen]} />;
+  const sheen = (
+    <View
+      pointerEvents="none"
+      style={[styles.sheen, variant === 'navigation' && styles.navigationSheen]}
+    />
+  );
 
   if (variant === 'soft') {
     return (
@@ -40,9 +45,13 @@ export function GlassSurface({
       blurAmount={intensity}
       blurRounds={6}
       blurType="systemUltraThinMaterialLight"
-      overlayColor="rgba(255, 255, 255, 0.30)"
+      overlayColor="rgba(255, 255, 255, 0.50)"
       reducedTransparencyFallbackColor="#FFFFFF"
-      style={[styles.surface, variant === 'navigation' && styles.navigationSurface, style]}
+      style={[
+        styles.surface,
+        variant === 'navigation' && styles.navigationSurface,
+        style,
+      ]}
     >
       {sheen}
       {children}
