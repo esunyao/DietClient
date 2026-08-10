@@ -1,30 +1,21 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-import { TOKEN_STORAGE_KEY } from '../config/appConfig';
-import type { TokenPair } from '../types/api';
+import type { OidcTokenSet } from '../types/api';
 
 /**
- * Token 同时保存在内存和 AsyncStorage。
- * 请求拦截器读取内存避免每次请求都产生异步存储 I/O，应用重启时再由 hydrate 恢复。
+ * 认证凭证只存在当前 JS 进程内。
+ * 不写入 AsyncStorage、Keychain 或其他持久化介质；应用重启后必须重新登录。
  */
-let currentTokens: TokenPair | null = null;
+let currentTokens: OidcTokenSet | null = null;
 
 export const tokenStorage = {
-  get: (): TokenPair | null => currentTokens,
+  get: (): OidcTokenSet | null => currentTokens,
 
-  hydrate: async (): Promise<TokenPair | null> => {
-    const raw = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
-    currentTokens = raw ? (JSON.parse(raw) as TokenPair) : null;
-    return currentTokens;
-  },
+  hydrate: async (): Promise<OidcTokenSet | null> => currentTokens,
 
-  save: async (tokens: TokenPair): Promise<void> => {
+  save: async (tokens: OidcTokenSet): Promise<void> => {
     currentTokens = tokens;
-    await AsyncStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(tokens));
   },
 
   clear: async (): Promise<void> => {
     currentTokens = null;
-    await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
   },
 };

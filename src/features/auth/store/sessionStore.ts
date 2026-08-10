@@ -1,20 +1,19 @@
 import axios from 'axios';
 import { create } from 'zustand';
 
-import { ApiError, getErrorMessage, setSessionInvalidHandler } from '../../../shared/api/client';
+import { ApiError, getErrorMessage, setApiAccessToken, setSessionInvalidHandler } from '../../../shared/api/client';
 import { tokenStorage } from '../../../shared/api/tokenStorage';
-import type { LoginPayload, RegisterPayload, TokenPair, User, UserProfile } from '../../../shared/types/api';
+import type { OidcTokenSet, User, UserProfile } from '../../../shared/types/api';
 import { userApi } from '../../profile/api/userApi';
-import { authApi } from '../api/authApi';
+import { authApi, type LoginPayload, type RegisterPayload } from '../api/authApi';
 
 type SessionStatus = 'restoring' | 'signedOut' | 'signedIn';
 
 interface SessionState {
   status: SessionStatus;
-  tokens: TokenPair | null;
+  tokens: OidcTokenSet | null;
   user: User | null;
   profile: UserProfile | null;
-  /** 头像对象键不可直接用于 <Image>，这里只保存 GET /v1/files/avatar 返回的展示 URL。 */
   avatarPreviewUrl: string | null;
   profileMissing: boolean;
   error: string | null;
@@ -40,7 +39,6 @@ async function loadUserData(previous?: Pick<SessionState, 'user' | 'avatarPrevie
   profileMissing: boolean;
   avatarPreviewUrl: string | null;
 }> {
-  // 用户与画像没有依赖关系，并发读取可缩短登录后首屏等待时间。
   const profileRequest = userApi.getProfile().then(
     profile => ({ profile, profileMissing: false }),
     error => {
@@ -50,23 +48,18 @@ async function loadUserData(previous?: Pick<SessionState, 'user' | 'avatarPrevie
       throw error;
     },
   );
-  const user = await userApi.getSelf();
-  const profileResult = await profileRequest;
+  const [user, profileResult] = await Promise.all([userApi.getSelf(), profileRequest]);
 
   if (!user.avatarUrl) {
     return { user, ...profileResult, avatarPreviewUrl: null };
   }
-
-  // 后端更新头像对象键时才重新换取预签名展示 URL，避免每次进入“我的”都多一次网络请求。
   if (previous?.user?.avatarUrl === user.avatarUrl && previous.avatarPreviewUrl) {
     return { user, ...profileResult, avatarPreviewUrl: previous.avatarPreviewUrl };
   }
-
   try {
     const avatarPreviewUrl = /^https?:\/\//.test(user.avatarUrl) ? user.avatarUrl : await userApi.getAvatarUrl();
     return { user, ...profileResult, avatarPreviewUrl };
   } catch {
-    // 头像读取失败不应阻断账户资料；Avatar 组件会稳定回退为昵称渐变头像。
     return { user, ...profileResult, avatarPreviewUrl: null };
   }
 }
@@ -83,17 +76,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   hydrate: async () => {
     set({ status: 'restoring', error: null });
     const tokens = await tokenStorage.hydrate();
-
     if (!tokens) {
+      setApiAccessToken(null);
       set({ status: 'signedOut' });
       return;
     }
-
+    setApiAccessToken(tokens.accessToken);
     try {
       const data = await loadUserData();
       set({ status: 'signedIn', tokens, ...data });
     } catch (error) {
       await tokenStorage.clear();
+      setApiAccessToken(null);
       set({ status: 'signedOut', tokens: null, error: getErrorMessage(error) });
     }
   },
@@ -101,12 +95,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   signIn: async payload => {
     const tokens = await authApi.login(payload);
     await tokenStorage.save(tokens);
-
+    setApiAccessToken(tokens.accessToken);
     try {
       const data = await loadUserData();
       set({ status: 'signedIn', tokens, ...data, error: null });
     } catch (error) {
       await tokenStorage.clear();
+      setApiAccessToken(null);
       set({ status: 'signedOut', tokens: null, error: getErrorMessage(error) });
       throw error;
     }
@@ -129,21 +124,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setAvatarPreviewUrl: avatarPreviewUrl => set({ avatarPreviewUrl }),
 
   signOut: async () => {
-    const refreshToken = get().tokens?.refreshToken;
-
-    try {
-      if (refreshToken) {
-        await authApi.logout(refreshToken);
-      }
-    } catch {
-      // 登出接口不可用时也必须清除本地凭证，避免失效会话停留在应用中。
-    } finally {
-      await get().clearLocalSession();
-    }
+    await get().clearLocalSession();
   },
 
   clearLocalSession: async () => {
     await tokenStorage.clear();
+    setApiAccessToken(null);
     set({
       status: 'signedOut',
       tokens: null,
@@ -156,7 +142,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 }));
 
-// 刷新 Token 失败由网络层通知此处，导航会根据 status 自动回到登录页。
 setSessionInvalidHandler(() => {
   useSessionStore.getState().clearLocalSession().catch(() => undefined);
 });

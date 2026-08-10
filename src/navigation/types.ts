@@ -11,7 +11,6 @@ export type HomeStackParamList = {
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   EditProfile: undefined;
-  ChangePassword: undefined;
 };
 
 export type AppTabParamList = {

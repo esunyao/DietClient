@@ -23,7 +23,6 @@ import {
 } from '../features/diet/screens/StaticScreens';
 // 个人中心相关页面
 import {
-  ChangePasswordScreen,
   EditProfileScreen,
   ProfileScreen,
 } from '../features/profile/screens/ProfileScreens';
@@ -98,10 +97,6 @@ function ProfileNavigator() {
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
-      <ProfileStack.Screen
-        name="ChangePassword"
-        component={ChangePasswordScreen}
-      />
     </ProfileStack.Navigator>
   );
 }
