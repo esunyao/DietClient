@@ -148,7 +148,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   return (
     <View style={styles.headerShell}>
       <View pointerEvents={collapsed ? 'none' : 'auto'} style={[styles.headerExpanded, collapsed && styles.headerHidden]}>
-        <GlassSurface variant="navigation" intensity={68} style={styles.header}>
+        <GlassSurface variant="navigation" intensity={50} style={styles.header}>
           {onBack ? (
             <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.backButton}>
               <ArrowLeft color={colors.ink} size={17} />
@@ -162,13 +162,13 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
         </GlassSurface>
       </View>
       <View pointerEvents="none" style={[styles.headerCompact, !collapsed && styles.headerHidden]}>
-        <GlassSurface variant="navigation" intensity={72} style={styles.compactIsland}>
+        <GlassSurface variant="navigation" intensity={50} style={styles.compactIsland}>
           <Text numberOfLines={1} style={styles.compactTitle}>{title}</Text>
         </GlassSurface>
       </View>
       {onBack ? (
         <View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideLeft, !collapsed && styles.headerHidden]}>
-          <GlassSurface variant="navigation" intensity={72} style={styles.headerSideButton}>
+          <GlassSurface variant="navigation" intensity={50} style={styles.headerSideButton}>
             <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.sideButtonPressable}>
               <ArrowLeft color={colors.ink} size={17} />
             </Pressable>
@@ -177,7 +177,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
       ) : null}
       {action ? (
         <View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideRight, !collapsed && styles.headerHidden]}>
-          <GlassSurface variant="navigation" intensity={72} style={styles.headerSideButton}>
+          <GlassSurface variant="navigation" intensity={50} style={styles.headerSideButton}>
             {action}
           </GlassSurface>
         </View>

@@ -391,7 +391,7 @@ export function ProfileScreen({ navigation }: ProfileProps) {
     >
 
       {/*邮箱验证*/}
-      <GlassCard variant="frosted" style={styles.identityCard}>
+      <GlassCard variant="soft" style={styles.identityCard}>
         <AvatarEditor size={56} />
         <View style={styles.identityCopy}>
           <Text style={styles.identityName}>

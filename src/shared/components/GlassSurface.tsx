@@ -18,11 +18,14 @@ export function GlassSurface({
   style,
   intensity = 50,
   variant = 'frosted',
+  blurRounds = 2,
 }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   intensity?: number;
   variant?: 'frosted' | 'soft' | 'navigation';
+  /** Android QmBlurView 专属：每帧模糊 pass 数，越低越省 GPU，默认 2。 */
+  blurRounds?: number;
 }) {
   const sheen = (
     <View
@@ -43,9 +46,9 @@ export function GlassSurface({
   return (
     <BlurView
       blurAmount={intensity}
-      blurRounds={6}
+      blurRounds={blurRounds}
       blurType="systemUltraThinMaterialLight"
-      overlayColor="rgba(255, 255, 255, 0.30)"
+      overlayColor="rgba(255, 255, 255, 0.34)"
       reducedTransparencyFallbackColor="#FFFFFF"
       style={[
         styles.surface,

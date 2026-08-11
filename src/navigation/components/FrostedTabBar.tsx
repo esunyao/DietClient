@@ -48,7 +48,7 @@ export function FrostedTabBar({ state, descriptors, navigation }: BottomTabBarPr
 
   return (
     <View style={[styles.barWrap, { bottom: Math.max(insets.bottom, 6), transform: [{ translateY: hidden ? 120 : 0 }] }]}>
-      <GlassSurface variant="navigation" intensity={58} style={styles.bar}>
+      <GlassSurface variant="navigation" intensity={50} style={styles.bar}>
         <View style={styles.content}>
           <View pointerEvents="none" style={[styles.indicator, { left: `${activeIndex * itemWidth}%`, width: `${itemWidth}%` }]} />
           {state.routes.map((route, index) => {
