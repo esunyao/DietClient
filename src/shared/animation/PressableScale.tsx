@@ -1,63 +1,45 @@
 import React from 'react';
 import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-
-import { durations, springSnappy } from './config';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Props = Omit<PressableProps, 'style'> & {
-  /** 静态样式；按压反馈由内部弹簧接管，不再需要 `({ pressed }) => …`。 */
+  /** 静态样式；按压反馈由原生 Pressable 提供。 */
   style?: StyleProp<ViewStyle>;
-  /** 按压时的缩放目标（默认 0.96）。 */
+  /** 按压时的缩放目标（默认 0.98）。 */
   scaleTo?: number;
-  /** 按压时的透明度（默认 0.82）。 */
+  /** 按压时的透明度（默认 0.92）。 */
   pressedOpacity?: number;
 };
 
 /**
- * 通用按压弹簧反馈，全部动画跑在 reanimated（UI 线程 / Web 合成器）。
- * 替换各处的 `pressed && styles.pressed` 静态样式，按压手感更跟手。
+ * 轻量按压反馈。
+ * 不为每个可点元素建立 Reanimated 节点，避免 Fabric 页面切换期间的挂载重试。
  */
 export function PressableScale({
   children,
   disabled,
   style,
-  scaleTo = 0.96,
-  pressedOpacity = 0.82,
+  scaleTo = 0.98,
+  pressedOpacity = 0.92,
   onPressIn,
   onPressOut,
   ...rest
 }: Props) {
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
-
   return (
-    <AnimatedPressable
+    <Pressable
       disabled={disabled}
       onPressIn={event => {
-        if (!disabled) {
-          scale.value = withSpring(scaleTo, springSnappy);
-          opacity.value = withTiming(pressedOpacity, { duration: durations.pressFade });
-        }
         onPressIn?.(event);
       }}
       onPressOut={event => {
-        if (!disabled) {
-          scale.value = withSpring(1, springSnappy);
-          opacity.value = withTiming(1, { duration: durations.pressFade });
-        }
         onPressOut?.(event);
       }}
-      style={[style, animatedStyle]}
+      style={({ pressed }) => [
+        style,
+        !disabled && pressed && { opacity: pressedOpacity, transform: [{ scale: scaleTo }] },
+      ]}
       {...rest}
     >
       {children}
-    </AnimatedPressable>
+    </Pressable>
   );
 }

@@ -8,11 +8,16 @@ import { durations } from './config';
  * 因此统一用 JS rAF 实现，原生与 Web 行为一致、确定性高；
  * 每次数字仅触发约几十次轻量重渲染，可接受。
  */
-export function useCountUp(target: number, duration = durations.countUp): string {
-  const [display, setDisplay] = useState(0);
+export function useCountUp(target: number, duration: number = durations.countUp): string {
+  const immediate = duration <= 0;
+  const [display, setDisplay] = useState(immediate ? target : 0);
   const frame = useRef<number | null>(null);
 
   useEffect(() => {
+    if (immediate) {
+      setDisplay(target);
+      return;
+    }
     const start = Date.now();
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
@@ -31,7 +36,7 @@ export function useCountUp(target: number, duration = durations.countUp): string
         cancelAnimationFrame(frame.current);
       }
     };
-  }, [target, duration]);
+  }, [immediate, target, duration]);
 
-  return String(display);
+  return String(immediate ? target : display);
 }

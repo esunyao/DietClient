@@ -31,6 +31,7 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -67,12 +68,12 @@ import type {
   UserProfileUpdatePayload,
 } from '../../../shared/types/api';
 import { useSessionStore } from '../../auth/store/sessionStore';
-import { healthApi } from '../api/healthApi';
 import { userApi } from '../api/userApi';
 import {
   prepareAvatarFile,
   uploadAvatarBinary,
 } from '../services/avatarUpload';
+import { getHealthRecords } from '../services/healthRecordsCache';
 
 type ProfileProps = NativeStackScreenProps<
   ProfileStackParamList,
@@ -322,43 +323,33 @@ export function ProfileScreen({ navigation }: ProfileProps) {
   });
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadHealthSummary = useCallback(async () => {
-    const [measurements, goals, allergies, conditions, restrictions] =
-      await Promise.allSettled([
-        healthApi.bodyMeasurements.list(),
-        healthApi.healthGoals.list(),
-        healthApi.allergies.list(),
-        healthApi.medicalConditions.list(),
-        healthApi.dietaryRestrictions.list(),
-      ]);
-    if (measurements.status === 'fulfilled') {
-      setLatestMeasurement(
-        [...measurements.value].sort((a, b) =>
-          b.measuredAt.localeCompare(a.measuredAt),
-        )[0] || null,
-      );
-    }
+  const loadHealthSummary = useCallback(async (force = false) => {
+    const { measurements, goals, allergies, conditions, restrictions } =
+      await getHealthRecords(force);
+    setLatestMeasurement(
+      [...measurements].sort((a, b) =>
+        b.measuredAt.localeCompare(a.measuredAt),
+      )[0] || null,
+    );
     setResourceCounts({
-      goals: goals.status === 'fulfilled' ? goals.value.length : 0,
-      allergies: allergies.status === 'fulfilled' ? allergies.value.length : 0,
-      conditions:
-        conditions.status === 'fulfilled' ? conditions.value.length : 0,
-      restrictions:
-        restrictions.status === 'fulfilled' ? restrictions.value.length : 0,
+      goals: goals.length,
+      allergies: allergies.length,
+      conditions: conditions.length,
+      restrictions: restrictions.length,
     });
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       loadHealthSummary().catch(() => undefined);
     });
     return () => task.cancel();
-  }, [loadHealthSummary]);
+  }, [loadHealthSummary]));
 
   const refresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refreshUserData(), loadHealthSummary()]);
+      await Promise.all([refreshUserData(), loadHealthSummary(true)]);
       show('资料已刷新', 'success');
     } catch (error) {
       show(getErrorMessage(error), 'error');

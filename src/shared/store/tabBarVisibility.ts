@@ -12,5 +12,5 @@ interface TabBarVisibilityState {
 
 export const useTabBarVisibility = create<TabBarVisibilityState>(set => ({
   hidden: false,
-  setHidden: hidden => set({ hidden }),
+  setHidden: hidden => set(state => state.hidden === hidden ? state : { hidden }),
 }));

@@ -18,11 +18,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, Sparkles, Utensils } from 'lucide-react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { PressableScale } from '../animation/PressableScale';
 import { ScreenTransition } from '../animation/ScreenTransition';
-import { durations, timing } from '../animation/config';
 import { colors, fonts, glow, radii, shadows, spacing } from '../theme/tokens';
 import { GlassSurface } from './GlassSurface';
 import { useTabBarVisibility } from '../store/tabBarVisibility';
@@ -98,7 +96,7 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
     <ScrollView
       contentContainerStyle={[styles.scrollContent, { paddingTop: contentTop }, contentStyle]}
       onScroll={handleScroll}
-      scrollEventThrottle={16}
+      scrollEventThrottle={32}
       showsVerticalScrollIndicator={false}
     >
       {children}
@@ -126,7 +124,7 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
 }
 
 // 玻璃卡片组件
-export function GlassCard({ children, style, variant = 'frosted', elevated = true }: {
+export function GlassCard({ children, style, variant = 'soft', elevated = false }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   variant?: 'frosted' | 'soft';
@@ -146,22 +144,10 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   action?: React.ReactNode;
 }) {
   const collapsed = useContext(HeaderCollapsedContext);
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    progress.value = withTiming(collapsed ? 1 : 0, timing(durations.headerCollapse));
-  }, [collapsed, progress]);
-
-  const expandedStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
-  const compactStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.9, 1]) }],
-  }));
-  const sideStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
   return (
     <View style={styles.headerShell}>
-      <Animated.View pointerEvents={collapsed ? 'none' : 'auto'} style={[styles.headerExpanded, expandedStyle]}>
+      <View pointerEvents={collapsed ? 'none' : 'auto'} style={[styles.headerExpanded, collapsed && styles.headerHidden]}>
         <GlassSurface variant="navigation" intensity={68} style={styles.header}>
           {onBack ? (
             <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.backButton}>
@@ -174,27 +160,27 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
           </View>
           {action ? <View style={styles.headerAction}>{action}</View> : null}
         </GlassSurface>
-      </Animated.View>
-      <Animated.View pointerEvents="none" style={[styles.headerCompact, compactStyle]}>
+      </View>
+      <View pointerEvents="none" style={[styles.headerCompact, !collapsed && styles.headerHidden]}>
         <GlassSurface variant="navigation" intensity={72} style={styles.compactIsland}>
           <Text numberOfLines={1} style={styles.compactTitle}>{title}</Text>
         </GlassSurface>
-      </Animated.View>
+      </View>
       {onBack ? (
-        <Animated.View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideLeft, sideStyle]}>
+        <View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideLeft, !collapsed && styles.headerHidden]}>
           <GlassSurface variant="navigation" intensity={72} style={styles.headerSideButton}>
             <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.sideButtonPressable}>
               <ArrowLeft color={colors.ink} size={17} />
             </Pressable>
           </GlassSurface>
-        </Animated.View>
+        </View>
       ) : null}
       {action ? (
-        <Animated.View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideRight, sideStyle]}>
+        <View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideRight, !collapsed && styles.headerHidden]}>
           <GlassSurface variant="navigation" intensity={72} style={styles.headerSideButton}>
             {action}
           </GlassSurface>
-        </Animated.View>
+        </View>
       ) : null}
     </View>
   );
@@ -382,6 +368,7 @@ const styles = StyleSheet.create({
   },
   headerShell: { height: HEADER_HEIGHT, justifyContent: 'center' },
   headerExpanded: { height: HEADER_HEIGHT, width: '100%' },
+  headerHidden: { opacity: 0 },
   headerCompact: { position: 'absolute', top: 0, alignSelf: 'center', width: COMPACT_HEADER_WIDTH, height: COMPACT_HEADER_HEIGHT },
   header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, boxShadow: shadows.soft },
   compactIsland: { height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, boxShadow: shadows.soft },

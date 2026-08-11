@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, InteractionManager, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ChevronRight, Ruler, Scale, ShieldAlert, Stethoscope, Target, Trash2, Utensils } from 'lucide-react-native';
@@ -12,6 +12,11 @@ import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { Allergy, BodyMeasurement, DietaryRestriction, HealthGoal, MedicalCondition } from '../../../shared/types/api';
 import { useToast } from '../../../shared/components/Toast';
 import { healthApi } from '../api/healthApi';
+import {
+  getCachedHealthRecords,
+  getHealthRecords,
+  invalidateHealthRecords,
+} from '../services/healthRecordsCache';
 
 type HealthProps = NativeStackScreenProps<ProfileStackParamList, 'HealthRecords'>;
 type FormProps = NativeStackScreenProps<ProfileStackParamList, 'HealthRecordForm'>;
@@ -49,13 +54,16 @@ export function HealthRecordsScreen({ navigation, route }: HealthProps) {
   const { show } = useToast();
   const [data, setData] = useState<HealthData>(emptyData);
   const [loading, setLoading] = useState(true);
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
+    const cached = !force ? getCachedHealthRecords() : null;
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const [measurements, goals, allergies, conditions, restrictions] = await Promise.all([
-        healthApi.bodyMeasurements.list(), healthApi.healthGoals.list(), healthApi.allergies.list(), healthApi.medicalConditions.list(), healthApi.dietaryRestrictions.list(),
-      ]);
-      setData({ measurements, goals, allergies, conditions, restrictions });
+      setData(await getHealthRecords(force));
     } catch (error) {
       show(getErrorMessage(error), 'error');
     } finally {
@@ -63,7 +71,12 @@ export function HealthRecordsScreen({ navigation, route }: HealthProps) {
     }
   }, [show]);
 
-  useFocusEffect(useCallback(() => { load().catch(() => undefined); }, [load]));
+  useFocusEffect(useCallback(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      load().catch(() => undefined);
+    });
+    return () => task.cancel();
+  }, [load]));
   const open = (kind: Kind) => navigation.navigate('HealthRecordForm', { kind });
   return <AppScreen header={<ScreenHeader title="健康档案" subtitle="集中管理你的健康资料" onBack={() => navigation.goBack()} />}>
     <GlassCard elevated={false} variant="soft" style={styles.overview}>
@@ -140,15 +153,28 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
       if (kind === 'allergy') { const payload = { allergenCode: current && 'allergenCode' in current ? current.allergenCode : customCode(), allergenName: values.allergenName.trim(), severity: values.severity as NonNullable<Allergy['severity']>, diagnosisStatus: values.diagnosisStatus as Allergy['diagnosisStatus'], recordedOn: values.recordedOn || undefined, active: true, notes: values.notes.trim() || undefined }; id ? await healthApi.allergies.update(id, payload) : await healthApi.allergies.create(payload); }
       if (kind === 'condition') { const payload = { conditionCode: current && 'conditionCode' in current ? current.conditionCode : customCode(), conditionName: values.conditionName.trim(), status: values.status as MedicalCondition['status'], diagnosedOn: values.diagnosedOn || undefined, resolvedOn: values.resolvedOn || undefined, source: 'self_reported' as const, notes: values.notes.trim() || undefined }; id ? await healthApi.medicalConditions.update(id, payload) : await healthApi.medicalConditions.create(payload); }
       if (kind === 'restriction') { const payload = { restrictionCode: current && 'restrictionCode' in current ? current.restrictionCode : customCode(), restrictionName: values.restrictionName.trim(), category: values.category as DietaryRestriction['category'], source: 'self_reported' as const, active: true, startsOn: values.startsOn || undefined, endsOn: values.endsOn || undefined, notes: values.notes.trim() || undefined }; id ? await healthApi.dietaryRestrictions.update(id, payload) : await healthApi.dietaryRestrictions.create(payload); }
+      invalidateHealthRecords();
       show(`${kindTitle[kind]}已保存`, 'success'); navigation.goBack();
     } catch (error) { show(getErrorMessage(error), 'error'); } finally { setSaving(false); }
   };
-  const remove = () => Alert.alert('删除记录', '删除后无法恢复，确定继续吗？', [{ text: '取消', style: 'cancel' }, { text: '删除', style: 'destructive', onPress: async () => { try { if (kind === 'measurement') await healthApi.bodyMeasurements.remove(id!); if (kind === 'goal') await healthApi.healthGoals.remove(id!); if (kind === 'allergy') await healthApi.allergies.remove(id!); if (kind === 'condition') await healthApi.medicalConditions.remove(id!); if (kind === 'restriction') await healthApi.dietaryRestrictions.remove(id!); navigation.goBack(); } catch (error) { show(getErrorMessage(error), 'error'); } } }]);
-  const list = () => records.map(item => { const itemId = String((item as unknown as Record<string, unknown>)[kind === 'measurement' ? 'measurementId' : kind === 'goal' ? 'goalId' : kind === 'allergy' ? 'allergyId' : kind === 'condition' ? 'conditionId' : 'restrictionId']); const title = kind === 'measurement' ? `${(item as BodyMeasurement).weightKg ?? '—'} kg · ${formatDate((item as BodyMeasurement).measuredAt)}` : kind === 'goal' ? (item as HealthGoal).goalType : kind === 'allergy' ? (item as Allergy).allergenName : kind === 'condition' ? (item as MedicalCondition).conditionName : (item as DietaryRestriction).restrictionName; return <RecordRow key={itemId} title={title} detail="点击查看或修改" onPress={() => navigation.push('HealthRecordForm', { kind, id: itemId })} />; });
+  const remove = () => Alert.alert('删除记录', '删除后无法恢复，确定继续吗？', [{ text: '取消', style: 'cancel' }, { text: '删除', style: 'destructive', onPress: async () => { try { if (kind === 'measurement') await healthApi.bodyMeasurements.remove(id!); if (kind === 'goal') await healthApi.healthGoals.remove(id!); if (kind === 'allergy') await healthApi.allergies.remove(id!); if (kind === 'condition') await healthApi.medicalConditions.remove(id!); if (kind === 'restriction') await healthApi.dietaryRestrictions.remove(id!); invalidateHealthRecords(); navigation.goBack(); } catch (error) { show(getErrorMessage(error), 'error'); } } }]);
+  const renderRecord = ({ item }: { item: typeof records[number] }) => {
+    const itemId = String((item as unknown as Record<string, unknown>)[idField]);
+    const title = kind === 'measurement' ? `${(item as BodyMeasurement).weightKg ?? '—'} kg · ${formatDate((item as BodyMeasurement).measuredAt)}` : kind === 'goal' ? (item as HealthGoal).goalType : kind === 'allergy' ? (item as Allergy).allergenName : kind === 'condition' ? (item as MedicalCondition).conditionName : (item as DietaryRestriction).restrictionName;
+    return <GlassCard elevated={false} variant="soft" style={styles.recordListCard}><RecordRow title={title} detail="点击查看或修改" onPress={() => navigation.push('HealthRecordForm', { kind, id: itemId })} /></GlassCard>;
+  };
   const fields = kind === 'measurement' ? <><Field label="测量时间" value={values.measuredAt} onChange={set('measuredAt')} placeholder="ISO 日期时间" /><Field label="体重 (kg)" value={values.weightKg} onChange={set('weightKg')} numeric /><Field label="体脂率 (%)" value={values.bodyFatPercentage} onChange={set('bodyFatPercentage')} numeric /><Field label="腰围 (cm)" value={values.waistCm} onChange={set('waistCm')} numeric /><Field label="本次身高 (cm)" value={values.heightCm} onChange={set('heightCm')} numeric /><Field label="收缩压 (mmHg)" value={values.systolicBp} onChange={set('systolicBp')} numeric /><Field label="舒张压 (mmHg)" value={values.diastolicBp} onChange={set('diastolicBp')} numeric /><Field label="静息心率 (bpm)" value={values.restingHeartRate} onChange={set('restingHeartRate')} numeric /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'goal' ? <><Choices label="目标方向" value={values.goalType} onChange={set('goalType')} values={[["weight_loss", "减重"], ["muscle_gain", "增肌"], ["maintain", "保持"], ["health_improve", "改善健康"]]} /><Field label="目标体重 (kg)" value={values.targetWeightKg} onChange={set('targetWeightKg')} numeric /><Field label="目标体脂率 (%)" value={values.targetBodyFatPercentage} onChange={set('targetBodyFatPercentage')} numeric /><Field label="优先级 (1–10)" value={values.priority} onChange={set('priority')} numeric /><Field label="开始日期" value={values.startedOn} onChange={set('startedOn')} placeholder="YYYY-MM-DD" /><Field label="目标日期" value={values.targetDate} onChange={set('targetDate')} placeholder="YYYY-MM-DD（选填）" /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'allergy' ? <><Field label="过敏原名称" value={values.allergenName} onChange={set('allergenName')} placeholder="例如：花生" /><Choices label="严重程度" value={values.severity} onChange={set('severity')} values={[["mild", "轻微"], ["moderate", "中等"], ["severe", "严重"], ["life_threatening", "危及生命"]]} /><Choices label="确认状态" value={values.diagnosisStatus} onChange={set('diagnosisStatus')} values={[["self_reported", "自行记录"], ["suspected", "疑似"], ["confirmed", "已确认"]]} /><Field label="记录日期" value={values.recordedOn} onChange={set('recordedOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'condition' ? <><Field label="疾病名称" value={values.conditionName} onChange={set('conditionName')} /><Choices label="当前状态" value={values.status} onChange={set('status')} values={[["active", "进行中"], ["remission", "缓解"], ["resolved", "已解决"]]} /><Field label="诊断日期" value={values.diagnosedOn} onChange={set('diagnosedOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="结束日期" value={values.resolvedOn} onChange={set('resolvedOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : <><Field label="限制名称" value={values.restrictionName} onChange={set('restrictionName')} placeholder="例如：不吃牛肉" /><Choices label="限制类别" value={values.category} onChange={set('category')} values={[["medical", "医疗"], ["religious", "宗教"], ["lifestyle", "生活方式"], ["preference", "个人偏好"]]} /><Field label="生效日期" value={values.startsOn} onChange={set('startsOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="结束日期" value={values.endsOn} onChange={set('endsOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></>;
-  if (!id && !route.params.create) return <AppScreen header={<ScreenHeader title={kindTitle[kind]} subtitle="查看、修改或添加健康记录" onBack={() => navigation.goBack()} />}>
-    <GlassCard elevated={false} variant="soft" style={styles.existingCard}><SectionTitle title="已有记录" />{records.length ? list() : <EmptyState title="还没有记录" description="从第一条开始，逐步完善健康档案。" />}</GlassCard>
-    <AppButton label={`添加${kindTitle[kind]}`} onPress={() => navigation.replace('HealthRecordForm', { kind, create: true })} />
+  if (!id && !route.params.create) return <AppScreen scroll={false} contentStyle={styles.listScreen} header={<ScreenHeader title={kindTitle[kind]} subtitle="查看、修改或添加健康记录" onBack={() => navigation.goBack()} />}>
+    <FlatList
+      data={records}
+      contentContainerStyle={styles.listContent}
+      keyExtractor={item => String((item as unknown as Record<string, unknown>)[idField])}
+      renderItem={renderRecord}
+      ListHeaderComponent={<SectionTitle title="已有记录" />}
+      ListEmptyComponent={<EmptyState title="还没有记录" description="从第一条开始，逐步完善健康档案。" />}
+      ListFooterComponent={<AppButton label={`添加${kindTitle[kind]}`} onPress={() => navigation.replace('HealthRecordForm', { kind, create: true })} />}
+      showsVerticalScrollIndicator={false}
+    />
   </AppScreen>;
   return <AppScreen header={<ScreenHeader title={id ? `编辑${kindTitle[kind]}` : `添加${kindTitle[kind]}`} subtitle={id ? '修改后会同步更新健康档案' : '按需填写，之后也可随时编辑'} onBack={() => navigation.goBack()} />}>
     <GlassCard elevated={false} variant="soft" style={styles.formCard}>{fields}<AppButton label={id ? '保存修改' : `添加${kindTitle[kind]}`} loading={saving} onPress={save} />{id ? <Pressable accessibilityRole="button" onPress={remove} style={styles.delete}><Trash2 color={colors.red} size={17} /><Text style={styles.deleteText}>删除这条记录</Text></Pressable> : null}</GlassCard>
@@ -156,5 +182,5 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
 }
 
 const styles = StyleSheet.create({
-  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, recordRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordRowCopy: { flex: 1 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, formCard: { gap: spacing.md }, existingCard: { marginBottom: spacing.sm }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
+  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, recordRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }, recordRowCopy: { flex: 1 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, formCard: { gap: spacing.md }, listScreen: { flex: 1 }, listContent: { paddingHorizontal: spacing.lg, paddingBottom: 104, gap: spacing.sm }, recordListCard: { paddingVertical: 0 }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
 });

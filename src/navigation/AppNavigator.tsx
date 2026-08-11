@@ -1,10 +1,9 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { enableFreeze } from 'react-native-screens';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import { durations, timing } from '../shared/animation/config';
@@ -48,7 +47,7 @@ const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
-enableFreeze(true);
+const stackAnimation = Platform.OS === 'android' ? 'none' : 'fade';
 
 /**
  * 底部 `Tab` 设定
@@ -71,7 +70,7 @@ const navigationTheme = {
 function AuthNavigator() {
   return (
     <AuthStack.Navigator
-      screenOptions={{ headerShown: false, animation: 'fade' }}
+      screenOptions={{ headerShown: false, animation: stackAnimation }}
     >
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
@@ -83,7 +82,7 @@ function AuthNavigator() {
 function HomeNavigator() {
   return (
     <HomeStack.Navigator
-      screenOptions={{ headerShown: false, animation: 'fade', freezeOnBlur: true }}
+      screenOptions={{ headerShown: false, animation: stackAnimation }}
     >
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="ScoreDetail" component={ScoreDetailScreen} />
@@ -102,9 +101,7 @@ function ProfileNavigator() {
   return (
     <ProfileStack.Navigator
       initialRouteName={profile?.profileCompletedAt ? 'ProfileMain' : 'EditProfile'}
-      // Android 上 `fade` 与冻结页面组合在 pop 时会留下半透明的过渡层，
-      // 因此用 slide_from_right 提供原生 push 过渡；freezeOnBlur 关闭避免冻结帧残留。
-      screenOptions={{ headerShown: false, animation: 'slide_from_right', freezeOnBlur: false }}
+      screenOptions={{ headerShown: false, animation: stackAnimation }}
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} initialParams={{ onboarding: !profile?.profileCompletedAt }} />
@@ -122,11 +119,11 @@ function MainNavigator() {
     <Tab.Navigator
       initialRouteName={profile?.profileCompletedAt ? 'HomeTab' : 'ProfileTab'}
       tabBar={renderFrostedTabBar}
+      detachInactiveScreens
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
         lazy: true,
-        freezeOnBlur: true,
       }}
     >
       <Tab.Screen
