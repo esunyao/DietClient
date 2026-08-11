@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -49,7 +49,9 @@ const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
-const stackAnimation = Platform.OS === 'android' ? 'none' : 'fade';
+// Android 也启用淡入淡出：native-stack 动画由 react-native-screens 原生 Fragment 转场驱动，
+// 不占 JS 线程，成本可控；此前设为 'none' 是为规避 Fabric 转场卡顿，但牺牲了成品切换动画。
+const stackAnimation = 'fade';
 
 /**
  * 底部 `Tab` 设定
