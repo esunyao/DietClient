@@ -31,6 +31,7 @@ import { PressableScale } from '../animation/PressableScale';
 import { ScreenTransition } from '../animation/ScreenTransition';
 import { colors, fonts, glow, radii, shadows, spacing } from '../theme/tokens';
 import { GlassSurface } from './GlassSurface';
+import { PerfRegion } from '../perf/PerfRegion';
 import { useScrollChrome } from '../scrollChrome/ScrollChromeProvider';
 
 const HEADER_COLLAPSE_OFFSET = 56;
@@ -129,19 +130,23 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
     },
   }, [hasHeader]);
 
-  const content = scroll ? (
-    <Animated.ScrollView
-      contentContainerStyle={[styles.scrollContent, { paddingTop: contentTop }, contentStyle]}
-      onScroll={scrollHandler}
-      scrollEventThrottle={16}
-      showsVerticalScrollIndicator={false}
-    >
-      {children}
-    </Animated.ScrollView>
-  ) : (
-    <View style={[styles.fill, { paddingTop: contentTop }, contentStyle]}>
-      {children}
-    </View>
+  const content = (
+    <PerfRegion name="AppScreen">
+      {scroll ? (
+        <Animated.ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingTop: contentTop }, contentStyle]}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+        >
+          {children}
+        </Animated.ScrollView>
+      ) : (
+        <View style={[styles.fill, { paddingTop: contentTop }, contentStyle]}>
+          {children}
+        </View>
+      )}
+    </PerfRegion>
   );
 
   return (
@@ -201,7 +206,8 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   }));
 
   return (
-    <View style={styles.headerShell}>
+    <PerfRegion name="ScreenHeader">
+      <View style={styles.headerShell}>
       <Animated.View pointerEvents="box-none" style={[styles.headerExpanded, expandedStyle]}>
         <GlassSurface variant="navigation" intensity={50} style={styles.header}>
           {onBack ? (
@@ -237,7 +243,8 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
           </View>
         </Animated.View>
       ) : null}
-    </View>
+      </View>
+    </PerfRegion>
   );
 }
 

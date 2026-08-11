@@ -14,6 +14,7 @@ import Animated, {
 import { durations } from '../../shared/animation/config';
 import { PressableScale } from '../../shared/animation/PressableScale';
 import { GlassSurface } from '../../shared/components/GlassSurface';
+import { PerfRegion } from '../../shared/perf/PerfRegion';
 import { useScrollChrome } from '../../shared/scrollChrome/ScrollChromeProvider';
 import { colors, fonts } from '../../shared/theme/tokens';
 
@@ -121,26 +122,28 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
   }, [navigation, state.routes]);
 
   return (
-    <Animated.View style={[styles.barWrap, { bottom: Math.max(insets.bottom, 6) }, wrapStyle]}>
-      <GlassSurface variant="navigation" intensity={50} style={styles.bar}>
-        <View style={styles.content} onLayout={onBarLayout}>
-          <Animated.View pointerEvents="none" style={[styles.indicator, indicatorStyle]} />
-          {state.routes.map((route, index) => {
-            const meta = tabMeta[route.name as keyof typeof tabMeta];
-            return (
-              <TabItem
-                key={route.key}
-                meta={meta}
-                focused={index === activeIndex}
-                routeName={route.name}
-                onPressRoute={onPressRoute}
-                onLongPressRoute={onLongPressRoute}
-              />
-            );
-          })}
-        </View>
-      </GlassSurface>
-    </Animated.View>
+    <PerfRegion name="FrostedTabBar">
+      <Animated.View style={[styles.barWrap, { bottom: Math.max(insets.bottom, 6) }, wrapStyle]}>
+        <GlassSurface variant="navigation" intensity={50} style={styles.bar}>
+          <View style={styles.content} onLayout={onBarLayout}>
+            <Animated.View pointerEvents="none" style={[styles.indicator, indicatorStyle]} />
+            {state.routes.map((route, index) => {
+              const meta = tabMeta[route.name as keyof typeof tabMeta];
+              return (
+                <TabItem
+                  key={route.key}
+                  meta={meta}
+                  focused={index === activeIndex}
+                  routeName={route.name}
+                  onPressRoute={onPressRoute}
+                  onLongPressRoute={onLongPressRoute}
+                />
+              );
+            })}
+          </View>
+        </GlassSurface>
+      </Animated.View>
+    </PerfRegion>
   );
 }
 
