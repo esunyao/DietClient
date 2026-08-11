@@ -69,5 +69,12 @@
   },
   "engines": {
     "node": ">= 22.11.0"
+  },
+  "reanimated": {
+    "staticFeatureFlags": {
+      "ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS": true,
+      "DISABLE_COMMIT_PAUSING_MECHANISM": true,
+      "USE_COMMIT_HOOK_ONLY_FOR_REACT_COMMITS": true
+    }
   }
 }
