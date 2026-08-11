@@ -54,7 +54,10 @@ const TabItem = memo(function ({ meta, focused, routeName, onPressRoute, onLongP
       accessibilityRole="button"
       accessibilityState={focused ? { selected: true } : {}}
       onLongPress={() => onLongPressRoute(routeName)}
-      onPress={() => onPressRoute(routeName)}
+      onPress={() => {
+        // focused 判断在此处（使用已传入的 focused prop），使 onPressRoute 保持稳定引用。
+        if (!focused) onPressRoute(routeName);
+      }}
       scaleTo={0.98}
       style={styles.item}
     >
@@ -105,16 +108,16 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex]);
 
-  // 稳定回调：activeIndex 变化时重建，但滚动期间（父不重渲染）保持引用稳定，memo 生效。
+  // 稳定回调：不再依赖 activeIndex（focused 判断已移入 TabItem 内部），
+  // 因此切 tab / 栈导航时引用保持不变，TabItem 的 memo 真正生效（只有 focused 变化的项重渲染）。
   const onPressRoute = useCallback((routeName: string) => {
-    const index = state.routes.findIndex(route => route.name === routeName);
-    const route = state.routes[index];
+    const route = state.routes.find(r => r.name === routeName);
     if (!route) return;
     const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-    if (index !== activeIndex && !event.defaultPrevented) {
+    if (!event.defaultPrevented) {
       navigation.navigate(route.name);
     }
-  }, [activeIndex, navigation, state.routes]);
+  }, [navigation, state.routes]);
 
   const onLongPressRoute = useCallback((routeName: string) => {
     const route = state.routes.find(r => r.name === routeName);
