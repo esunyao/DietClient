@@ -141,7 +141,13 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
     list.then(result => { setRecords(result); const found = result.find(item => String((item as unknown as Record<string, unknown>)[idField]) === id); if (found) setValues(initialValues(kind, found)); }).catch(error => show(getErrorMessage(error), 'error'));
   }, [id, idField, kind, show]);
 
-  useFocusEffect(useCallback(() => { loadRecords(); }, [loadRecords]));
+  // 与 HealthRecordsScreen 一致：等导航转场动画结束再发请求，避免与渲染竞争 JS 线程。
+  useFocusEffect(useCallback(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      loadRecords();
+    });
+    return () => task.cancel();
+  }, [loadRecords]));
 
   const save = async () => {
     if ((kind === 'allergy' && !values.allergenName.trim()) || (kind === 'condition' && !values.conditionName.trim()) || (kind === 'restriction' && !values.restrictionName.trim())) { show('请填写记录名称', 'error'); return; }

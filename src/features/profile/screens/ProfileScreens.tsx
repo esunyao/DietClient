@@ -2,6 +2,7 @@ import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
   Controller,
   useForm,
+  useWatch,
   type Control,
   type RegisterOptions,
 } from 'react-hook-form';
@@ -104,6 +105,19 @@ function displayValue(
     : `${value}${suffix}`;
 }
 
+// ProfileScreen 传给 InfoRow 的静态图标：提为模块常量，引用稳定后 InfoRow 的 memo 才真正生效，
+// 避免每次父渲染都因新的 JSX 元素引用而重渲染（这是 trace 中 createTask/GC 热点的来源之一）。
+const ICON_GENDER = <UserRound color={colors.muted} size={17} />;
+const ICON_BIRTHDATE = <Cake color={colors.muted} size={17} />;
+const ICON_HEIGHT = <Ruler color={colors.muted} size={17} />;
+const ICON_ACTIVITY = <Activity color={colors.muted} size={17} />;
+const ICON_WATER = <Droplets color={colors.muted} size={17} />;
+const ICON_WEIGHT = <Scale color={colors.muted} size={17} />;
+const ICON_HEART_RATE = <HeartPulse color={colors.muted} size={17} />;
+const ICON_ALLERGY = <ShieldAlert color={colors.muted} size={17} />;
+const ICON_CONDITION = <Stethoscope color={colors.muted} size={17} />;
+const ICON_RESTRICTION = <Ban color={colors.muted} size={17} />;
+
 const InfoRow = memo(function ({
   icon,
   label,
@@ -164,7 +178,7 @@ const ProfileAction = memo(function ({
   );
 });
 
-function AvatarEditor({ size = 60 }: { size?: number }) {
+const AvatarEditor = memo(function ({ size = 60 }: { size?: number }) {
   const sheetRef = React.useRef<BottomSheetModal>(null);
   const { setTabHidden } = useScrollChrome();
   const user = useSessionStore(state => state.user);
@@ -305,7 +319,7 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
       </BottomSheetModal> : null}
     </>
   );
-}
+});
 
 export function ProfileScreen({ navigation }: ProfileProps) {
   const { show } = useToast();
@@ -436,22 +450,22 @@ export function ProfileScreen({ navigation }: ProfileProps) {
       />
       <GlassCard elevated={false} variant="soft" style={styles.infoCard}>
         <InfoRow
-          icon={<UserRound color={colors.muted} size={17} />}
+          icon={ICON_GENDER}
           label="性别"
           value={profile?.gender ? genderLabels[profile.gender] : '待完善'}
         />
         <InfoRow
-          icon={<Cake color={colors.muted} size={17} />}
+          icon={ICON_BIRTHDATE}
           label="出生日期"
           value={displayValue(profile?.birthDate)}
         />
         <InfoRow
-          icon={<Ruler color={colors.muted} size={17} />}
+          icon={ICON_HEIGHT}
           label="身高"
           value={displayValue(profile?.heightCm, ' cm')}
         />
         <InfoRow
-          icon={<Activity color={colors.muted} size={17} />}
+          icon={ICON_ACTIVITY}
           label="活动水平"
           value={
             profile?.activityLevel
@@ -460,7 +474,7 @@ export function ProfileScreen({ navigation }: ProfileProps) {
           }
         />
         <InfoRow
-          icon={<Droplets color={colors.muted} size={17} />}
+          icon={ICON_WATER}
           label="每日饮水目标"
           value={displayValue(profile?.dailyWaterTargetMl, ' ml')}
           showDivider={false}
@@ -474,34 +488,34 @@ export function ProfileScreen({ navigation }: ProfileProps) {
       />
       <GlassCard elevated={false} variant="soft" style={styles.infoCard}>
         <InfoRow
-          icon={<Scale color={colors.muted} size={17} />}
+          icon={ICON_WEIGHT}
           label="最近体重"
           value={displayValue(latestMeasurement?.weightKg, ' kg')}
         />
         <InfoRow
-          icon={<HeartPulse color={colors.muted} size={17} />}
+          icon={ICON_HEART_RATE}
           label="最近心率"
           value={displayValue(latestMeasurement?.restingHeartRate, ' bpm')}
         />
         <InfoRow
-          icon={<ShieldAlert color={colors.muted} size={17} />}
+          icon={ICON_ALLERGY}
           label="过敏记录"
           value={`${resourceCounts.allergies} 条`}
           accent={resourceCounts.allergies ? 'amber' : undefined}
         />
         <InfoRow
-          icon={<Stethoscope color={colors.muted} size={17} />}
+          icon={ICON_CONDITION}
           label="疾病记录"
           value={`${resourceCounts.conditions} 条`}
           accent={resourceCounts.conditions ? 'red' : undefined}
         />
         <InfoRow
-          icon={<Ban color={colors.muted} size={17} />}
+          icon={ICON_RESTRICTION}
           label="饮食限制"
           value={`${resourceCounts.restrictions} 条`}
         />
         <InfoRow
-          icon={<HeartPulse color={colors.muted} size={17} />}
+          icon={ICON_HEART_RATE}
           label="健康目标"
           value={`${resourceCounts.goals} 条`}
           showDivider={false}
@@ -614,7 +628,7 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
   const profile = useSessionStore(state => state.profile);
   const setProfile = useSessionStore(state => state.setProfile);
   const { show } = useToast();
-  const { control, handleSubmit, reset, watch, setValue } = useForm<EditForm>({
+  const { control, handleSubmit, reset, setValue } = useForm<EditForm>({
     defaultValues: {
       birthDate: '',
       gender: '',
@@ -623,6 +637,9 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
       dailyWaterTargetMl: '',
     },
   });
+  // 定向订阅字段，避免 watch() 全表单订阅导致任意输入都重渲染整个表单。
+  const gender = useWatch({ control, name: 'gender' });
+  const activityLevel = useWatch({ control, name: 'activityLevel' });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -705,7 +722,7 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
           />
           <ChoiceGroup
             label="性别"
-            value={watch('gender')}
+            value={gender}
             onChange={value => setValue('gender', value)}
             options={[
               { value: 'male', label: '男' },
@@ -729,7 +746,7 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
           />
           <ChoiceGroup
             label="活动水平"
-            value={watch('activityLevel')}
+            value={activityLevel}
             onChange={value => setValue('activityLevel', value)}
             options={Object.entries(activityLabels).map(([value, label]) => ({
               value: value as ActivityLevel,
