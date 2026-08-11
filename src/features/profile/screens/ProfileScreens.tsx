@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
   Controller,
   useForm,
@@ -104,7 +104,7 @@ function displayValue(
     : `${value}${suffix}`;
 }
 
-function InfoRow({
+const InfoRow = memo(function ({
   icon,
   label,
   value,
@@ -134,9 +134,9 @@ function InfoRow({
       </View>
     </View>
   );
-}
+});
 
-function ProfileAction({
+const ProfileAction = memo(function ({
   icon,
   label,
   onPress,
@@ -162,7 +162,7 @@ function ProfileAction({
       <ChevronRight color={colors.muted} size={16} />
     </PressableScale>
   );
-}
+});
 
 function AvatarEditor({ size = 60 }: { size?: number }) {
   const sheetRef = React.useRef<BottomSheetModal>(null);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -25,7 +25,7 @@ import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 type HomeProps = NativeStackScreenProps<HomeStackParamList, 'HomeMain'>;
 type ScoreProps = NativeStackScreenProps<HomeStackParamList, 'ScoreDetail'>;
 
-function StaticPageHeading({ eyebrow, title, description, icon }: { eyebrow: string; title: string; description: string; icon: React.ReactNode }) {
+const StaticPageHeading = memo(function ({ eyebrow, title, description, icon }: { eyebrow: string; title: string; description: string; icon: React.ReactNode }) {
   return (
     <View style={styles.pageHeading}>
       <View style={styles.eyebrowRow}>
@@ -36,9 +36,9 @@ function StaticPageHeading({ eyebrow, title, description, icon }: { eyebrow: str
       <Text style={styles.pageDescription}>{description}</Text>
     </View>
   );
-}
+});
 
-function MiniNutrition({ label, value, unit }: { label: string; value: string; unit: string }) {
+const MiniNutrition = memo(function ({ label, value, unit }: { label: string; value: string; unit: string }) {
   const fillStyle = label === '蛋白质'
     ? styles.microFillProtein
     : label === '碳水'
@@ -54,9 +54,9 @@ function MiniNutrition({ label, value, unit }: { label: string; value: string; u
       <View style={styles.microTrack}><View style={[styles.microFill, fillStyle]} /></View>
     </GlassCard>
   );
-}
+});
 
-function RecordRow({ emoji, name, detail, tag, tone = 'green' }: { emoji: string; name: string; detail: string; tag: string; tone?: 'green' | 'amber' }) {
+const RecordRow = memo(function ({ emoji, name, detail, tag, tone = 'green' }: { emoji: string; name: string; detail: string; tag: string; tone?: 'green' | 'amber' }) {
   return (
     <View style={styles.recordRow}>
       <View style={styles.recordEmoji}><Text>{emoji}</Text></View>
@@ -67,7 +67,7 @@ function RecordRow({ emoji, name, detail, tag, tone = 'green' }: { emoji: string
       <Tag label={tag} tone={tone} />
     </View>
   );
-}
+});
 
 export function HomeScreen({ navigation }: HomeProps) {
   return (
@@ -140,7 +140,7 @@ export function HomeScreen({ navigation }: HomeProps) {
   );
 }
 
-function QuickAction({ icon, title, description, blue = false }: { icon: React.ReactNode; title: string; description: string; blue?: boolean }) {
+const QuickAction = memo(function ({ icon, title, description, blue = false }: { icon: React.ReactNode; title: string; description: string; blue?: boolean }) {
   return (
     <GlassCard style={[styles.quickAction, blue && styles.quickActionBlue]}>
       <View style={[styles.quickIcon, blue && styles.quickIconBlue]}>{icon}</View>
@@ -148,11 +148,11 @@ function QuickAction({ icon, title, description, blue = false }: { icon: React.R
       <Text style={[styles.quickDescription, blue && styles.quickDescriptionBlue]}>{description}</Text>
     </GlassCard>
   );
-}
+});
 
-function PrescriptionMetric({ label, value }: { label: string; value: string }) {
+const PrescriptionMetric = memo(function ({ label, value }: { label: string; value: string }) {
   return <View style={styles.prescriptionMetric}><Text style={styles.prescriptionMetricLabel}>{label}</Text><Text style={styles.prescriptionMetricValue}>{value}</Text></View>;
-}
+});
 
 export function RecognitionScreen() {
   const { show } = useToast();
@@ -179,9 +179,9 @@ export function RecognitionScreen() {
   );
 }
 
-function ResultStat({ label, value, unit }: { label: string; value: string; unit: string }) {
+const ResultStat = memo(function ({ label, value, unit }: { label: string; value: string; unit: string }) {
   return <View style={styles.resultStat}><Text style={styles.resultStatValue}>{value}<Text style={styles.resultStatUnit}> {unit}</Text></Text><Text style={styles.resultStatLabel}>{label}</Text></View>;
-}
+});
 
 export function MealPlanScreen() {
   const { show } = useToast();
@@ -212,13 +212,13 @@ export function MealPlanScreen() {
   );
 }
 
-function PlanStat({ label, value, unit }: { label: string; value: string; unit: string }) {
+const PlanStat = memo(function ({ label, value, unit }: { label: string; value: string; unit: string }) {
   return <GlassCard style={styles.planStat}><Text style={styles.planStatValue}>{value}<Text style={styles.planStatUnit}> {unit}</Text></Text><Text style={styles.planStatLabel}>{label}</Text></GlassCard>;
-}
+});
 
-function Ingredient({ emoji, name, note }: { emoji: string; name: string; note: string }) {
+const Ingredient = memo(function ({ emoji, name, note }: { emoji: string; name: string; note: string }) {
   return <View style={styles.ingredient}><Text style={styles.ingredientEmoji}>{emoji}</Text><View><Text style={styles.ingredientName}>{name}</Text><Text style={styles.ingredientNote}>{note}</Text></View></View>;
-}
+});
 
 export function TrendsScreen() {
   const [range, setRange] = useState('周');
@@ -265,9 +265,9 @@ export function ReportsScreen() {
   );
 }
 
-function HistoryRow({ title, date, score }: { title: string; date: string; score: string }) {
+const HistoryRow = memo(function ({ title, date, score }: { title: string; date: string; score: string }) {
   return <View style={styles.historyRow}><View style={styles.historyDoc}><FileText color={colors.blue} size={17} /></View><View style={styles.historyText}><Text style={styles.historyTitle}>{title}</Text><Text style={styles.historyDate}>{date}</Text></View><Text style={styles.historyScore}>{score}</Text></View>;
-}
+});
 
 export function ScoreDetailScreen({ navigation }: ScoreProps) {
   return (
