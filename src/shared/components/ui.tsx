@@ -189,60 +189,41 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   // 折叠进度（0 展开 → 1 折叠），由 AppScreen 的 UI 线程滚动驱动。
   const c = useDerivedValue(() => collapse?.value ?? 0);
 
-  // 展开态：折叠时上移淡出。
+  // 展开态标题：折叠时上移淡出。
   const expandedStyle = useAnimatedStyle(() => ({
     opacity: 1 - c.value,
     transform: [{ translateY: -6 * c.value }],
   }));
-  // 折叠态：展开时上移淡出。
+  // 折叠态窄岛标题：展开时上移淡出。
   const compactStyle = useAnimatedStyle(() => ({
     opacity: c.value,
     transform: [{ translateY: 6 * (1 - c.value) }],
-  }));
-  // 侧边按钮：仅折叠时可见，随胶囊上移。
-  const sideStyle = useAnimatedStyle(() => ({
-    opacity: c.value,
-    transform: [{ translateY: -4 * c.value }],
   }));
 
   return (
     <PerfRegion name="ScreenHeader">
       <View style={styles.headerShell}>
-      <Animated.View pointerEvents="box-none" style={[styles.headerExpanded, expandedStyle]}>
+        {/* 单 blur 容器：恒一条全宽模糊胶囊，expanded/compact 两层标题交叉淡入。
+            相比之前 2 个 BlurView，挂载初始化成本减半（每个 BlurView 约 15-30ms）。 */}
         <GlassSurface variant="navigation" intensity={50} style={styles.header}>
+          <Animated.View pointerEvents="box-none" style={[styles.headerFill, expandedStyle]}>
+            <View style={styles.headerText}>
+              <Text style={styles.headerTitle}>{title}</Text>
+              {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
+            </View>
+          </Animated.View>
+          <Animated.View pointerEvents="none" style={[styles.headerFill, compactStyle]}>
+            <View style={styles.compactIsland}>
+              <Text numberOfLines={1} style={styles.compactTitle}>{title}</Text>
+            </View>
+          </Animated.View>
           {onBack ? (
             <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.backButton}>
               <ArrowLeft color={colors.ink} size={17} />
             </Pressable>
           ) : null}
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>{title}</Text>
-            {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
-          </View>
           {action ? <View style={styles.headerAction}>{action}</View> : null}
         </GlassSurface>
-      </Animated.View>
-      <Animated.View pointerEvents="none" style={[styles.headerCompact, compactStyle]}>
-        <GlassSurface variant="navigation" intensity={50} style={styles.compactIsland}>
-          <Text numberOfLines={1} style={styles.compactTitle}>{title}</Text>
-        </GlassSurface>
-      </Animated.View>
-      {onBack ? (
-        <Animated.View pointerEvents="box-none" style={[styles.headerSideLeft, sideStyle]}>
-          <View style={styles.headerSideButton}>
-            <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.sideButtonPressable}>
-              <ArrowLeft color={colors.ink} size={17} />
-            </Pressable>
-          </View>
-        </Animated.View>
-      ) : null}
-      {action ? (
-        <Animated.View pointerEvents="box-none" style={[styles.headerSideRight, sideStyle]}>
-          <View style={styles.headerSideButton}>
-            {action}
-          </View>
-        </Animated.View>
-      ) : null}
       </View>
     </PerfRegion>
   );
@@ -429,20 +410,16 @@ const styles = StyleSheet.create({
     boxShadow: shadows.card,
   },
   headerShell: { height: HEADER_HEIGHT, justifyContent: 'center' },
-  headerExpanded: { height: HEADER_HEIGHT, width: '100%' },
-  headerCompact: { position: 'absolute', top: 0, alignSelf: 'center', width: COMPACT_HEADER_WIDTH, height: COMPACT_HEADER_HEIGHT },
-  header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, boxShadow: shadows.soft },
-  compactIsland: { height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, boxShadow: shadows.soft },
-  backButton: { position: 'absolute', left: 6, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.6)' },
+  /** 单 blur 容器内的标题层：绝对填充、居中。 */
+  headerFill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, boxShadow: shadows.soft },
+  compactIsland: { minWidth: COMPACT_HEADER_WIDTH, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, backgroundColor: 'rgba(255,255,255,0.66)', boxShadow: shadows.soft },
+  backButton: { position: 'absolute', left: 6, top: (HEADER_HEIGHT - 32) / 2, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.6)' },
   headerText: { alignItems: 'center', maxWidth: '70%' },
   headerTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
   headerSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 9, marginTop: 1 },
-  headerAction: { position: 'absolute', right: 6 },
+  headerAction: { position: 'absolute', right: 6, top: (HEADER_HEIGHT - COMPACT_HEADER_HEIGHT) / 2 },
   compactTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
-  headerSideLeft: { position: 'absolute', left: 0, top: 0 },
-  headerSideRight: { position: 'absolute', right: 0, top: 0 },
-  headerSideButton: { width: COMPACT_HEADER_HEIGHT, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.6)', boxShadow: shadows.soft },
-  sideButtonPressable: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: COMPACT_HEADER_HEIGHT / 2 },
   button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderRadius: radii.md, backgroundColor: colors.blue, paddingHorizontal: spacing.lg },
   buttonSecondary: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#D5E9FC' },
   buttonDanger: { backgroundColor: colors.red },
