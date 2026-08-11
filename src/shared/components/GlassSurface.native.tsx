@@ -1,10 +1,8 @@
 import React from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { BlurView } from '@sbaiahmed1/react-native-blur';
-// Android 12+ 用 RenderEffect GPU 硬件加速模糊（替代 QmBlurView 的 CPU box-blur），
-// API <31 由该库内部回退；仅用于常驻的导航浮层（TabBar/Header）。
-import { BlurView as RenderBlurView } from 'blur-react-native';
 
+import { AndroidGlassSurface } from '../native/AndroidGlassSurface';
 import { glass, radii } from '../theme/tokens';
 
 /**
@@ -20,6 +18,8 @@ export function GlassSurface({
   intensity = 50,
   variant = 'frosted',
   blurRounds = 2,
+  elevated = false,
+  cornerRadius = radii.lg,
 }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -27,7 +27,22 @@ export function GlassSurface({
   variant?: 'frosted' | 'soft' | 'navigation';
   /** QmBlurView 专属：每帧模糊 pass 数，越低越省 CPU，默认 2。 */
   blurRounds?: number;
+  elevated?: boolean;
+  cornerRadius?: number;
 }) {
+  if (Platform.OS === 'android') {
+    return (
+      <AndroidGlassSurface
+        cornerRadius={cornerRadius}
+        elevated={elevated}
+        style={style}
+        variant={variant === 'navigation' ? 'navigation' : 'soft'}
+      >
+        {children}
+      </AndroidGlassSurface>
+    );
+  }
+
   const sheen = (
     <View
       pointerEvents="none"
@@ -44,23 +59,7 @@ export function GlassSurface({
     );
   }
 
-  // 常驻导航浮层（TabBar/Header）：Android 12+ 用 RenderEffect GPU 模糊。
   if (variant === 'navigation') {
-    if (Platform.OS === 'android') {
-      return (
-        <RenderBlurView
-          blurType="systemUltraThinMaterial"
-          blurAmount={intensity}
-          reducedTransparencyFallbackColor="#FFFFFF"
-          style={StyleSheet.flatten([styles.surface, styles.navigationSurface, style])}
-        >
-          {/* blur-react-native 无 overlayColor prop，用白色半透明层补偿原视觉。 */}
-          <View pointerEvents="none" style={styles.navigationOverlay} />
-          {sheen}
-          {children}
-        </RenderBlurView>
-      );
-    }
     return (
       <BlurView
         blurAmount={intensity}
@@ -108,14 +107,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(148, 163, 184, 0.48)',
   },
   /** 模拟原 QmBlurView 的 overlayColor 白色覆盖，让低强度模糊不显得太透。 */
-  navigationOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.34)',
-  },
   /** 顶部细内高光：仿 iOS 材质的高光描边，让玻璃轮廓更分明。 */
   sheen: {
     position: 'absolute',

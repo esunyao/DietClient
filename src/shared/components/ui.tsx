@@ -17,6 +17,7 @@ import { ArrowLeft, Camera, Sparkles, Utensils } from 'lucide-react-native';
 import Animated, {
   Easing,
   ReduceMotion,
+  runOnJS,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useDerivedValue,
@@ -54,8 +55,12 @@ const HeaderCollapseTiming = {
   reduceMotion: ReduceMotion.System,
 };
 
-/** 每屏 header 折叠进度（0 展开 / 1 折叠，含过渡中间值），由 AppScreen 的 UI 线程滚动驱动。 */
-const HeaderCollapsedContext = createContext<SharedValue<number> | null>(null);
+/** 每屏 header 状态：进度在 UI 线程，命中层只在跨阈值时同步到 JS。 */
+type HeaderChrome = {
+  progress: SharedValue<number>;
+  collapsed: boolean;
+};
+const HeaderCollapsedContext = createContext<HeaderChrome | null>(null);
 
 export function AppScreen({ children, scroll = true, contentStyle, header }: {
   children: React.ReactNode;
@@ -77,6 +82,7 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
   const headerCollapsed = useSharedValue(0);
   const headerCollapsedLogical = useSharedValue(0);
   const lastY = useSharedValue(0);
+  const [headerCollapsedForHitTesting, setHeaderCollapsedForHitTesting] = useState(false);
 
   // 新屏首帧：展开 header + 显示 tabbar（并清零本屏滚动基准）。
   useEffect(() => {
@@ -85,6 +91,7 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
     headerCollapsed.value = 0;
     headerCollapsedLogical.value = 0;
     lastY.value = 0;
+    setHeaderCollapsedForHitTesting(false);
     // 仅首帧执行；shared value 引用稳定，无需列入依赖。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -117,11 +124,13 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
           if (headerCollapsedLogical.value === 0) {
             headerCollapsedLogical.value = 1;
             headerCollapsed.value = withTiming(1, HeaderCollapseTiming);
+            runOnJS(setHeaderCollapsedForHitTesting)(true);
           }
         } else if (y < HEADER_EXPAND_OFFSET) {
           if (headerCollapsedLogical.value === 1) {
             headerCollapsedLogical.value = 0;
             headerCollapsed.value = withTiming(0, HeaderCollapseTiming);
+            runOnJS(setHeaderCollapsedForHitTesting)(false);
           }
         }
       }
@@ -156,7 +165,7 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
       {content}
       {header ? (
         <View style={[styles.floatingHeader, { top: safeTop + HEADER_SAFE_GAP }]}>
-          <HeaderCollapsedContext.Provider value={headerCollapsed}>
+          <HeaderCollapsedContext.Provider value={{ progress: headerCollapsed, collapsed: headerCollapsedForHitTesting }}>
             {header}
           </HeaderCollapsedContext.Provider>
         </View>
@@ -172,7 +181,7 @@ export function GlassCard({ children, style, variant = 'soft', elevated = false 
   variant?: 'frosted' | 'soft';
   elevated?: boolean;
 }) {
-  return <GlassSurface variant={variant} style={[styles.card, elevated && styles.cardElevated, style]}>{children}</GlassSurface>;
+  return <GlassSurface elevated={elevated} variant={variant} style={[styles.card, elevated && styles.cardElevated, style]}>{children}</GlassSurface>;
 }
 
 /**
@@ -187,7 +196,8 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
 }) {
   const collapse = useContext(HeaderCollapsedContext);
   // 折叠进度（0 展开 → 1 折叠），由 AppScreen 的 UI 线程滚动驱动。
-  const c = useDerivedValue(() => collapse?.value ?? 0);
+  const c = useDerivedValue(() => collapse?.progress.value ?? 0);
+  const isCollapsed = collapse?.collapsed ?? false;
 
   // 展开态标题：折叠时上移淡出。
   const expandedStyle = useAnimatedStyle(() => ({
@@ -199,31 +209,46 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
     opacity: c.value,
     transform: [{ translateY: 6 * (1 - c.value) }],
   }));
+  const sideStyle = useAnimatedStyle(() => ({ opacity: c.value }));
 
   return (
     <PerfRegion name="ScreenHeader">
       <View style={styles.headerShell}>
-        {/* 单 blur 容器：恒一条全宽模糊胶囊，expanded/compact 两层标题交叉淡入。
-            相比之前 2 个 BlurView，挂载初始化成本减半（每个 BlurView 约 15-30ms）。 */}
-        <GlassSurface variant="navigation" intensity={50} style={styles.header}>
-          <Animated.View pointerEvents="box-none" style={[styles.headerFill, expandedStyle]}>
+        <Animated.View pointerEvents={isCollapsed ? 'none' : 'auto'} style={[styles.headerExpanded, expandedStyle]}>
+          <GlassSurface cornerRadius={HEADER_HEIGHT / 2} elevated intensity={50} variant="navigation" style={styles.header}>
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>{title}</Text>
               {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
             </View>
+            {onBack ? (
+              <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.backButton}>
+                <ArrowLeft color={colors.ink} size={17} />
+              </Pressable>
+            ) : null}
+            {action ? <View style={styles.headerAction}>{action}</View> : null}
+          </GlassSurface>
+        </Animated.View>
+        <Animated.View pointerEvents="none" style={[styles.headerCompact, compactStyle]}>
+          <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} variant="navigation" style={styles.compactIsland}>
+            <Text numberOfLines={1} style={styles.compactTitle}>{title}</Text>
+          </GlassSurface>
+        </Animated.View>
+        {onBack ? (
+          <Animated.View pointerEvents={isCollapsed ? 'auto' : 'none'} style={[styles.headerSideLeft, sideStyle]}>
+            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} variant="navigation" style={styles.headerSideButton}>
+              <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.sideButtonPressable}>
+                <ArrowLeft color={colors.ink} size={17} />
+              </Pressable>
+            </GlassSurface>
           </Animated.View>
-          <Animated.View pointerEvents="none" style={[styles.headerFill, compactStyle]}>
-            <View style={styles.compactIsland}>
-              <Text numberOfLines={1} style={styles.compactTitle}>{title}</Text>
-            </View>
+        ) : null}
+        {action ? (
+          <Animated.View pointerEvents={isCollapsed ? 'auto' : 'none'} style={[styles.headerSideRight, sideStyle]}>
+            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} variant="navigation" style={styles.headerSideButton}>
+              {action}
+            </GlassSurface>
           </Animated.View>
-          {onBack ? (
-            <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.backButton}>
-              <ArrowLeft color={colors.ink} size={17} />
-            </Pressable>
-          ) : null}
-          {action ? <View style={styles.headerAction}>{action}</View> : null}
-        </GlassSurface>
+        ) : null}
       </View>
     </PerfRegion>
   );
@@ -421,16 +446,20 @@ const styles = StyleSheet.create({
     boxShadow: shadows.card,
   },
   headerShell: { height: HEADER_HEIGHT, justifyContent: 'center' },
-  /** 单 blur 容器内的标题层：绝对填充、居中。 */
-  headerFill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, boxShadow: shadows.soft },
-  compactIsland: { minWidth: COMPACT_HEADER_WIDTH, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, backgroundColor: 'rgba(255,255,255,0.66)', boxShadow: shadows.soft },
+  headerExpanded: { height: HEADER_HEIGHT, width: '100%' },
+  headerCompact: { position: 'absolute', top: 0, alignSelf: 'center', width: COMPACT_HEADER_WIDTH, height: COMPACT_HEADER_HEIGHT },
+  header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, boxShadow: shadows.soft },
+  compactIsland: { height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, boxShadow: shadows.soft },
   backButton: { position: 'absolute', left: 6, top: (HEADER_HEIGHT - 32) / 2, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.6)' },
   headerText: { alignItems: 'center', maxWidth: '70%' },
   headerTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
   headerSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 9, marginTop: 1 },
   headerAction: { position: 'absolute', right: 6, top: (HEADER_HEIGHT - COMPACT_HEADER_HEIGHT) / 2 },
   compactTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
+  headerSideLeft: { position: 'absolute', left: 0, top: 0 },
+  headerSideRight: { position: 'absolute', right: 0, top: 0 },
+  headerSideButton: { width: COMPACT_HEADER_HEIGHT, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', boxShadow: shadows.soft },
+  sideButtonPressable: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: COMPACT_HEADER_HEIGHT / 2 },
   button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderRadius: radii.md, backgroundColor: colors.blue, paddingHorizontal: spacing.lg },
   buttonSecondary: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#D5E9FC' },
   buttonDanger: { backgroundColor: colors.red },

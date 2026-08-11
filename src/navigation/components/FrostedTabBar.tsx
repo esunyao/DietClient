@@ -127,7 +127,7 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <PerfRegion name="FrostedTabBar">
       <Animated.View style={[styles.barWrap, { bottom: Math.max(insets.bottom, 6) }, wrapStyle]}>
-        <GlassSurface variant="navigation" intensity={50} style={styles.bar}>
+        <GlassSurface cornerRadius={20} elevated variant="navigation" intensity={50} style={styles.bar}>
           <View style={styles.content} onLayout={onBarLayout}>
             <Animated.View pointerEvents="none" style={[styles.indicator, indicatorStyle]} />
             {state.routes.map((route, index) => {
