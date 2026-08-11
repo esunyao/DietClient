@@ -49,9 +49,9 @@ const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
-// Android 也启用淡入淡出：native-stack 动画由 react-native-screens 原生 Fragment 转场驱动，
-// 不占 JS 线程，成本可控；此前设为 'none' 是为规避 Fabric 转场卡顿，但牺牲了成品切换动画。
-const stackAnimation = 'fade';
+// 右滑进入（微信式）：位移转场不改变 Screen alpha，不会在转场期间暴露白色 window 背景
+// （fade 纯 alpha 转场会导致"白色雾蒙版"）；由 react-native-screens 原生 Fragment 转场驱动，不占 JS 线程。
+const stackAnimation = 'slide_from_right';
 
 /**
  * 底部 `Tab` 设定
