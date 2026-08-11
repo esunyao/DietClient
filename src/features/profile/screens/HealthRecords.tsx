@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo, useState } from 'react';
+import React, { memo, useCallback, useMemo, useState, useTransition } from 'react';
 import { Alert, FlatList, InteractionManager, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -136,11 +136,20 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
   const idField = kind === 'measurement' ? 'measurementId' : kind === 'goal' ? 'goalId' : kind === 'allergy' ? 'allergyId' : kind === 'condition' ? 'conditionId' : 'restrictionId';
   const current = useMemo(() => records.find(item => String((item as unknown as Record<string, unknown>)[idField]) === id), [id, idField, records]);
   const set = (key: string) => (value: string) => setValues(previous => ({ ...previous, [key]: value }));
+  // 列表首屏渲染标记为低优先级（transition），数据到达时若用户已在操作则让位；
+  // setValues（表单回填）保持同步，避免编辑页字段延迟显示。
+  const [, startTransition] = useTransition();
 
   const loadRecords = useCallback(() => {
     const list = kind === 'measurement' ? healthApi.bodyMeasurements.list() : kind === 'goal' ? healthApi.healthGoals.list() : kind === 'allergy' ? healthApi.allergies.list() : kind === 'condition' ? healthApi.medicalConditions.list() : healthApi.dietaryRestrictions.list();
-    list.then(result => { setRecords(result); const found = result.find(item => String((item as unknown as Record<string, unknown>)[idField]) === id); if (found) setValues(initialValues(kind, found)); }).catch(error => show(getErrorMessage(error), 'error'));
-  }, [id, idField, kind, show]);
+    list.then(result => {
+      startTransition(() => {
+        setRecords(result);
+      });
+      const found = result.find(item => String((item as unknown as Record<string, unknown>)[idField]) === id);
+      if (found) setValues(initialValues(kind, found));
+    }).catch(error => show(getErrorMessage(error), 'error'));
+  }, [id, idField, kind, show, startTransition]);
 
   // 与 HealthRecordsScreen 一致：等导航转场动画结束再发请求，避免与渲染竞争 JS 线程。
   useFocusEffect(useCallback(() => {

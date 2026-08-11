@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useState, useTransition } from 'react';
 import {
   Controller,
   useForm,
@@ -336,22 +336,27 @@ export function ProfileScreen({ navigation }: ProfileProps) {
     restrictions: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
+  // 数据到达后的渲染标记为低优先级（transition）：手动刷新时用户可能正在交互，
+  // 数据渲染让位于点击/滚动，降低整页重渲染抢帧的感知。
+  const [, startTransition] = useTransition();
 
   const loadHealthSummary = useCallback(async (force = false) => {
     const { measurements, goals, allergies, conditions, restrictions } =
       await getHealthRecords(force);
-    setLatestMeasurement(
-      [...measurements].sort((a, b) =>
-        b.measuredAt.localeCompare(a.measuredAt),
-      )[0] || null,
-    );
-    setResourceCounts({
-      goals: goals.length,
-      allergies: allergies.length,
-      conditions: conditions.length,
-      restrictions: restrictions.length,
+    startTransition(() => {
+      setLatestMeasurement(
+        [...measurements].sort((a, b) =>
+          b.measuredAt.localeCompare(a.measuredAt),
+        )[0] || null,
+      );
+      setResourceCounts({
+        goals: goals.length,
+        allergies: allergies.length,
+        conditions: conditions.length,
+        restrictions: restrictions.length,
+      });
     });
-  }, []);
+  }, [startTransition]);
 
   useFocusEffect(useCallback(() => {
     const task = InteractionManager.runAfterInteractions(() => {
