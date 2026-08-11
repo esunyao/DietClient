@@ -46,7 +46,8 @@ export function GlassSurface({
   return (
     <BlurView
       blurAmount={intensity}
-      blurRounds={blurRounds}
+      // 导航浮层（TabBar/Header）内容简单，单 pass 模糊视觉已够，CPU 计算减半。
+      blurRounds={variant === 'navigation' ? 1 : blurRounds}
       blurType="systemUltraThinMaterialLight"
       overlayColor="rgba(255, 255, 255, 0.34)"
       reducedTransparencyFallbackColor="#FFFFFF"

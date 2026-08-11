@@ -331,31 +331,42 @@ export function Avatar({
   onImageError?: () => void;
 }) {
   const initial = name.trim().slice(0, 1) || '你';
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const imageVisible = Boolean(avatarUrl && avatarUrl !== failedUrl);
+  // 图片加载状态：loaded 后不再渲染 SVG 占位层（省 GPU 填充），失败时回退 SVG 首字母。
+  const [imageState, setImageState] = useState<'pending' | 'loaded' | 'failed'>(() => (avatarUrl ? 'pending' : 'failed'));
 
-  useEffect(() => setFailedUrl(null), [avatarUrl]);
+  useEffect(() => {
+    setImageState(avatarUrl ? 'pending' : 'failed');
+  }, [avatarUrl]);
+
+  // pending（加载中）与 failed 显示 SVG 占位；loaded 后只显示头像图。
+  const showFallback = imageState !== 'loaded';
+  const showImage = Boolean(avatarUrl) && imageState !== 'failed';
 
   const content = (
     <>
       <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Svg width={size} height={size} viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
-          <Defs>
-            <LinearGradient id="avatarGradient" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={colors.blue} />
-              <Stop offset="1" stopColor={colors.green} />
-            </LinearGradient>
-          </Defs>
-          <Circle cx="50" cy="50" r="50" fill="url(#avatarGradient)" />
-          <Circle cx="72" cy="24" r="18" fill="rgba(255,255,255,0.14)" />
-        </Svg>
-        <Text style={[styles.avatarText, { fontSize: size * 0.36 }]}>{initial}</Text>
+        {showFallback ? (
+          <>
+            <Svg width={size} height={size} viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
+              <Defs>
+                <LinearGradient id="avatarGradient" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0" stopColor={colors.blue} />
+                  <Stop offset="1" stopColor={colors.green} />
+                </LinearGradient>
+              </Defs>
+              <Circle cx="50" cy="50" r="50" fill="url(#avatarGradient)" />
+              <Circle cx="72" cy="24" r="18" fill="rgba(255,255,255,0.14)" />
+            </Svg>
+            <Text style={[styles.avatarText, { fontSize: size * 0.36 }]}>{initial}</Text>
+          </>
+        ) : null}
       </View>
-      {imageVisible ? (
+      {showImage ? (
         <Image
           accessibilityLabel={`${name}的头像`}
+          onLoad={() => setImageState('loaded')}
           onError={() => {
-            setFailedUrl(avatarUrl || null);
+            setImageState('failed');
             onImageError?.();
           }}
           source={{ uri: avatarUrl || undefined }}
