@@ -34,6 +34,8 @@ import { HealthRecordFormScreen, HealthRecordsScreen } from '../features/profile
 import { colors, fonts } from '../shared/theme/tokens';
 // 自定义毛玻璃 TabBar
 import { FrostedTabBar } from './components/FrostedTabBar';
+// 全局滚动驱动共享状态（UI 线程，供 TabBar 显隐订阅）
+import { ScrollChromeProvider } from '../shared/scrollChrome/ScrollChromeProvider';
 // 路由类型定义
 import type {
   AppTabParamList,
@@ -201,7 +203,13 @@ export function AppNavigator() {
 
   return (
     <NavigationContainer theme={navigationTheme}>
-      {status === 'signedIn' ? <MainNavigator /> : <AuthNavigator />}
+      {status === 'signedIn' ? (
+        <ScrollChromeProvider>
+          <MainNavigator />
+        </ScrollChromeProvider>
+      ) : (
+        <AuthNavigator />
+      )}
     </NavigationContainer>
   );
 }

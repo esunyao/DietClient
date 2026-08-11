@@ -1,29 +1,37 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   Platform,
   Pressable,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, Sparkles, Utensils } from 'lucide-react-native';
+import Animated, {
+  Easing,
+  ReduceMotion,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
+import { durations } from '../animation/config';
 import { PressableScale } from '../animation/PressableScale';
 import { ScreenTransition } from '../animation/ScreenTransition';
 import { colors, fonts, glow, radii, shadows, spacing } from '../theme/tokens';
 import { GlassSurface } from './GlassSurface';
-import { useTabBarVisibility } from '../store/tabBarVisibility';
+import { useScrollChrome } from '../scrollChrome/ScrollChromeProvider';
 
 const HEADER_COLLAPSE_OFFSET = 56;
 const HEADER_EXPAND_OFFSET = 24;
@@ -32,7 +40,21 @@ const HEADER_HEIGHT = 44;
 const COMPACT_HEADER_WIDTH = 136;
 const COMPACT_HEADER_HEIGHT = 34;
 
-const HeaderCollapsedContext = createContext(false);
+/** 底部 tab 显隐过渡（UI 线程）。 */
+const TabSlideTiming = {
+  duration: durations.tabBarSlide,
+  easing: Easing.inOut(Easing.cubic),
+  reduceMotion: ReduceMotion.System,
+};
+/** header 折叠过渡（UI 线程）。 */
+const HeaderCollapseTiming = {
+  duration: durations.headerCollapse,
+  easing: Easing.inOut(Easing.cubic),
+  reduceMotion: ReduceMotion.System,
+};
+
+/** 每屏 header 折叠进度（0 展开 / 1 折叠，含过渡中间值），由 AppScreen 的 UI 线程滚动驱动。 */
+const HeaderCollapsedContext = createContext<SharedValue<number> | null>(null);
 
 export function AppScreen({ children, scroll = true, contentStyle, header }: {
   children: React.ReactNode;
@@ -42,11 +64,7 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
   header?: React.ReactNode;
 }) {
   const insets = useSafeAreaInsets();
-  const setHidden = useTabBarVisibility(state => state.setHidden);
-  const lastY = useRef(0);
-  const hiddenRef = useRef(false);
-  const headerCollapsedRef = useRef(false);
-  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const chrome = useScrollChrome();
   const hasHeader = Boolean(header);
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const safeTop = Math.max(insets.top, statusBarHeight);
@@ -54,53 +72,72 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
     ? safeTop + HEADER_SAFE_GAP + HEADER_HEIGHT + spacing.lg
     : safeTop + spacing.md;
 
-  const updateHeaderCollapsed = useCallback((next: boolean) => {
-    if (next !== headerCollapsedRef.current) {
-      headerCollapsedRef.current = next;
-      setHeaderCollapsed(next);
-    }
+  // 每屏自己的折叠态与滚动基准（shared value，全部在 UI 线程工作）。
+  const headerCollapsed = useSharedValue(0);
+  const headerCollapsedLogical = useSharedValue(0);
+  const lastY = useSharedValue(0);
+
+  // 新屏首帧：展开 header + 显示 tabbar（并清零本屏滚动基准）。
+  useEffect(() => {
+    chrome.tabHidden.value = 0;
+    chrome.tabHiddenLogical.value = 0;
+    headerCollapsed.value = 0;
+    headerCollapsedLogical.value = 0;
+    lastY.value = 0;
+    // 仅首帧执行；shared value 引用稳定，无需列入依赖。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 与 htmlTest 的底部导航一致：向下滚动超过 80px 隐藏，向上滚动或回到顶部显示。
-  // 仅在方向翻转时写 store，避免每帧触发重渲染。
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = Math.max(event.nativeEvent.contentOffset.y, 0);
-    const dy = y - lastY.current;
-    let next = hiddenRef.current;
-    if (dy > 0 && y > 80) {
-      next = true;
-    } else if (dy < 0 || y < 80) {
-      next = false;
-    }
-    lastY.current = y;
-    if (next !== hiddenRef.current) {
-      hiddenRef.current = next;
-      setHidden(next);
-    }
-    if (hasHeader) {
-      if (y > HEADER_COLLAPSE_OFFSET) {
-        updateHeaderCollapsed(true);
-      } else if (y < HEADER_EXPAND_OFFSET) {
-        updateHeaderCollapsed(false);
-      }
-    }
-  }, [hasHeader, setHidden, updateHeaderCollapsed]);
+  // 全部在 UI 线程 worklet 中计算，滚动期间 JS 线程零参与。
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: event => {
+      'worklet';
+      const y = Math.max(event.contentOffset.y, 0);
+      const dy = y - lastY.value;
+      lastY.value = y;
 
-  useEffect(() => {
-    if (!hasHeader) {
-      updateHeaderCollapsed(false);
-    }
-  }, [hasHeader, updateHeaderCollapsed]);
+      // tabbar：仅在方向翻转且过阈值时改逻辑态，避免 220ms 过渡期被逐帧重赋值。
+      if (dy > 0 && y > 80) {
+        if (chrome.tabHiddenLogical.value === 0) {
+          chrome.tabHiddenLogical.value = 1;
+          chrome.tabHidden.value = withTiming(1, TabSlideTiming);
+        }
+      } else if (dy < 0 || y < 80) {
+        if (chrome.tabHiddenLogical.value === 1) {
+          chrome.tabHiddenLogical.value = 0;
+          chrome.tabHidden.value = withTiming(0, TabSlideTiming);
+        }
+      }
+
+      // header 折叠：跨阈值翻转（带迟滞区间）。
+      if (hasHeader) {
+        if (y > HEADER_COLLAPSE_OFFSET) {
+          if (headerCollapsedLogical.value === 0) {
+            headerCollapsedLogical.value = 1;
+            headerCollapsed.value = withTiming(1, HeaderCollapseTiming);
+          }
+        } else if (y < HEADER_EXPAND_OFFSET) {
+          if (headerCollapsedLogical.value === 1) {
+            headerCollapsedLogical.value = 0;
+            headerCollapsed.value = withTiming(0, HeaderCollapseTiming);
+          }
+        }
+      }
+
+      chrome.scrollY.value = y;
+    },
+  }, [hasHeader]);
 
   const content = scroll ? (
-    <ScrollView
+    <Animated.ScrollView
       contentContainerStyle={[styles.scrollContent, { paddingTop: contentTop }, contentStyle]}
-      onScroll={handleScroll}
-      scrollEventThrottle={32}
+      onScroll={scrollHandler}
+      scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
     >
       {children}
-    </ScrollView>
+    </Animated.ScrollView>
   ) : (
     <View style={[styles.fill, { paddingTop: contentTop }, contentStyle]}>
       {children}
@@ -143,11 +180,29 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   onBack?: () => void;
   action?: React.ReactNode;
 }) {
-  const collapsed = useContext(HeaderCollapsedContext);
+  const collapse = useContext(HeaderCollapsedContext);
+  // 折叠进度（0 展开 → 1 折叠），由 AppScreen 的 UI 线程滚动驱动。
+  const c = useDerivedValue(() => collapse?.value ?? 0);
+
+  // 展开态：折叠时上移淡出。
+  const expandedStyle = useAnimatedStyle(() => ({
+    opacity: 1 - c.value,
+    transform: [{ translateY: -6 * c.value }],
+  }));
+  // 折叠态：展开时上移淡出。
+  const compactStyle = useAnimatedStyle(() => ({
+    opacity: c.value,
+    transform: [{ translateY: 6 * (1 - c.value) }],
+  }));
+  // 侧边按钮：仅折叠时可见，随胶囊上移。
+  const sideStyle = useAnimatedStyle(() => ({
+    opacity: c.value,
+    transform: [{ translateY: -4 * c.value }],
+  }));
 
   return (
     <View style={styles.headerShell}>
-      <View pointerEvents={collapsed ? 'none' : 'auto'} style={[styles.headerExpanded, collapsed && styles.headerHidden]}>
+      <Animated.View pointerEvents="box-none" style={[styles.headerExpanded, expandedStyle]}>
         <GlassSurface variant="navigation" intensity={50} style={styles.header}>
           {onBack ? (
             <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.backButton}>
@@ -160,27 +215,27 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
           </View>
           {action ? <View style={styles.headerAction}>{action}</View> : null}
         </GlassSurface>
-      </View>
-      <View pointerEvents="none" style={[styles.headerCompact, !collapsed && styles.headerHidden]}>
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.headerCompact, compactStyle]}>
         <GlassSurface variant="navigation" intensity={50} style={styles.compactIsland}>
           <Text numberOfLines={1} style={styles.compactTitle}>{title}</Text>
         </GlassSurface>
-      </View>
+      </Animated.View>
       {onBack ? (
-        <View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideLeft, !collapsed && styles.headerHidden]}>
-          <GlassSurface variant="navigation" intensity={50} style={styles.headerSideButton}>
+        <Animated.View pointerEvents="box-none" style={[styles.headerSideLeft, sideStyle]}>
+          <View style={styles.headerSideButton}>
             <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.sideButtonPressable}>
               <ArrowLeft color={colors.ink} size={17} />
             </Pressable>
-          </GlassSurface>
-        </View>
+          </View>
+        </Animated.View>
       ) : null}
       {action ? (
-        <View pointerEvents={collapsed ? 'auto' : 'none'} style={[styles.headerSideRight, !collapsed && styles.headerHidden]}>
-          <GlassSurface variant="navigation" intensity={50} style={styles.headerSideButton}>
+        <Animated.View pointerEvents="box-none" style={[styles.headerSideRight, sideStyle]}>
+          <View style={styles.headerSideButton}>
             {action}
-          </GlassSurface>
-        </View>
+          </View>
+        </Animated.View>
       ) : null}
     </View>
   );
@@ -368,7 +423,6 @@ const styles = StyleSheet.create({
   },
   headerShell: { height: HEADER_HEIGHT, justifyContent: 'center' },
   headerExpanded: { height: HEADER_HEIGHT, width: '100%' },
-  headerHidden: { opacity: 0 },
   headerCompact: { position: 'absolute', top: 0, alignSelf: 'center', width: COMPACT_HEADER_WIDTH, height: COMPACT_HEADER_HEIGHT },
   header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, boxShadow: shadows.soft },
   compactIsland: { height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, boxShadow: shadows.soft },
@@ -380,7 +434,7 @@ const styles = StyleSheet.create({
   compactTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
   headerSideLeft: { position: 'absolute', left: 0, top: 0 },
   headerSideRight: { position: 'absolute', right: 0, top: 0 },
-  headerSideButton: { width: COMPACT_HEADER_HEIGHT, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', boxShadow: shadows.soft },
+  headerSideButton: { width: COMPACT_HEADER_HEIGHT, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.6)', boxShadow: shadows.soft },
   sideButtonPressable: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: COMPACT_HEADER_HEIGHT / 2 },
   button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderRadius: radii.md, backgroundColor: colors.blue, paddingHorizontal: spacing.lg },
   buttonSecondary: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#D5E9FC' },

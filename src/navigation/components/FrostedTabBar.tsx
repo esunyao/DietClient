@@ -3,10 +3,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BarChart3, Camera, FileText, Home, Sparkles, UserRound } from 'lucide-react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
 import { PressableScale } from '../../shared/animation/PressableScale';
 import { GlassSurface } from '../../shared/components/GlassSurface';
-import { useTabBarVisibility } from '../../shared/store/tabBarVisibility';
+import { useScrollChrome } from '../../shared/scrollChrome/ScrollChromeProvider';
 import { colors, fonts } from '../../shared/theme/tokens';
 
 const tabMeta = {
@@ -34,20 +35,24 @@ const INDICATOR_BOTTOM = 4;
 export function FrostedTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const activeIndex = state.index;
-  const hidden = useTabBarVisibility(s => s.hidden);
-  const setHidden = useTabBarVisibility(s => s.setHidden);
+  const chrome = useScrollChrome();
+
+  // 随滚动隐藏：translateY 由 UI 线程的 tabHidden 驱动（带过渡动画，非跳变）。
+  const wrapStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: chrome.tabHidden.value * 120 }],
+  }));
 
   // 切换 tab 后恢复显示：新页面的 ScrollView 位于顶部时不触发滚动事件，需主动复位。
   useEffect(() => {
-    setHidden(false);
-    // activeIndex 变化即代表切换成功，无需依赖 setHidden。
+    chrome.resetTabBar();
+    // activeIndex 变化即代表切换成功。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex]);
 
   const itemWidth = 100 / state.routes.length;
 
   return (
-    <View style={[styles.barWrap, { bottom: Math.max(insets.bottom, 6), transform: [{ translateY: hidden ? 120 : 0 }] }]}>
+    <Animated.View style={[styles.barWrap, { bottom: Math.max(insets.bottom, 6) }, wrapStyle]}>
       <GlassSurface variant="navigation" intensity={50} style={styles.bar}>
         <View style={styles.content}>
           <View pointerEvents="none" style={[styles.indicator, { left: `${activeIndex * itemWidth}%`, width: `${itemWidth}%` }]} />
@@ -81,7 +86,7 @@ export function FrostedTabBar({ state, descriptors, navigation }: BottomTabBarPr
           })}
         </View>
       </GlassSurface>
-    </View>
+    </Animated.View>
   );
 }
 

@@ -59,7 +59,7 @@ import {
   inputStyle,
 } from '../../../shared/components/ui';
 import { useToast } from '../../../shared/components/Toast';
-import { useTabBarVisibility } from '../../../shared/store/tabBarVisibility';
+import { useScrollChrome } from '../../../shared/scrollChrome/ScrollChromeProvider';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type {
   ActivityLevel,
@@ -166,7 +166,7 @@ function ProfileAction({
 
 function AvatarEditor({ size = 60 }: { size?: number }) {
   const sheetRef = React.useRef<BottomSheetModal>(null);
-  const setTabBarHidden = useTabBarVisibility(state => state.setHidden);
+  const { setTabHidden } = useScrollChrome();
   const user = useSessionStore(state => state.user);
   const avatarPreviewUrl = useSessionStore(state => state.avatarPreviewUrl);
   const setUser = useSessionStore(state => state.setUser);
@@ -257,7 +257,7 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
           onImageError={() => setAvatarPreviewUrl(null)}
           onPress={() => {
             if (!uploading) {
-              setTabBarHidden(true);
+              setTabHidden(true);
               setSheetMounted(true);
             }
           }}
@@ -273,9 +273,9 @@ function AvatarEditor({ size = 60 }: { size?: number }) {
         backdropComponent={renderBackdrop}
         enableDynamicSizing
         enablePanDownToClose
-        onChange={index => setTabBarHidden(index >= 0)}
+        onChange={index => setTabHidden(index >= 0)}
         onDismiss={() => {
-          setTabBarHidden(false);
+          setTabHidden(false);
           setSheetMounted(false);
         }}
         backgroundStyle={styles.sheetBackground}
