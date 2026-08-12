@@ -13,6 +13,8 @@ import {
   getCachedHealthRecords,
   getHealthRecords,
   invalidateHealthRecords,
+  removeHealthRecord,
+  upsertHealthRecord,
 } from './healthRecordsCache';
 
 const mockListMeasurements = healthApi.bodyMeasurements.list as jest.Mock;
@@ -54,5 +56,19 @@ describe('healthRecordsCache', () => {
 
     expect(mockListMeasurements).toHaveBeenCalledTimes(2);
     expect(mockListGoals).toHaveBeenCalledTimes(2);
+  });
+
+  it('updates and removes one cached record without another request', async () => {
+    mockListGoals.mockResolvedValue([{ goalId: 'goal-a', goalType: 'maintain' }]);
+    await getHealthRecords();
+
+    upsertHealthRecord('goals', { goalId: 'goal-a', goalType: 'weight_loss' } as never);
+    upsertHealthRecord('goals', { goalId: 'goal-b', goalType: 'health_improve' } as never);
+    removeHealthRecord('goals', 'goal-a');
+
+    expect(getCachedHealthRecords()?.goals).toEqual([
+      { goalId: 'goal-b', goalType: 'health_improve' },
+    ]);
+    expect(mockListGoals).toHaveBeenCalledTimes(1);
   });
 });

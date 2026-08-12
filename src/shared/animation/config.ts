@@ -22,11 +22,11 @@ export const durations = {
   /** Toast 退出 */
   toastOut: 160,
   /** Tab 栏滑出/滑入 */
-  tabBarSlide: 220,
+  tabBarSlide: 140,
   /** Tab 选中胶囊；使用短时间过渡，不使用回弹。 */
   tabIndicator: 160,
   /** 头部折叠 */
-  headerCollapse: 180,
+  headerCollapse: 120,
   /** 按压透明度过渡 */
   pressFade: 70,
   /** 识别页扫描线单程时长 */

@@ -67,7 +67,7 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context) {
     fillPaint.color = if (navigation) Color.argb(224, 255, 255, 255) else Color.argb(191, 255, 255, 255)
     borderPaint.color = if (navigation) Color.argb(122, 148, 163, 184) else Color.argb(224, 255, 255, 255)
     borderPaint.strokeWidth = max(1f, density)
-    elevation = if (elevated || navigation) dp(2.0).toFloat() else 0f
+    elevation = if (elevated) dp(1.0) else 0f
     translationZ = elevation
   }
 

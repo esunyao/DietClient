@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, Sparkles, Utensils } from 'lucide-react-native';
 import Animated, {
   Easing,
+  interpolate,
   ReduceMotion,
   runOnJS,
   useAnimatedScrollHandler,
@@ -35,12 +36,13 @@ import { GlassSurface } from './GlassSurface';
 import { PerfRegion } from '../perf/PerfRegion';
 import { useScrollChrome } from '../scrollChrome/ScrollChromeProvider';
 
-const HEADER_COLLAPSE_OFFSET = 56;
-const HEADER_EXPAND_OFFSET = 24;
+const HEADER_COLLAPSE_OFFSET = 36;
+const HEADER_EXPAND_OFFSET = 12;
 const HEADER_SAFE_GAP = 4;
 const HEADER_HEIGHT = 44;
-const COMPACT_HEADER_WIDTH = 136;
-const COMPACT_HEADER_HEIGHT = 34;
+const COMPACT_HEADER_MIN_WIDTH = 86;
+const COMPACT_HEADER_MAX_WIDTH = 158;
+const COMPACT_HEADER_HEIGHT = 26;
 
 /** 底部 tab 显隐过渡（UI 线程）。 */
 const TabSlideTiming = {
@@ -198,18 +200,20 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   // 折叠进度（0 展开 → 1 折叠），由 AppScreen 的 UI 线程滚动驱动。
   const c = useDerivedValue(() => collapse?.progress.value ?? 0);
   const isCollapsed = collapse?.collapsed ?? false;
+  const compactWidth = Math.min(COMPACT_HEADER_MAX_WIDTH, Math.max(COMPACT_HEADER_MIN_WIDTH, title.length * 15 + 28));
+  const compactFontSize = title.length > 7 ? 10.5 : title.length > 5 ? 11.5 : 13;
 
   // 展开态标题：折叠时上移淡出。
   const expandedStyle = useAnimatedStyle(() => ({
-    opacity: 1 - c.value,
+    opacity: interpolate(c.value, [0, 0.5, 1], [1, 0, 0]),
     transform: [{ translateY: -6 * c.value }],
   }));
   // 折叠态窄岛标题：展开时上移淡出。
   const compactStyle = useAnimatedStyle(() => ({
-    opacity: c.value,
+    opacity: interpolate(c.value, [0, 0.35, 1], [0, 0, 1]),
     transform: [{ translateY: 6 * (1 - c.value) }],
   }));
-  const sideStyle = useAnimatedStyle(() => ({ opacity: c.value }));
+  const sideStyle = useAnimatedStyle(() => ({ opacity: interpolate(c.value, [0, 0.35, 1], [0, 0, 1]) }));
 
   return (
     <PerfRegion name="ScreenHeader">
@@ -228,9 +232,9 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
             {action ? <View style={styles.headerAction}>{action}</View> : null}
           </GlassSurface>
         </Animated.View>
-        <Animated.View pointerEvents="none" style={[styles.headerCompact, compactStyle]}>
+        <Animated.View pointerEvents="none" style={[styles.headerCompact, { width: compactWidth }, compactStyle]}>
           <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} variant="navigation" style={styles.compactIsland}>
-            <Text numberOfLines={1} style={styles.compactTitle}>{title}</Text>
+            <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.compactTitle, { fontSize: compactFontSize }]}>{title}</Text>
           </GlassSurface>
         </Animated.View>
         {onBack ? (
@@ -447,18 +451,18 @@ const styles = StyleSheet.create({
   },
   headerShell: { height: HEADER_HEIGHT, justifyContent: 'center' },
   headerExpanded: { height: HEADER_HEIGHT, width: '100%' },
-  headerCompact: { position: 'absolute', top: 0, alignSelf: 'center', width: COMPACT_HEADER_WIDTH, height: COMPACT_HEADER_HEIGHT },
-  header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, boxShadow: shadows.soft },
-  compactIsland: { height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, boxShadow: shadows.soft },
+  headerCompact: { position: 'absolute', top: 0, alignSelf: 'center', height: COMPACT_HEADER_HEIGHT },
+  header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  compactIsland: { height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.sm },
   backButton: { position: 'absolute', left: 6, top: (HEADER_HEIGHT - 32) / 2, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.6)' },
   headerText: { alignItems: 'center', maxWidth: '70%' },
   headerTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
   headerSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 9, marginTop: 1 },
   headerAction: { position: 'absolute', right: 6, top: (HEADER_HEIGHT - COMPACT_HEADER_HEIGHT) / 2 },
-  compactTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
+  compactTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 13, fontWeight: '800', letterSpacing: -0.2 },
   headerSideLeft: { position: 'absolute', left: 0, top: 0 },
   headerSideRight: { position: 'absolute', right: 0, top: 0 },
-  headerSideButton: { width: COMPACT_HEADER_HEIGHT, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', boxShadow: shadows.soft },
+  headerSideButton: { width: COMPACT_HEADER_HEIGHT, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center' },
   sideButtonPressable: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: COMPACT_HEADER_HEIGHT / 2 },
   button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderRadius: radii.md, backgroundColor: colors.blue, paddingHorizontal: spacing.lg },
   buttonSecondary: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#D5E9FC' },

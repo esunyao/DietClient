@@ -79,6 +79,13 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
   const activeIndex = state.index;
   const chrome = useScrollChrome();
 
+  const activeRoute = state.routes[activeIndex];
+  const nestedState = activeRoute?.state as { index?: number; routes?: Array<{ name: string }> } | undefined;
+  const nestedRoute = nestedState?.routes?.[nestedState.index ?? 0]?.name;
+  const tabRootRoute: Partial<Record<string, string>> = { HomeTab: 'HomeMain', ProfileTab: 'ProfileMain' };
+  // 嵌套 Stack 只在其根页渲染全局底栏，所有详情/编辑页不保留悬浮 Tab。
+  const hideForChildScreen = Boolean(nestedRoute && tabRootRoute[activeRoute?.name ?? ''] !== nestedRoute);
+
   // 选中胶囊：像素级 left/width（UI 线程，一次性过渡）。
   const barWidth = useSharedValue(0);
   const indicatorLeft = useSharedValue(0);
@@ -124,6 +131,8 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
     if (route) navigation.emit({ type: 'tabLongPress', target: route.key });
   }, [navigation, state.routes]);
 
+  if (hideForChildScreen) return null;
+
   return (
     <PerfRegion name="FrostedTabBar">
       <Animated.View style={[styles.barWrap, { bottom: Math.max(insets.bottom, 6) }, wrapStyle]}>
@@ -152,11 +161,7 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
 
 const styles = StyleSheet.create({
   barWrap: { position: 'absolute', left: 12, right: 12, zIndex: 120 },
-  bar: {
-    height: BAR_HEIGHT,
-    borderRadius: 20,
-    boxShadow: '0 2px 8px rgba(100, 116, 139, 0.10)',
-  },
+  bar: { height: BAR_HEIGHT, borderRadius: 20 },
   content: { flex: 1, flexDirection: 'row', alignItems: 'stretch' },
   /** 选中胶囊：绝对定位，按当前 tab 直接切换。 */
   indicator: {

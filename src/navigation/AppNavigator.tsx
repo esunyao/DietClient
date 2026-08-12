@@ -49,8 +49,7 @@ const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
-// 右滑进入（微信式）：位移转场不改变 Screen alpha，不会在转场期间暴露白色 window 背景
-// （fade 纯 alpha 转场会导致"白色雾蒙版"）；由 react-native-screens 原生 Fragment 转场驱动，不占 JS 线程。
+// 认证与首页保留右滑进入；个人页二级界面单独使用原生 fade，减少大卡片横移合成。
 const stackAnimation = 'slide_from_right';
 
 /**
@@ -105,7 +104,7 @@ function ProfileNavigator() {
   return (
     <ProfileStack.Navigator
       initialRouteName={profile?.profileCompletedAt ? 'ProfileMain' : 'EditProfile'}
-      screenOptions={{ headerShown: false, animation: stackAnimation }}
+      screenOptions={{ headerShown: false, animation: 'fade' }}
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} initialParams={{ onboarding: !profile?.profileCompletedAt }} />

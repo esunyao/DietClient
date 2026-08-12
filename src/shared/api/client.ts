@@ -4,6 +4,7 @@ import { refreshAccessToken } from '../../features/auth/api/authApi';
 import { API_BASE_URL } from '../config/appConfig';
 import type { ApiEnvelope, OidcTokenSet } from '../types/api';
 import { tokenStorage } from './tokenStorage';
+import { parseApiJson } from './losslessJson';
 
 type RetriableRequest = AxiosRequestConfig & { _hasRetried?: boolean };
 
@@ -52,12 +53,14 @@ const rawClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 12_000,
   headers: { 'Content-Type': 'application/json' },
+  transformResponse: [parseApiJson],
 });
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 12_000,
   headers: { 'Content-Type': 'application/json' },
+  transformResponse: [parseApiJson],
 });
 
 let refreshInFlight: Promise<OidcTokenSet> | null = null;

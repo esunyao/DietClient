@@ -25,7 +25,6 @@ import {
 import {
   Platform,
   Pressable,
-  InteractionManager,
   StyleSheet,
   Text,
   TextInput,
@@ -59,8 +58,10 @@ import {
   Tag,
   inputStyle,
 } from '../../../shared/components/ui';
+import { DateWheelField } from '../../../shared/components/DateWheelField';
 import { useToast } from '../../../shared/components/Toast';
 import { useScrollChrome } from '../../../shared/scrollChrome/ScrollChromeProvider';
+import { scheduleIdleTask } from '../../../shared/perf/scheduleIdleTask';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type {
   ActivityLevel,
@@ -359,10 +360,10 @@ export function ProfileScreen({ navigation }: ProfileProps) {
   }, [startTransition]);
 
   useFocusEffect(useCallback(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
+    const cancel = scheduleIdleTask(() => {
       loadHealthSummary().catch(() => undefined);
     });
-    return () => task.cancel();
+    return cancel;
   }, [loadHealthSummary]));
 
   const refresh = async () => {
@@ -395,7 +396,6 @@ export function ProfileScreen({ navigation }: ProfileProps) {
         <ScreenHeader
           title="我的"
           subtitle="你的健康档案"
-          onBack={() => navigation.getParent()?.navigate('HomeTab' as never)}
           action={
             <Pressable
               accessibilityLabel="刷新资料"
@@ -557,6 +557,7 @@ function ProfileField({
   label,
   placeholder,
   keyboardType = 'default',
+  date = false,
   rules,
 }: {
   control: Control<EditForm>;
@@ -564,6 +565,7 @@ function ProfileField({
   label: string;
   placeholder: string;
   keyboardType?: 'default' | 'numeric';
+  date?: boolean;
   rules?: RegisterOptions<EditForm, keyof EditForm>;
 }) {
   return (
@@ -574,7 +576,17 @@ function ProfileField({
       render={({
         field: { onBlur, onChange, value },
         fieldState: { error },
-      }) => (
+      }) => date ? (
+        <DateWheelField
+          label={label}
+          optional
+          value={value}
+          onChange={nextValue => {
+            onChange(nextValue);
+            onBlur();
+          }}
+        />
+      ) : (
         <View style={styles.formField}>
           <Text style={styles.formLabel}>{label}</Text>
           <TextInput
@@ -718,6 +730,7 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
             name="birthDate"
             label="出生日期"
             placeholder="YYYY-MM-DD"
+            date
             rules={{
               pattern: {
                 value: /^\d{4}-\d{2}-\d{2}$/,
@@ -781,11 +794,11 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
 
 const styles = StyleSheet.create({
   refreshButton: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
+    borderRadius: 15,
     backgroundColor: 'rgba(255,255,255,0.62)',
   },
   identityCard: {

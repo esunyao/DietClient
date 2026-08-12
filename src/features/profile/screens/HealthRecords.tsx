@@ -1,14 +1,18 @@
-import React, { memo, useCallback, useMemo, useState, useTransition } from 'react';
-import { Alert, FlatList, InteractionManager, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { memo, useCallback, useMemo, useState } from 'react';
+import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ChevronRight, Ruler, Scale, ShieldAlert, Stethoscope, Target, Trash2, Utensils } from 'lucide-react-native';
+import Slider from '@react-native-community/slider';
+import { ChevronRight, Ruler, Scale, ShieldAlert, Star, Stethoscope, Target, Trash2, Utensils } from 'lucide-react-native';
 
 import type { ProfileStackParamList } from '../../../navigation/types';
 import { getErrorMessage } from '../../../shared/api/client';
 import { PressableScale } from '../../../shared/animation/PressableScale';
 import { AppButton, AppScreen, EmptyState, GlassCard, ScreenHeader, SectionTitle, inputStyle } from '../../../shared/components/ui';
+import { DateWheelField } from '../../../shared/components/DateWheelField';
+import { WeightWheelField } from '../../../shared/components/WeightWheelField';
 import { PerfRegion } from '../../../shared/perf/PerfRegion';
+import { scheduleIdleTask } from '../../../shared/perf/scheduleIdleTask';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { Allergy, BodyMeasurement, DietaryRestriction, HealthGoal, MedicalCondition } from '../../../shared/types/api';
 import { useToast } from '../../../shared/components/Toast';
@@ -16,7 +20,8 @@ import { healthApi } from '../api/healthApi';
 import {
   getCachedHealthRecords,
   getHealthRecords,
-  invalidateHealthRecords,
+  removeHealthRecord,
+  upsertHealthRecord,
 } from '../services/healthRecordsCache';
 
 type HealthProps = NativeStackScreenProps<ProfileStackParamList, 'HealthRecords'>;
@@ -73,10 +78,10 @@ export function HealthRecordsScreen({ navigation, route }: HealthProps) {
   }, [show]);
 
   useFocusEffect(useCallback(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
-      load().catch(() => undefined);
+    const cancel = scheduleIdleTask(() => {
+      load(true).catch(() => undefined);
     });
-    return () => task.cancel();
+    return cancel;
   }, [load]));
   const open = (kind: Kind) => navigation.navigate('HealthRecordForm', { kind });
   return <AppScreen header={<ScreenHeader title="健康档案" subtitle="集中管理你的健康资料" onBack={() => navigation.goBack()} />}>
@@ -101,12 +106,47 @@ export function HealthRecordsScreen({ navigation, route }: HealthProps) {
   </AppScreen>;
 }
 
-const RecordRow = memo(function ({ title, detail, onPress }: { title: string; detail: string; onPress: () => void }) {
-  return <PressableScale accessibilityRole="button" onPress={onPress} style={styles.recordRow}><View style={styles.recordRowCopy}><Text style={styles.rowTitle}>{title}</Text><Text numberOfLines={1} style={styles.rowDetail}>{detail}</Text></View><ChevronRight color={colors.muted} size={17} /></PressableScale>;
+type RecordBadge = { label: string; tone?: 'blue' | 'amber' | 'red' | 'green' | 'plain' };
+
+const severityLabel = { mild: '轻微', moderate: '中等', severe: '严重', life_threatening: '危及生命' };
+const diagnosisLabel = { self_reported: '自行记录', suspected: '疑似', confirmed: '已确认' };
+const conditionLabel = { active: '进行中', remission: '缓解', resolved: '已解决' };
+const restrictionLabel = { medical: '医疗', religious: '宗教', lifestyle: '生活方式', preference: '个人偏好' };
+const goalLabel = { weight_loss: '减重', muscle_gain: '增肌', maintain: '保持', health_improve: '改善健康' };
+
+function recordPresentation(kind: Kind, item: BodyMeasurement | HealthGoal | Allergy | MedicalCondition | DietaryRestriction): { title: string; detail: string; badges: RecordBadge[] } {
+  if (kind === 'measurement') {
+    const record = item as BodyMeasurement;
+    return { title: '身体测量', detail: `测量于 ${formatDate(record.measuredAt)}`, badges: [{ label: record.weightKg == null ? '未填体重' : `${record.weightKg} kg`, tone: 'blue' }, ...(record.bodyFatPercentage == null ? [] : [{ label: `${record.bodyFatPercentage}% 体脂`, tone: 'plain' as const }])] };
+  }
+  if (kind === 'goal') {
+    const record = item as HealthGoal;
+    const status = record.status === 'active' ? '进行中' : record.status === 'planned' ? '计划中' : record.status === 'achieved' ? '已完成' : '已取消';
+    return { title: goalLabel[record.goalType], detail: record.targetDate ? `目标日期 ${formatDate(record.targetDate)}` : '可随时补充目标期限', badges: [{ label: status, tone: record.status === 'achieved' ? 'green' : record.status === 'cancelled' ? 'red' : record.status === 'planned' ? 'plain' : 'blue' }, ...(record.targetWeightKg == null ? [] : [{ label: `${record.targetWeightKg} kg`, tone: 'plain' as const }])] };
+  }
+  if (kind === 'allergy') {
+    const record = item as Allergy;
+    const severity = record.severity ?? 'mild';
+    return { title: record.allergenName, detail: record.recordedOn ? `记录于 ${formatDate(record.recordedOn)}` : '尚未填写记录日期', badges: [{ label: severityLabel[severity], tone: severity === 'life_threatening' || severity === 'severe' ? 'red' : severity === 'moderate' ? 'amber' : 'blue' }, { label: diagnosisLabel[record.diagnosisStatus], tone: 'plain' }] };
+  }
+  if (kind === 'condition') {
+    const record = item as MedicalCondition;
+    return { title: record.conditionName, detail: record.diagnosedOn ? `诊断于 ${formatDate(record.diagnosedOn)}` : '尚未填写诊断日期', badges: [{ label: conditionLabel[record.status], tone: record.status === 'resolved' ? 'green' : record.status === 'active' ? 'red' : 'amber' }] };
+  }
+  const record = item as DietaryRestriction;
+  return { title: record.restrictionName, detail: record.startsOn ? `生效于 ${formatDate(record.startsOn)}` : '尚未填写生效日期', badges: [{ label: restrictionLabel[record.category], tone: 'plain' }, { label: record.active ? '生效中' : '已结束', tone: record.active ? 'green' : 'plain' }] };
+}
+
+const RecordRow = memo(function ({ title, detail, badges, onPress }: { title: string; detail: string; badges: RecordBadge[]; onPress: () => void }) {
+  return <PressableScale accessibilityRole="button" onPress={onPress} style={styles.recordRow}><View style={styles.recordRowCopy}><Text numberOfLines={1} style={styles.rowTitle}>{title}</Text><Text numberOfLines={1} style={styles.rowDetail}>{detail}</Text></View><View style={styles.recordBadges}>{badges.slice(0, 2).map(badge => <View key={badge.label} style={[styles.recordBadge, badge.tone === 'amber' && styles.recordBadgeAmber, badge.tone === 'red' && styles.recordBadgeRed, badge.tone === 'green' && styles.recordBadgeGreen, badge.tone === 'plain' && styles.recordBadgePlain]}><Text numberOfLines={1} style={[styles.recordBadgeText, badge.tone === 'amber' && styles.recordBadgeAmberText, badge.tone === 'red' && styles.recordBadgeRedText, badge.tone === 'green' && styles.recordBadgeGreenText, badge.tone === 'plain' && styles.recordBadgePlainText]}>{badge.label}</Text></View>)}</View><ChevronRight color={colors.muted} size={17} /></PressableScale>;
 });
 
 function Field({ label, value, onChange, placeholder, numeric = false, multiline = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; numeric?: boolean; multiline?: boolean }) {
   return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text><TextInput accessibilityLabel={label} keyboardType={numeric ? 'decimal-pad' : 'default'} multiline={multiline} onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#94A3B8" style={[inputStyle, multiline && styles.multiline]} value={value} /></View>;
+}
+
+function DateField({ label, value, onChange, mode = 'date', optional = false }: { label: string; value: string; onChange: (value: string) => void; mode?: 'date' | 'datetime'; optional?: boolean }) {
+  return <DateWheelField label={label} mode={mode} optional={optional} value={value} onChange={onChange} />;
 }
 
 function Choices({ label, value, values, onChange }: { label: string; value: string; values: Array<[string, string]>; onChange: (value: string) => void }) {
@@ -116,6 +156,51 @@ function Choices({ label, value, values, onChange }: { label: string; value: str
 function asNumber(value: string): number | undefined {
   const number = Number(value);
   return value.trim() && Number.isFinite(number) ? number : undefined;
+}
+
+function isWeight(value: string): boolean {
+  const number = Number(value);
+  return /^\d{1,3}(?:\.\d)?$/.test(value) && number >= 10 && number <= 500;
+}
+
+function isPercentage(value: string): boolean {
+  const number = Number(value);
+  return /^\d{1,3}(?:\.\d)?$/.test(value) && number >= 0 && number <= 100;
+}
+
+function BodyFatField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const parsed = asNumber(value);
+  const sliderValue = parsed == null || parsed < 0 || parsed > 100 ? 0 : parsed;
+  const changeText = (nextValue: string) => {
+    if (nextValue === '' || (/^\d{0,3}(?:\.\d?)?$/.test(nextValue) && Number(nextValue) <= 100)) {
+      onChange(nextValue);
+    }
+  };
+  return <View style={styles.field}>
+    <View style={styles.sliderLabelRow}><Text style={styles.fieldLabel}>目标体脂率 (%)</Text><Text style={styles.sliderValue}>{value ? `${sliderValue.toFixed(1)}%` : '未设置'}</Text></View>
+    <Slider accessibilityLabel="目标体脂率滑块" maximumTrackTintColor="#D9E4EF" maximumValue={100} minimumTrackTintColor={colors.blue} minimumValue={0} step={0.1} thumbTintColor={colors.blue} value={sliderValue} onValueChange={nextValue => onChange(nextValue.toFixed(1))} />
+    <TextInput accessibilityLabel="精确输入目标体脂率" keyboardType="decimal-pad" onChangeText={changeText} placeholder="输入 0.0–100.0" placeholderTextColor="#94A3B8" style={inputStyle} value={value} />
+    <Text style={styles.fieldHint}>滑动选择或输入数值，精确到 0.1%。</Text>
+  </View>;
+}
+
+function PriorityRating({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const score = Math.max(1, Math.min(10, Number(value) || 1));
+  return <View style={styles.field}>
+    <View style={styles.sliderLabelRow}><Text style={styles.fieldLabel}>优先级</Text><Text style={styles.sliderValue}>{score}/10 分</Text></View>
+    <View accessibilityLabel={`当前优先级 ${score} 分`} style={styles.stars}>
+      {Array.from({ length: 5 }, (_, index) => {
+        const filledPercent = Math.max(0, Math.min(100, (score - index * 2) * 50));
+        return <View key={index} style={styles.starHitArea}>
+          <Star color="#F0A000" fill="transparent" size={31} strokeWidth={1.8} />
+          {filledPercent > 0 ? <View pointerEvents="none" style={[styles.starFill, { width: `${filledPercent}%` }]}><Star color="#F0A000" fill="#FFD166" size={31} strokeWidth={1.8} /></View> : null}
+          <Pressable accessibilityLabel={`优先级 ${index * 2 + 1} 分`} accessibilityRole="button" onPress={() => onChange(String(index * 2 + 1))} style={styles.starHalfLeft} />
+          <Pressable accessibilityLabel={`优先级 ${index * 2 + 2} 分`} accessibilityRole="button" onPress={() => onChange(String(index * 2 + 2))} style={styles.starHalfRight} />
+        </View>;
+      })}
+    </View>
+    <Text style={styles.fieldHint}>轻点星星的左半或右半，选择 1–10 分。</Text>
+  </View>;
 }
 
 function initialValues(kind: Kind, record?: BodyMeasurement | HealthGoal | Allergy | MedicalCondition | DietaryRestriction): Record<string, string> {
@@ -133,47 +218,59 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
   const [records, setRecords] = useState<Array<BodyMeasurement | HealthGoal | Allergy | MedicalCondition | DietaryRestriction>>([]);
   const [values, setValues] = useState<Record<string, string>>(initialValues(kind));
   const [saving, setSaving] = useState(false);
+  const [recordState, setRecordState] = useState<'loading' | 'ready' | 'missing' | 'error'>(id ? 'loading' : 'ready');
   const idField = kind === 'measurement' ? 'measurementId' : kind === 'goal' ? 'goalId' : kind === 'allergy' ? 'allergyId' : kind === 'condition' ? 'conditionId' : 'restrictionId';
   const current = useMemo(() => records.find(item => String((item as unknown as Record<string, unknown>)[idField]) === id), [id, idField, records]);
   const set = (key: string) => (value: string) => setValues(previous => ({ ...previous, [key]: value }));
-  // 列表首屏渲染标记为低优先级（transition），数据到达时若用户已在操作则让位；
-  // setValues（表单回填）保持同步，避免编辑页字段延迟显示。
-  const [, startTransition] = useTransition();
-
   const loadRecords = useCallback(() => {
     const list = kind === 'measurement' ? healthApi.bodyMeasurements.list() : kind === 'goal' ? healthApi.healthGoals.list() : kind === 'allergy' ? healthApi.allergies.list() : kind === 'condition' ? healthApi.medicalConditions.list() : healthApi.dietaryRestrictions.list();
     list.then(result => {
-      startTransition(() => {
-        setRecords(result);
-      });
+      // 编辑记录的 code 必须立即可用；这里的列表最多是单一类别，直接提交状态比延迟
+      // transition 更可靠，避免刚进入编辑页就保存时丢失原有自定义 code。
+      setRecords(result);
       const found = result.find(item => String((item as unknown as Record<string, unknown>)[idField]) === id);
+      if (id && !found) {
+        setRecordState('missing');
+        show('该记录已不存在，已返回列表', 'error');
+        navigation.goBack();
+        return;
+      }
       if (found) setValues(initialValues(kind, found));
-    }).catch(error => show(getErrorMessage(error), 'error'));
-  }, [id, idField, kind, show, startTransition]);
+      setRecordState('ready');
+    }).catch(error => {
+      if (id) setRecordState('error');
+      show(getErrorMessage(error), 'error');
+    });
+  }, [id, idField, kind, navigation, show]);
 
   // 与 HealthRecordsScreen 一致：等导航转场动画结束再发请求，避免与渲染竞争 JS 线程。
   useFocusEffect(useCallback(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
+    const cancel = scheduleIdleTask(() => {
       loadRecords();
     });
-    return () => task.cancel();
+    return cancel;
   }, [loadRecords]));
 
   const save = async () => {
+    if (id && recordState !== 'ready') {
+      show(recordState === 'missing' ? '该记录已不存在' : '记录仍在加载，请稍后再试', 'error');
+      return;
+    }
     if ((kind === 'allergy' && !values.allergenName.trim()) || (kind === 'condition' && !values.conditionName.trim()) || (kind === 'restriction' && !values.restrictionName.trim())) { show('请填写记录名称', 'error'); return; }
     if (kind === 'measurement' && !['heightCm', 'weightKg', 'bodyFatPercentage', 'waistCm', 'systolicBp', 'diastolicBp', 'restingHeartRate'].some(key => values[key].trim())) { show('请至少填写一个身体指标', 'error'); return; }
+    if (kind === 'goal' && values.targetWeightKg && !isWeight(values.targetWeightKg)) { show('目标体重应为 10.0–500.0 kg，最多一位小数', 'error'); return; }
+    if (kind === 'goal' && values.targetBodyFatPercentage && !isPercentage(values.targetBodyFatPercentage)) { show('目标体脂率应为 0.0–100.0%，最多一位小数', 'error'); return; }
     setSaving(true);
     try {
-      if (kind === 'measurement') { const payload = { measuredAt: values.measuredAt || undefined, heightCm: asNumber(values.heightCm), weightKg: asNumber(values.weightKg), bodyFatPercentage: asNumber(values.bodyFatPercentage), waistCm: asNumber(values.waistCm), systolicBp: asNumber(values.systolicBp), diastolicBp: asNumber(values.diastolicBp), restingHeartRate: asNumber(values.restingHeartRate), source: 'manual' as const, notes: values.notes.trim() || undefined }; id ? await healthApi.bodyMeasurements.update(id, payload) : await healthApi.bodyMeasurements.create(payload); }
-      if (kind === 'goal') { const payload = { goalType: values.goalType as HealthGoal['goalType'], targetWeightKg: asNumber(values.targetWeightKg), targetBodyFatPercentage: asNumber(values.targetBodyFatPercentage), priority: asNumber(values.priority), status: values.status as HealthGoal['status'], startedOn: values.startedOn || undefined, targetDate: values.targetDate || undefined, notes: values.notes.trim() || undefined }; id ? await healthApi.healthGoals.update(id, payload) : await healthApi.healthGoals.create(payload); }
-      if (kind === 'allergy') { const payload = { allergenCode: current && 'allergenCode' in current ? current.allergenCode : customCode(), allergenName: values.allergenName.trim(), severity: values.severity as NonNullable<Allergy['severity']>, diagnosisStatus: values.diagnosisStatus as Allergy['diagnosisStatus'], recordedOn: values.recordedOn || undefined, active: true, notes: values.notes.trim() || undefined }; id ? await healthApi.allergies.update(id, payload) : await healthApi.allergies.create(payload); }
-      if (kind === 'condition') { const payload = { conditionCode: current && 'conditionCode' in current ? current.conditionCode : customCode(), conditionName: values.conditionName.trim(), status: values.status as MedicalCondition['status'], diagnosedOn: values.diagnosedOn || undefined, resolvedOn: values.resolvedOn || undefined, source: 'self_reported' as const, notes: values.notes.trim() || undefined }; id ? await healthApi.medicalConditions.update(id, payload) : await healthApi.medicalConditions.create(payload); }
-      if (kind === 'restriction') { const payload = { restrictionCode: current && 'restrictionCode' in current ? current.restrictionCode : customCode(), restrictionName: values.restrictionName.trim(), category: values.category as DietaryRestriction['category'], source: 'self_reported' as const, active: true, startsOn: values.startsOn || undefined, endsOn: values.endsOn || undefined, notes: values.notes.trim() || undefined }; id ? await healthApi.dietaryRestrictions.update(id, payload) : await healthApi.dietaryRestrictions.create(payload); }
-      invalidateHealthRecords();
+      if (kind === 'measurement') { const payload = { measuredAt: values.measuredAt || undefined, heightCm: asNumber(values.heightCm), weightKg: asNumber(values.weightKg), bodyFatPercentage: asNumber(values.bodyFatPercentage), waistCm: asNumber(values.waistCm), systolicBp: asNumber(values.systolicBp), diastolicBp: asNumber(values.diastolicBp), restingHeartRate: asNumber(values.restingHeartRate), source: 'manual' as const, notes: values.notes.trim() || undefined }; const saved = id ? await healthApi.bodyMeasurements.update(id, payload) : await healthApi.bodyMeasurements.create(payload); upsertHealthRecord('measurements', saved); }
+      if (kind === 'goal') { const payload = { goalType: values.goalType as HealthGoal['goalType'], targetWeightKg: asNumber(values.targetWeightKg), targetBodyFatPercentage: asNumber(values.targetBodyFatPercentage), priority: asNumber(values.priority), status: values.status as HealthGoal['status'], startedOn: values.startedOn || undefined, targetDate: values.targetDate || undefined, notes: values.notes.trim() || undefined }; const saved = id ? await healthApi.healthGoals.update(id, payload) : await healthApi.healthGoals.create(payload); upsertHealthRecord('goals', saved); }
+      if (kind === 'allergy') { const payload = { allergenCode: current && 'allergenCode' in current ? current.allergenCode : customCode(), allergenName: values.allergenName.trim(), severity: values.severity as NonNullable<Allergy['severity']>, diagnosisStatus: values.diagnosisStatus as Allergy['diagnosisStatus'], recordedOn: values.recordedOn || undefined, active: true, notes: values.notes.trim() || undefined }; const saved = id ? await healthApi.allergies.update(id, payload) : await healthApi.allergies.create(payload); upsertHealthRecord('allergies', saved); }
+      if (kind === 'condition') { const payload = { conditionCode: current && 'conditionCode' in current ? current.conditionCode : customCode(), conditionName: values.conditionName.trim(), status: values.status as MedicalCondition['status'], diagnosedOn: values.diagnosedOn || undefined, resolvedOn: values.resolvedOn || undefined, source: 'self_reported' as const, notes: values.notes.trim() || undefined }; const saved = id ? await healthApi.medicalConditions.update(id, payload) : await healthApi.medicalConditions.create(payload); upsertHealthRecord('conditions', saved); }
+      if (kind === 'restriction') { const payload = { restrictionCode: current && 'restrictionCode' in current ? current.restrictionCode : customCode(), restrictionName: values.restrictionName.trim(), category: values.category as DietaryRestriction['category'], source: 'self_reported' as const, active: true, startsOn: values.startsOn || undefined, endsOn: values.endsOn || undefined, notes: values.notes.trim() || undefined }; const saved = id ? await healthApi.dietaryRestrictions.update(id, payload) : await healthApi.dietaryRestrictions.create(payload); upsertHealthRecord('restrictions', saved); }
       show(`${kindTitle[kind]}已保存`, 'success'); navigation.goBack();
     } catch (error) { show(getErrorMessage(error), 'error'); } finally { setSaving(false); }
   };
-  const remove = () => Alert.alert('删除记录', '删除后无法恢复，确定继续吗？', [{ text: '取消', style: 'cancel' }, { text: '删除', style: 'destructive', onPress: async () => { try { if (kind === 'measurement') await healthApi.bodyMeasurements.remove(id!); if (kind === 'goal') await healthApi.healthGoals.remove(id!); if (kind === 'allergy') await healthApi.allergies.remove(id!); if (kind === 'condition') await healthApi.medicalConditions.remove(id!); if (kind === 'restriction') await healthApi.dietaryRestrictions.remove(id!); invalidateHealthRecords(); navigation.goBack(); } catch (error) { show(getErrorMessage(error), 'error'); } } }]);
+  const remove = () => Alert.alert('删除记录', '删除后无法恢复，确定继续吗？', [{ text: '取消', style: 'cancel' }, { text: '删除', style: 'destructive', onPress: async () => { try { if (kind === 'measurement') { await healthApi.bodyMeasurements.remove(id!); removeHealthRecord('measurements', id!); } if (kind === 'goal') { await healthApi.healthGoals.remove(id!); removeHealthRecord('goals', id!); } if (kind === 'allergy') { await healthApi.allergies.remove(id!); removeHealthRecord('allergies', id!); } if (kind === 'condition') { await healthApi.medicalConditions.remove(id!); removeHealthRecord('conditions', id!); } if (kind === 'restriction') { await healthApi.dietaryRestrictions.remove(id!); removeHealthRecord('restrictions', id!); } navigation.goBack(); } catch (error) { show(getErrorMessage(error), 'error'); } } }]);
   const openItem = useCallback((itemId: string) => {
     navigation.push('HealthRecordForm', { kind, id: itemId });
   }, [kind, navigation]);
@@ -182,14 +279,14 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
 
   const renderRecord = useCallback(({ item }: { item: typeof records[number] }) => {
     const itemId = String((item as unknown as Record<string, unknown>)[idField]);
-    const title = kind === 'measurement' ? `${(item as BodyMeasurement).weightKg ?? '—'} kg · ${formatDate((item as BodyMeasurement).measuredAt)}` : kind === 'goal' ? (item as HealthGoal).goalType : kind === 'allergy' ? (item as Allergy).allergenName : kind === 'condition' ? (item as MedicalCondition).conditionName : (item as DietaryRestriction).restrictionName;
+    const presentation = recordPresentation(kind, item);
     return (
       <PerfRegion name={`RecordItem:${itemId}`}>
-        <GlassCard elevated={false} variant="soft" style={styles.recordListCard}><RecordRow title={title} detail="点击查看或修改" onPress={() => openItem(itemId)} /></GlassCard>
+        <GlassCard elevated={false} variant="soft" style={styles.recordListCard}><RecordRow {...presentation} onPress={() => openItem(itemId)} /></GlassCard>
       </PerfRegion>
     );
   }, [idField, kind, openItem]);
-  const fields = kind === 'measurement' ? <><Field label="测量时间" value={values.measuredAt} onChange={set('measuredAt')} placeholder="ISO 日期时间" /><Field label="体重 (kg)" value={values.weightKg} onChange={set('weightKg')} numeric /><Field label="体脂率 (%)" value={values.bodyFatPercentage} onChange={set('bodyFatPercentage')} numeric /><Field label="腰围 (cm)" value={values.waistCm} onChange={set('waistCm')} numeric /><Field label="本次身高 (cm)" value={values.heightCm} onChange={set('heightCm')} numeric /><Field label="收缩压 (mmHg)" value={values.systolicBp} onChange={set('systolicBp')} numeric /><Field label="舒张压 (mmHg)" value={values.diastolicBp} onChange={set('diastolicBp')} numeric /><Field label="静息心率 (bpm)" value={values.restingHeartRate} onChange={set('restingHeartRate')} numeric /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'goal' ? <><Choices label="目标方向" value={values.goalType} onChange={set('goalType')} values={[["weight_loss", "减重"], ["muscle_gain", "增肌"], ["maintain", "保持"], ["health_improve", "改善健康"]]} /><Field label="目标体重 (kg)" value={values.targetWeightKg} onChange={set('targetWeightKg')} numeric /><Field label="目标体脂率 (%)" value={values.targetBodyFatPercentage} onChange={set('targetBodyFatPercentage')} numeric /><Field label="优先级 (1–10)" value={values.priority} onChange={set('priority')} numeric /><Field label="开始日期" value={values.startedOn} onChange={set('startedOn')} placeholder="YYYY-MM-DD" /><Field label="目标日期" value={values.targetDate} onChange={set('targetDate')} placeholder="YYYY-MM-DD（选填）" /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'allergy' ? <><Field label="过敏原名称" value={values.allergenName} onChange={set('allergenName')} placeholder="例如：花生" /><Choices label="严重程度" value={values.severity} onChange={set('severity')} values={[["mild", "轻微"], ["moderate", "中等"], ["severe", "严重"], ["life_threatening", "危及生命"]]} /><Choices label="确认状态" value={values.diagnosisStatus} onChange={set('diagnosisStatus')} values={[["self_reported", "自行记录"], ["suspected", "疑似"], ["confirmed", "已确认"]]} /><Field label="记录日期" value={values.recordedOn} onChange={set('recordedOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'condition' ? <><Field label="疾病名称" value={values.conditionName} onChange={set('conditionName')} /><Choices label="当前状态" value={values.status} onChange={set('status')} values={[["active", "进行中"], ["remission", "缓解"], ["resolved", "已解决"]]} /><Field label="诊断日期" value={values.diagnosedOn} onChange={set('diagnosedOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="结束日期" value={values.resolvedOn} onChange={set('resolvedOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : <><Field label="限制名称" value={values.restrictionName} onChange={set('restrictionName')} placeholder="例如：不吃牛肉" /><Choices label="限制类别" value={values.category} onChange={set('category')} values={[["medical", "医疗"], ["religious", "宗教"], ["lifestyle", "生活方式"], ["preference", "个人偏好"]]} /><Field label="生效日期" value={values.startsOn} onChange={set('startsOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="结束日期" value={values.endsOn} onChange={set('endsOn')} placeholder="YYYY-MM-DD（选填）" /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></>;
+  const fields = kind === 'measurement' ? <><DateField label="测量时间" mode="datetime" value={values.measuredAt} onChange={set('measuredAt')} /><Field label="体重 (kg)" value={values.weightKg} onChange={set('weightKg')} numeric /><Field label="体脂率 (%)" value={values.bodyFatPercentage} onChange={set('bodyFatPercentage')} numeric /><Field label="腰围 (cm)" value={values.waistCm} onChange={set('waistCm')} numeric /><Field label="本次身高 (cm)" value={values.heightCm} onChange={set('heightCm')} numeric /><Field label="收缩压 (mmHg)" value={values.systolicBp} onChange={set('systolicBp')} numeric /><Field label="舒张压 (mmHg)" value={values.diastolicBp} onChange={set('diastolicBp')} numeric /><Field label="静息心率 (bpm)" value={values.restingHeartRate} onChange={set('restingHeartRate')} numeric /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'goal' ? <><Choices label="目标方向" value={values.goalType} onChange={set('goalType')} values={[["weight_loss", "减重"], ["muscle_gain", "增肌"], ["maintain", "保持"], ["health_improve", "改善健康"]]} /><WeightWheelField label="目标体重 (kg)" value={values.targetWeightKg} onChange={set('targetWeightKg')} /><BodyFatField value={values.targetBodyFatPercentage} onChange={set('targetBodyFatPercentage')} /><PriorityRating value={values.priority} onChange={set('priority')} /><DateField label="开始日期" value={values.startedOn} onChange={set('startedOn')} /><DateField label="目标日期" optional value={values.targetDate} onChange={set('targetDate')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'allergy' ? <><Field label="过敏原名称" value={values.allergenName} onChange={set('allergenName')} placeholder="例如：花生" /><Choices label="严重程度" value={values.severity} onChange={set('severity')} values={[["mild", "轻微"], ["moderate", "中等"], ["severe", "严重"], ["life_threatening", "危及生命"]]} /><Choices label="确认状态" value={values.diagnosisStatus} onChange={set('diagnosisStatus')} values={[["self_reported", "自行记录"], ["suspected", "疑似"], ["confirmed", "已确认"]]} /><DateField label="记录日期" optional value={values.recordedOn} onChange={set('recordedOn')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'condition' ? <><Field label="疾病名称" value={values.conditionName} onChange={set('conditionName')} /><Choices label="当前状态" value={values.status} onChange={set('status')} values={[["active", "进行中"], ["remission", "缓解"], ["resolved", "已解决"]]} /><DateField label="诊断日期" optional value={values.diagnosedOn} onChange={set('diagnosedOn')} /><DateField label="结束日期" optional value={values.resolvedOn} onChange={set('resolvedOn')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : <><Field label="限制名称" value={values.restrictionName} onChange={set('restrictionName')} placeholder="例如：不吃牛肉" /><Choices label="限制类别" value={values.category} onChange={set('category')} values={[["medical", "医疗"], ["religious", "宗教"], ["lifestyle", "生活方式"], ["preference", "个人偏好"]]} /><DateField label="生效日期" optional value={values.startsOn} onChange={set('startsOn')} /><DateField label="结束日期" optional value={values.endsOn} onChange={set('endsOn')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></>;
   if (!id && !route.params.create) return <AppScreen scroll={false} contentStyle={styles.listScreen} header={<ScreenHeader title={kindTitle[kind]} subtitle="查看、修改或添加健康记录" onBack={() => navigation.goBack()} />}>
     <FlatList
       data={records}
@@ -207,10 +304,10 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
     />
   </AppScreen>;
   return <AppScreen header={<ScreenHeader title={id ? `编辑${kindTitle[kind]}` : `添加${kindTitle[kind]}`} subtitle={id ? '修改后会同步更新健康档案' : '按需填写，之后也可随时编辑'} onBack={() => navigation.goBack()} />}>
-    <GlassCard elevated={false} variant="soft" style={styles.formCard}>{fields}<AppButton label={id ? '保存修改' : `添加${kindTitle[kind]}`} loading={saving} onPress={save} />{id ? <Pressable accessibilityRole="button" onPress={remove} style={styles.delete}><Trash2 color={colors.red} size={17} /><Text style={styles.deleteText}>删除这条记录</Text></Pressable> : null}</GlassCard>
+    <GlassCard elevated={false} variant="soft" style={styles.formCard}>{fields}{id && recordState === 'loading' ? <Text style={styles.loading}>正在读取记录…</Text> : null}<AppButton disabled={Boolean(id && recordState !== 'ready')} label={id ? '保存修改' : `添加${kindTitle[kind]}`} loading={saving} onPress={save} />{id ? <Pressable accessibilityRole="button" onPress={remove} style={styles.delete}><Trash2 color={colors.red} size={17} /><Text style={styles.deleteText}>删除这条记录</Text></Pressable> : null}</GlassCard>
   </AppScreen>;
 }
 
 const styles = StyleSheet.create({
-  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, recordRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }, recordRowCopy: { flex: 1 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, formCard: { gap: spacing.md }, listScreen: { flex: 1 }, listContent: { paddingHorizontal: spacing.lg, paddingBottom: 104, gap: spacing.sm }, recordListCard: { paddingVertical: 0 }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
+  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, recordRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }, recordRowCopy: { flex: 1, minWidth: 0 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, recordBadges: { maxWidth: '45%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 5 }, recordBadge: { maxWidth: '100%', borderRadius: radii.pill, backgroundColor: colors.blueSoft, paddingHorizontal: 8, paddingVertical: 4 }, recordBadgeText: { color: colors.blue, fontFamily: fonts.body, fontSize: 10, fontWeight: '800' }, recordBadgeAmber: { backgroundColor: '#FFF4E4' }, recordBadgeAmberText: { color: '#B76B00' }, recordBadgeRed: { backgroundColor: '#FFF0F0' }, recordBadgeRedText: { color: colors.red }, recordBadgeGreen: { backgroundColor: '#EAF9EF' }, recordBadgeGreenText: { color: colors.green }, recordBadgePlain: { backgroundColor: '#F1F5F9' }, recordBadgePlainText: { color: colors.muted }, formCard: { gap: spacing.md }, listScreen: { flex: 1 }, listContent: { paddingHorizontal: spacing.lg, paddingBottom: 104, gap: spacing.sm }, recordListCard: { paddingVertical: 0 }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, sliderLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, sliderValue: { color: colors.blue, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' }, fieldHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 }, stars: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36 }, starHitArea: { width: 31, height: 34 }, starFill: { position: 'absolute', top: 0, left: 0, height: 34, overflow: 'hidden' }, starHalfLeft: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%' }, starHalfRight: { position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
 });
