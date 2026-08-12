@@ -21,7 +21,7 @@ import { AppButton, LogoMark, inputStyle } from '../../../shared/components/ui';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { AuthStackParamList } from '../../../navigation/types';
 import { useSessionStore } from '../store/sessionStore';
-import type { FlowChallenge, LoginPayload, RegisterPayload } from '../api/authApi';
+import { resolveRegistrationNickname, type FlowChallenge, type LoginPayload, type RegisterPayload } from '../api/authApi';
 
 type LoginProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 type RegisterProps = NativeStackScreenProps<AuthStackParamList, 'Register'>;
@@ -214,7 +214,7 @@ export function RegisterScreen({ navigation }: RegisterProps) {
         username: values.username,
         email: values.email,
         password: values.password,
-        displayName: values.displayName,
+        displayName: resolveRegistrationNickname(values.username, values.displayName),
         onChallenge: waitForChallenge,
       });
       Alert.alert('注册成功', '请先查收 Authentik 验证邮件，完成邮箱验证后再登录。', [{ text: '去登录', onPress: () => navigation.replace('Login', { registeredUsername: values.username }) }]);

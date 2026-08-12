@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Slider from '@react-native-community/slider';
@@ -9,6 +9,7 @@ import type { ProfileStackParamList } from '../../../navigation/types';
 import { getErrorMessage } from '../../../shared/api/client';
 import { PressableScale } from '../../../shared/animation/PressableScale';
 import { AppButton, AppScreen, EmptyState, GlassCard, ScreenHeader, SectionTitle, inputStyle } from '../../../shared/components/ui';
+import { DestructiveConfirmSheet } from '../../../shared/components/DestructiveConfirmSheet';
 import { DateWheelField } from '../../../shared/components/DateWheelField';
 import { WeightWheelField } from '../../../shared/components/WeightWheelField';
 import { PerfRegion } from '../../../shared/perf/PerfRegion';
@@ -17,6 +18,7 @@ import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { Allergy, BodyMeasurement, DietaryRestriction, HealthGoal, MedicalCondition } from '../../../shared/types/api';
 import { useToast } from '../../../shared/components/Toast';
 import { healthApi } from '../api/healthApi';
+import { getHealthRecordDeleteSummary } from './healthRecordDeleteSummary';
 import {
   getCachedHealthRecords,
   getHealthRecords,
@@ -218,6 +220,7 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
   const [records, setRecords] = useState<Array<BodyMeasurement | HealthGoal | Allergy | MedicalCondition | DietaryRestriction>>([]);
   const [values, setValues] = useState<Record<string, string>>(initialValues(kind));
   const [saving, setSaving] = useState(false);
+  const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
   const [recordState, setRecordState] = useState<'loading' | 'ready' | 'missing' | 'error'>(id ? 'loading' : 'ready');
   const idField = kind === 'measurement' ? 'measurementId' : kind === 'goal' ? 'goalId' : kind === 'allergy' ? 'allergyId' : kind === 'condition' ? 'conditionId' : 'restrictionId';
   const current = useMemo(() => records.find(item => String((item as unknown as Record<string, unknown>)[idField]) === id), [id, idField, records]);
@@ -270,7 +273,23 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
       show(`${kindTitle[kind]}已保存`, 'success'); navigation.goBack();
     } catch (error) { show(getErrorMessage(error), 'error'); } finally { setSaving(false); }
   };
-  const remove = () => Alert.alert('删除记录', '删除后无法恢复，确定继续吗？', [{ text: '取消', style: 'cancel' }, { text: '删除', style: 'destructive', onPress: async () => { try { if (kind === 'measurement') { await healthApi.bodyMeasurements.remove(id!); removeHealthRecord('measurements', id!); } if (kind === 'goal') { await healthApi.healthGoals.remove(id!); removeHealthRecord('goals', id!); } if (kind === 'allergy') { await healthApi.allergies.remove(id!); removeHealthRecord('allergies', id!); } if (kind === 'condition') { await healthApi.medicalConditions.remove(id!); removeHealthRecord('conditions', id!); } if (kind === 'restriction') { await healthApi.dietaryRestrictions.remove(id!); removeHealthRecord('restrictions', id!); } navigation.goBack(); } catch (error) { show(getErrorMessage(error), 'error'); } } }]);
+  const deleteSummary = current ? getHealthRecordDeleteSummary(kind, current) : null;
+  const remove = async () => {
+    if (!id || !current) return;
+    try {
+      if (kind === 'measurement') { await healthApi.bodyMeasurements.remove(id); removeHealthRecord('measurements', id); }
+      if (kind === 'goal') { await healthApi.healthGoals.remove(id); removeHealthRecord('goals', id); }
+      if (kind === 'allergy') { await healthApi.allergies.remove(id); removeHealthRecord('allergies', id); }
+      if (kind === 'condition') { await healthApi.medicalConditions.remove(id); removeHealthRecord('conditions', id); }
+      if (kind === 'restriction') { await healthApi.dietaryRestrictions.remove(id); removeHealthRecord('restrictions', id); }
+      setDeleteSheetVisible(false);
+      show(`${kindTitle[kind]}已删除`, 'success');
+      navigation.goBack();
+    } catch (error) {
+      show(getErrorMessage(error), 'error');
+      throw error;
+    }
+  };
   const openItem = useCallback((itemId: string) => {
     navigation.push('HealthRecordForm', { kind, id: itemId });
   }, [kind, navigation]);
@@ -304,10 +323,11 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
     />
   </AppScreen>;
   return <AppScreen header={<ScreenHeader title={id ? `编辑${kindTitle[kind]}` : `添加${kindTitle[kind]}`} subtitle={id ? '修改后会同步更新健康档案' : '按需填写，之后也可随时编辑'} onBack={() => navigation.goBack()} />}>
-    <GlassCard elevated={false} variant="soft" style={styles.formCard}>{fields}{id && recordState === 'loading' ? <Text style={styles.loading}>正在读取记录…</Text> : null}<AppButton disabled={Boolean(id && recordState !== 'ready')} label={id ? '保存修改' : `添加${kindTitle[kind]}`} loading={saving} onPress={save} />{id ? <Pressable accessibilityRole="button" onPress={remove} style={styles.delete}><Trash2 color={colors.red} size={17} /><Text style={styles.deleteText}>删除这条记录</Text></Pressable> : null}</GlassCard>
+    <GlassCard elevated={false} variant="soft" style={styles.formCard}>{fields}{id && recordState === 'loading' ? <Text style={styles.loading}>正在读取记录…</Text> : null}<AppButton disabled={Boolean(id && recordState !== 'ready')} label={id ? '保存修改' : `添加${kindTitle[kind]}`} loading={saving} onPress={save} />{id ? <Pressable accessibilityRole="button" disabled={recordState !== 'ready' || !current} onPress={() => setDeleteSheetVisible(true)} style={[styles.delete, (recordState !== 'ready' || !current) && styles.deleteDisabled]}><Trash2 color={colors.red} size={17} /><Text style={styles.deleteText}>删除这条记录</Text></Pressable> : null}</GlassCard>
+    {deleteSummary ? <DestructiveConfirmSheet detail={deleteSummary.detail} onCancel={() => setDeleteSheetVisible(false)} onConfirm={remove} summary={deleteSummary.summary} title={deleteSummary.title} visible={deleteSheetVisible} /> : null}
   </AppScreen>;
 }
 
 const styles = StyleSheet.create({
-  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, recordRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }, recordRowCopy: { flex: 1, minWidth: 0 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, recordBadges: { maxWidth: '45%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 5 }, recordBadge: { maxWidth: '100%', borderRadius: radii.pill, backgroundColor: colors.blueSoft, paddingHorizontal: 8, paddingVertical: 4 }, recordBadgeText: { color: colors.blue, fontFamily: fonts.body, fontSize: 10, fontWeight: '800' }, recordBadgeAmber: { backgroundColor: '#FFF4E4' }, recordBadgeAmberText: { color: '#B76B00' }, recordBadgeRed: { backgroundColor: '#FFF0F0' }, recordBadgeRedText: { color: colors.red }, recordBadgeGreen: { backgroundColor: '#EAF9EF' }, recordBadgeGreenText: { color: colors.green }, recordBadgePlain: { backgroundColor: '#F1F5F9' }, recordBadgePlainText: { color: colors.muted }, formCard: { gap: spacing.md }, listScreen: { flex: 1 }, listContent: { paddingHorizontal: spacing.lg, paddingBottom: 104, gap: spacing.sm }, recordListCard: { paddingVertical: 0 }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, sliderLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, sliderValue: { color: colors.blue, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' }, fieldHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 }, stars: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36 }, starHitArea: { width: 31, height: 34 }, starFill: { position: 'absolute', top: 0, left: 0, height: 34, overflow: 'hidden' }, starHalfLeft: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%' }, starHalfRight: { position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
+  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, recordRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }, recordRowCopy: { flex: 1, minWidth: 0 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, recordBadges: { maxWidth: '45%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 5 }, recordBadge: { maxWidth: '100%', borderRadius: radii.pill, backgroundColor: colors.blueSoft, paddingHorizontal: 8, paddingVertical: 4 }, recordBadgeText: { color: colors.blue, fontFamily: fonts.body, fontSize: 10, fontWeight: '800' }, recordBadgeAmber: { backgroundColor: '#FFF4E4' }, recordBadgeAmberText: { color: '#B76B00' }, recordBadgeRed: { backgroundColor: '#FFF0F0' }, recordBadgeRedText: { color: colors.red }, recordBadgeGreen: { backgroundColor: '#EAF9EF' }, recordBadgeGreenText: { color: colors.green }, recordBadgePlain: { backgroundColor: '#F1F5F9' }, recordBadgePlainText: { color: colors.muted }, formCard: { gap: spacing.md }, listScreen: { flex: 1 }, listContent: { paddingHorizontal: spacing.lg, paddingBottom: 104, gap: spacing.sm }, recordListCard: { paddingVertical: 0 }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, sliderLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, sliderValue: { color: colors.blue, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' }, fieldHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 }, stars: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36 }, starHitArea: { width: 31, height: 34 }, starFill: { position: 'absolute', top: 0, left: 0, height: 34, overflow: 'hidden' }, starHalfLeft: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%' }, starHalfRight: { position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteDisabled: { opacity: 0.48 }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
 });

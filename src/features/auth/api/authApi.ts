@@ -275,9 +275,13 @@ function promptResponse(
     if (normalized.includes('email')) response[name] = values.email;
     else if (normalized.includes('user') || normalized === 'uid') response[name] = values.username;
     else if (normalized.includes('pass')) response[name] = values.password;
-    else if (normalized.includes('display') || normalized === 'name') response[name] = values.displayName;
+    else if (normalized.includes('display') || normalized === 'name' || normalized === 'nickname') response[name] = values.displayName || values.username;
   });
   return Object.keys(response).length > 1 ? response : null;
+}
+
+export function resolveRegistrationNickname(username: string, displayName?: string): string {
+  return displayName?.trim() || username.trim();
 }
 
 async function exchangeAuthorizationCode(to: string, verifier: string, expectedState: string): Promise<OidcTokenSet> {
@@ -427,13 +431,14 @@ export const authApi = {
   },
 
   register: async ({ username, email, password, displayName, onChallenge }: RegisterPayload): Promise<void> => {
+    const normalizedUsername = username.trim();
     const flow = new FlowExecutorSession(AUTHENTIK_ENROLLMENT_FLOW_SLUG, '');
     const first = await flow.start();
     const result = await completeFlow(flow, first, {
-      username: username.trim(),
+      username: normalizedUsername,
       email: email.trim(),
       password,
-      displayName: displayName?.trim(),
+      displayName: resolveRegistrationNickname(normalizedUsername, displayName),
     }, onChallenge);
     if (result.component === 'ak-stage-access-denied' || result.component === 'ak-stage-flow-error') {
       throw new AuthentikFlowError(String(result.error_message || '注册失败。'), result.component);

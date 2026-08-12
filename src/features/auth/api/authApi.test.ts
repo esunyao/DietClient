@@ -1,4 +1,4 @@
-import { authApi, createPkcePair } from './authApi';
+import { authApi, createPkcePair, resolveRegistrationNickname } from './authApi';
 
 function jsonResponse(payload: unknown, headers?: Record<string, string>, status = 200): Response {
   return {
@@ -20,6 +20,17 @@ describe('createPkcePair', () => {
     expect(first.verifier.length).toBeGreaterThanOrEqual(43);
     expect(first.challenge.length).toBeGreaterThanOrEqual(40);
     expect(first.verifier).not.toBe(second.verifier);
+  });
+});
+
+describe('resolveRegistrationNickname', () => {
+  it('uses the username when the optional display name is empty', () => {
+    expect(resolveRegistrationNickname('new-user', '   ')).toBe('new-user');
+    expect(resolveRegistrationNickname('new-user')).toBe('new-user');
+  });
+
+  it('keeps a non-empty display name', () => {
+    expect(resolveRegistrationNickname('new-user', '小新')).toBe('小新');
   });
 });
 
@@ -79,5 +90,46 @@ describe('authApi.login', () => {
     expect(requests[1].init?.credentials).toBe('omit');
     expect((requests[1].init?.headers as Record<string, string>).Cookie).toContain('authentik_session=temporary');
     expect((requests[3].init as RequestInit & { redirect?: string }).redirect).toBe('manual');
+  });
+});
+
+describe('authApi.register', () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('submits Authentik nickname and password confirmation fields', async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      requests.push({ url, init });
+      if (requests.length === 1) {
+        return jsonResponse({
+          component: 'ak-stage-prompt',
+          fields: [
+            { field_key: 'username' },
+            { field_key: 'nickname' },
+            { field_key: 'email' },
+            { field_key: 'password' },
+            { field_key: 'password-repeat' },
+          ],
+        });
+      }
+      return jsonResponse({ component: 'xak-flow-redirect', to: '/flows/-/cancel/' });
+    }) as typeof fetch;
+
+    await authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' });
+
+    const body = JSON.parse(String(requests[1].init?.body));
+    expect(body).toMatchObject({
+      component: 'ak-stage-prompt',
+      username: 'new-user',
+      nickname: 'new-user',
+      email: 'new@example.com',
+      password: 'secret123',
+      'password-repeat': 'secret123',
+    });
   });
 });
