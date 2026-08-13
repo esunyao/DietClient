@@ -21,7 +21,7 @@ export class ApiError extends Error {
 
 export function unwrapApiResponse<T>(response: AxiosResponse<ApiEnvelope<T>>): T {
   const envelope = response.data;
-  if (envelope.code !== 200 || envelope.data === null) {
+  if (envelope.code < 200 || envelope.code >= 300 || envelope.data === null) {
     throw new ApiError(envelope.message || '请求未完成，请稍后重试', envelope.code, envelope.traceId);
   }
   return envelope.data;
@@ -29,7 +29,7 @@ export function unwrapApiResponse<T>(response: AxiosResponse<ApiEnvelope<T>>): T
 
 export function assertApiSuccess(response: AxiosResponse<ApiEnvelope<unknown>>): void {
   const envelope = response.data;
-  if (envelope.code !== 200) {
+  if (envelope.code < 200 || envelope.code >= 300) {
     throw new ApiError(envelope.message || '请求未完成，请稍后重试', envelope.code, envelope.traceId);
   }
 }

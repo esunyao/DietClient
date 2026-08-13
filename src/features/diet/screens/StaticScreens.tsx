@@ -1,6 +1,7 @@
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Activity,
   ArrowRight,
@@ -21,6 +22,9 @@ import type { HomeStackParamList } from '../../../navigation/types';
 import { AppButton, AppScreen, GlassCard, MetricProgress, ScoreRing, SectionTitle, Tag } from '../../../shared/components/ui';
 import { useToast } from '../../../shared/components/Toast';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
+import { nutriApi } from '../api/nutriApi';
+import type { Meal, NutrientValue } from '../api/nutriTypes';
+import { localDateFromDate } from '../services/mealDraft';
 
 type HomeProps = NativeStackScreenProps<HomeStackParamList, 'HomeMain'>;
 type ScoreProps = NativeStackScreenProps<HomeStackParamList, 'ScoreDetail'>;
@@ -56,20 +60,64 @@ const MiniNutrition = memo(function ({ label, value, unit }: { label: string; va
   );
 });
 
-const RecordRow = memo(function ({ emoji, name, detail, tag, tone = 'green' }: { emoji: string; name: string; detail: string; tag: string; tone?: 'green' | 'amber' }) {
+const RecordRow = memo(function ({ emoji, name, detail, tag, tone = 'green', onPress }: { emoji: string; name: string; detail: string; tag: string; tone?: 'green' | 'amber'; onPress?: () => void }) {
   return (
-    <View style={styles.recordRow}>
+    <Pressable accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} style={styles.recordRow}>
       <View style={styles.recordEmoji}><Text>{emoji}</Text></View>
       <View style={styles.recordInfo}>
         <Text style={styles.recordName}>{name}</Text>
         <Text style={styles.recordDetail}>{detail}</Text>
       </View>
       <Tag label={tag} tone={tone} />
-    </View>
+    </Pressable>
   );
 });
 
+function nutrientValue(nutrients: NutrientValue[], code: string): number {
+  return nutrients.find(item => item.nutrientCode === code)?.amount ?? 0;
+}
+
+function formatNutrient(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
+}
+
+function recordEmoji(meal: Meal): string {
+  return ({ breakfast: '🥣', lunch: '🥗', dinner: '🍲', snack: '🍎', other: '🍽️' })[meal.mealType];
+}
+
 export function HomeScreen({ navigation }: HomeProps) {
+  const [todayMeals, setTodayMeals] = useState<Meal[]>([]);
+  const [todayNutrients, setTodayNutrients] = useState<NutrientValue[]>([]);
+  const [loadingMeals, setLoadingMeals] = useState(true);
+  const today = localDateFromDate();
+  const openDiet = useCallback((screen?: 'MealEntry' | 'MealHistory' | 'MealDetail', params?: { mealId: string }) => {
+    const tabNavigation = navigation.getParent() as unknown as { navigate: (name: string, params?: unknown) => void } | undefined;
+    if (!screen || screen === 'MealEntry') {
+      tabNavigation?.navigate('RecognitionTab');
+      return;
+    }
+    tabNavigation?.navigate('RecognitionTab', { screen, params });
+  }, [navigation]);
+  const loadToday = useCallback(async () => {
+    setLoadingMeals(true);
+    try {
+      const [summary, mealPage] = await Promise.all([
+        nutriApi.getDailySummary(today),
+        nutriApi.listMeals({ dateFrom: today, dateTo: today, pageSize: 20 }),
+      ]);
+      setTodayNutrients(summary.nutrients);
+      setTodayMeals(mealPage.items);
+    } catch {
+      // 首页不弹出网络错误，空态保留可继续记录的主操作。
+      setTodayNutrients([]);
+      setTodayMeals([]);
+    } finally {
+      setLoadingMeals(false);
+    }
+  }, [today]);
+
+  useFocusEffect(useCallback(() => { loadToday(); }, [loadToday]));
+
   return (
     <AppScreen>
       <View style={styles.homeHeader}>
@@ -105,25 +153,24 @@ export function HomeScreen({ navigation }: HomeProps) {
       </View>
 
       <View style={styles.quickGrid}>
-        <QuickAction icon={<Camera color="#FFFFFF" size={22} />} title="拍照识别" description="菜品 → 营养" blue />
+        <QuickAction icon={<Camera color="#FFFFFF" size={22} />} title="记录餐食" description="手动录入 · 图片附件" blue onPress={() => openDiet()} />
         <QuickAction icon={<Sparkles color={colors.green} size={22} />} title="下一餐处方" description="AI 配餐" />
         <QuickAction icon={<Target color={colors.violet} size={22} />} title="今日目标" description="调整目标" />
         <QuickAction icon={<TrendingUp color={colors.blue} size={22} />} title="历史追踪" description="饮食 & 身体" />
       </View>
 
-      <SectionTitle title="今日营养摄入" detail="演示数据 · 将在后续接入饮食服务" />
+      <SectionTitle title="今日营养摄入" detail={loadingMeals ? '正在加载…' : todayMeals.length ? `${todayMeals.length} 餐已记录` : '还没有餐食记录'} />
       <View style={styles.nutritionGrid}>
-        <MiniNutrition label="热量" value="1,280" unit="kcal" />
-        <MiniNutrition label="蛋白质" value="38" unit="g" />
-        <MiniNutrition label="碳水" value="186" unit="g" />
-        <MiniNutrition label="脂肪" value="42" unit="g" />
+        <MiniNutrition label="热量" value={formatNutrient(nutrientValue(todayNutrients, 'ENERGY_KCAL'))} unit="kcal" />
+        <MiniNutrition label="蛋白质" value={formatNutrient(nutrientValue(todayNutrients, 'PROTEIN'))} unit="g" />
+        <MiniNutrition label="碳水" value={formatNutrient(nutrientValue(todayNutrients, 'CARBOHYDRATE'))} unit="g" />
+        <MiniNutrition label="脂肪" value={formatNutrient(nutrientValue(todayNutrients, 'FAT'))} unit="g" />
       </View>
 
-      <SectionTitle title="今日饮食记录" action={<Text style={styles.actionText}>全部记录</Text>} />
+      <SectionTitle title="今日饮食记录" action={<Pressable onPress={() => openDiet('MealHistory')}><Text style={styles.actionText}>全部记录</Text></Pressable>} />
       <GlassCard style={styles.records}>
-        <RecordRow emoji="🥗" name="鸡胸肉沙拉 + 全麦面包" detail="午餐 · 12:30 · 570 kcal" tag="85 分" />
-        <RecordRow emoji="🥣" name="燕麦粥 + 水煮蛋 + 蓝莓" detail="早餐 · 08:15 · 380 kcal" tag="92 分" />
-        <RecordRow emoji="☕" name="黑咖啡 + 坚果" detail="加餐 · 10:00 · 180 kcal" tag="78 分" tone="amber" />
+        {todayMeals.map(meal => <RecordRow key={meal.mealId} emoji={recordEmoji(meal)} name={meal.items.map(item => item.foodNameSnapshot).join('、')} detail={`${meal.mealType === 'breakfast' ? '早餐' : meal.mealType === 'lunch' ? '午餐' : meal.mealType === 'dinner' ? '晚餐' : meal.mealType === 'snack' ? '加餐' : '其他'} · ${new Date(meal.consumedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${formatNutrient(nutrientValue(meal.nutrients, 'ENERGY_KCAL'))} kcal`} tag={`${meal.images.filter(image => image.status === 'confirmed').length} 图`} tone="green" onPress={() => openDiet('MealDetail', { mealId: meal.mealId })} />)}
+        {!loadingMeals && !todayMeals.length ? <Pressable onPress={() => openDiet()} style={styles.emptyRecords}><Text style={styles.emptyRecordsText}>今天还没有餐食记录，点击开始记录。</Text></Pressable> : null}
       </GlassCard>
 
       <GlassCard style={styles.prescription}>
@@ -140,13 +187,15 @@ export function HomeScreen({ navigation }: HomeProps) {
   );
 }
 
-const QuickAction = memo(function ({ icon, title, description, blue = false }: { icon: React.ReactNode; title: string; description: string; blue?: boolean }) {
+const QuickAction = memo(function ({ icon, title, description, blue = false, onPress }: { icon: React.ReactNode; title: string; description: string; blue?: boolean; onPress?: () => void }) {
   return (
-    <GlassCard style={[styles.quickAction, blue && styles.quickActionBlue]}>
+    <Pressable accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} style={styles.quickAction}>
+    <GlassCard style={[styles.quickActionCard, blue && styles.quickActionBlue]}>
       <View style={[styles.quickIcon, blue && styles.quickIconBlue]}>{icon}</View>
       <Text style={[styles.quickTitle, blue && styles.quickTitleBlue]}>{title}</Text>
       <Text style={[styles.quickDescription, blue && styles.quickDescriptionBlue]}>{description}</Text>
     </GlassCard>
+    </Pressable>
   );
 });
 
@@ -332,7 +381,8 @@ const styles = StyleSheet.create({
   warningTitle: { color: '#A65C00', fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
   warningText: { color: '#A65C00', fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  quickAction: { width: '48%', minHeight: 126, padding: spacing.md, justifyContent: 'space-between' },
+  quickAction: { width: '48%' },
+  quickActionCard: { minHeight: 126, padding: spacing.md, justifyContent: 'space-between' },
   quickActionBlue: { backgroundColor: colors.blue, borderColor: colors.blue },
   quickIcon: { width: 39, height: 39, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.greenSoft },
   quickIconBlue: { backgroundColor: 'rgba(255,255,255,0.16)' },
@@ -354,6 +404,8 @@ const styles = StyleSheet.create({
   actionText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' },
   records: { paddingVertical: 3 },
   recordRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 9 },
+  emptyRecords: { paddingVertical: spacing.lg, alignItems: 'center' },
+  emptyRecordsText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' },
   recordEmoji: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#F5F8FC', alignItems: 'center', justifyContent: 'center' },
   recordInfo: { flex: 1 },
   recordName: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },

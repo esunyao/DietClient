@@ -1,3 +1,5 @@
+import type { Food, MealId } from '../features/diet/api/nutriTypes';
+
 export type AuthStackParamList = {
   Login: { registeredUsername?: string; emailVerified?: boolean } | undefined;
   Register: undefined;
@@ -15,6 +17,13 @@ export type ProfileStackParamList = {
   EditProfile: { onboarding?: boolean } | undefined;
   HealthRecords: { onboarding?: boolean } | undefined;
   HealthRecordForm: { kind: 'measurement' | 'goal' | 'allergy' | 'condition' | 'restriction'; id?: string; create?: boolean };
+};
+
+export type DietStackParamList = {
+  MealEntry: { mealId?: MealId; createdFood?: Food } | undefined;
+  MealHistory: undefined;
+  MealDetail: { mealId: MealId };
+  CustomFood: undefined;
 };
 
 export type AppTabParamList = {

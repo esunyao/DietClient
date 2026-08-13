@@ -19,13 +19,13 @@ import {
 import { useSessionStore } from '../features/auth/store/sessionStore';
 // 饮食/主功能相关页面
 import {
-  HomeScreen,
   MealPlanScreen,
-  RecognitionScreen,
   ReportsScreen,
   ScoreDetailScreen,
   TrendsScreen,
 } from '../features/diet/screens/StaticScreens';
+import { HomeScreen } from '../features/diet/screens/StaticScreens';
+import { CustomFoodScreen, MealDetailScreen, MealEntryScreen, MealHistoryScreen } from '../features/diet/screens/MealScreens';
 // 个人中心相关页面
 import {
   EditProfileScreen,
@@ -42,12 +42,14 @@ import { ScrollChromeProvider } from '../shared/scrollChrome/ScrollChromeProvide
 import type {
   AppTabParamList,
   AuthStackParamList,
+  DietStackParamList,
   HomeStackParamList,
   ProfileStackParamList,
 } from './types';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
+const DietStack = createNativeStackNavigator<DietStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
@@ -97,6 +99,18 @@ function HomeNavigator() {
   );
 }
 
+/** 餐食录入使用独立 Stack，历史、详情与自定义食物不会污染底部 Tab 状态。 */
+function DietNavigator() {
+  return (
+    <DietStack.Navigator screenOptions={{ headerShown: false, animation: stackAnimation }}>
+      <DietStack.Screen name="MealEntry" component={MealEntryScreen} />
+      <DietStack.Screen name="MealHistory" component={MealHistoryScreen} />
+      <DietStack.Screen name="MealDetail" component={MealDetailScreen} />
+      <DietStack.Screen name="CustomFood" component={CustomFoodScreen} />
+    </DietStack.Navigator>
+  );
+}
+
 // 渲染毛玻璃 TabBar
 function renderFrostedTabBar(props: BottomTabBarProps) {
   return <FrostedTabBar {...props} />;
@@ -138,10 +152,10 @@ function MainNavigator() {
         component={HomeNavigator}
         options={{ title: '首页' }}
       />
-      <Tab.Screen
-        name="RecognitionTab"
-        component={RecognitionScreen}
-        options={{ title: '识别' }}
+        <Tab.Screen
+          name="RecognitionTab"
+          component={DietNavigator}
+          options={{ title: '记录' }}
       />
       <Tab.Screen
         name="MealTab"
