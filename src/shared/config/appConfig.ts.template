@@ -4,5 +4,6 @@ export const AUTHENTIK_BASE_URL = 'https://auth.lovedage.com:8093';
 export const AUTHENTIK_PROVIDER_SLUG = 'diet-health';
 export const AUTHENTIK_AUTHENTICATION_FLOW_SLUG = 'default-authentication-flow';
 export const AUTHENTIK_ENROLLMENT_FLOW_SLUG = 'email-registration';
+export const AUTHENTIK_EMAIL_VERIFICATION_RESEND_FLOW_SLUG = 'email-verification-resend';
 export const AUTHENTIK_REDIRECT_URI = 'diethealth://oauth/callback/';
 export const AUTHENTIK_CLIENT_ID = 'replace-with-public-client-id';

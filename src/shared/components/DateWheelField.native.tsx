@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, X } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import DatePicker from 'react-native-date-picker';
 
 import type { DateWheelMode } from './DateWheelField';
+import { HealthPickerSheet } from './HealthPickerSheet';
 import { colors, fonts, radii, spacing } from '../theme/tokens';
 
 function pad(value: number) {
@@ -30,15 +31,19 @@ function serialize(date: Date, mode: DateWheelMode): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-export function DateWheelField({ label, value, onChange, optional = false, mode = 'date' }: {
+export function DateWheelField({ label, value, onChange, optional = false, mode = 'date', minimumDate, maximumDate }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   optional?: boolean;
   mode?: DateWheelMode;
+  minimumDate?: Date;
+  maximumDate?: Date;
 }) {
   const [open, setOpen] = useState(false);
   const selectedDate = useMemo(() => toPickerDate(value), [value]);
+  const [draft, setDraft] = useState(selectedDate);
+  useEffect(() => { if (open) setDraft(selectedDate); }, [open, selectedDate]);
 
   return (
     <View style={styles.field}>
@@ -55,23 +60,15 @@ export function DateWheelField({ label, value, onChange, optional = false, mode 
           </Pressable>
         ) : null}
       </View>
-      <DatePicker
-        cancelText="取消"
-        confirmText="确定"
-        date={selectedDate}
-        is24hourSource="locale"
-        locale="zh-CN"
-        modal
-        mode={mode}
-        open={open}
-        theme="light"
-        title={label}
+      <HealthPickerSheet
         onCancel={() => setOpen(false)}
-        onConfirm={date => {
-          onChange(serialize(date, mode));
-          setOpen(false);
-        }}
-      />
+        onConfirm={() => { onChange(serialize(draft, mode)); setOpen(false); }}
+        title={label}
+        value={value}
+        visible={open}
+      >
+        <View style={styles.pickerWrap}><DatePicker date={draft} is24hourSource="locale" locale="zh-CN" maximumDate={maximumDate} minimumDate={minimumDate} mode={mode} onDateChange={setDraft} theme="light" /></View>
+      </HealthPickerSheet>
     </View>
   );
 }
@@ -85,4 +82,5 @@ const styles = StyleSheet.create({
   placeholder: { color: '#94A3B8' },
   clear: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: spacing.sm },
   clearText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' },
+  pickerWrap: { alignItems: 'center', minHeight: 208 },
 });

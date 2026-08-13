@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm, type Control, type FieldPath, type FieldValues, type RegisterOptions } from 'react-hook-form';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ArrowRight, Eye, EyeOff, Sparkles } from 'lucide-react-native';
+import { ArrowRight, CircleCheck, Eye, EyeOff, Mail, Sparkles } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '../../../shared/api/client';
@@ -21,10 +20,19 @@ import { AppButton, LogoMark, inputStyle } from '../../../shared/components/ui';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { AuthStackParamList } from '../../../navigation/types';
 import { useSessionStore } from '../store/sessionStore';
-import { resolveRegistrationNickname, type FlowChallenge, type LoginPayload, type RegisterPayload } from '../api/authApi';
+import {
+  AuthentikFlowError,
+  getRegistrationFieldErrors,
+  resolveRegistrationNickname,
+  type FlowChallenge,
+  type LoginPayload,
+  type RegisterPayload,
+} from '../api/authApi';
 
 type LoginProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 type RegisterProps = NativeStackScreenProps<AuthStackParamList, 'Register'>;
+type VerifyEmailProps = NativeStackScreenProps<AuthStackParamList, 'VerifyEmail'>;
+type EmailVerifiedProps = NativeStackScreenProps<AuthStackParamList, 'EmailVerified'>;
 type RegisterForm = RegisterPayload & { confirmPassword: string };
 
 function FormField<T extends FieldValues>({
@@ -159,10 +167,16 @@ export function LoginScreen({ navigation, route }: LoginProps) {
   const submit = handleSubmit(async values => {
     setSubmitting(true);
     setSubmitError(null);
-    try {
-      await signIn({ ...values, onChallenge: waitForChallenge });
-    } catch (error) {
-      setSubmitError(getErrorMessage(error));
+      try {
+        await signIn({ ...values, onChallenge: waitForChallenge });
+      } catch (error) {
+        const message = getErrorMessage(error);
+        const isCredentialError = error instanceof AuthentikFlowError &&
+          Boolean(error.responseErrors) &&
+          (error.component === 'ak-stage-identification' || error.component === 'ak-stage-password');
+        setSubmitError(isCredentialError
+          ? '用户名或密码错误，账号也可能尚未完成邮箱验证。'
+          : message);
     } finally {
       setSubmitting(false);
     }
@@ -182,9 +196,13 @@ export function LoginScreen({ navigation, route }: LoginProps) {
         </View>
         <FormField control={control} name="username" label="用户名或邮箱" placeholder="输入用户名或邮箱" rules={{ required: '请输入用户名或邮箱' }} />
         <FormField control={control} name="password" label="密码" placeholder="输入密码" secureTextEntry rules={{ required: '请输入密码' }} />
+        {route.params?.emailVerified ? <Text style={styles.successMessage}>邮箱验证成功，请登录。</Text> : null}
         {challenge ? <ChallengeCard challenge={challenge} onSubmit={submitChallenge} /> : null}
         {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
         <AppButton label="登录并查看健康档案" loading={submitting} disabled={Boolean(challenge)} onPress={submit} />
+        <Pressable onPress={() => navigation.navigate('VerifyEmail', { email: '' })} style={styles.secondaryAction}>
+          <Text style={styles.switchAction}>邮箱尚未验证？重发验证邮件</Text>
+        </Pressable>
         <Pressable onPress={() => navigation.navigate('Register')} style={styles.switchRow}>
           <Text style={styles.switchText}>还没有账号？</Text>
           <Text style={styles.switchAction}>创建账号 <ArrowRight color={colors.blue} size={14} /></Text>
@@ -197,30 +215,39 @@ export function LoginScreen({ navigation, route }: LoginProps) {
 
 export function RegisterScreen({ navigation }: RegisterProps) {
   const register = useSessionStore(state => state.register);
-  const { control, handleSubmit } = useForm<RegisterForm>({ defaultValues: { username: '', email: '', password: '', confirmPassword: '', displayName: '' } });
+  const { clearErrors, control, handleSubmit, setError } = useForm<RegisterForm>({ defaultValues: { username: '', email: '', password: '', confirmPassword: '', displayName: '' } });
   const { challenge, waitForChallenge, submitChallenge } = useChallengeResolver();
+  const submitLock = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const submit = handleSubmit(async values => {
+    if (submitLock.current) return;
     if (values.password !== values.confirmPassword) {
-      setSubmitError('两次输入的密码不一致');
+      setError('confirmPassword', { type: 'validate', message: '两次输入的密码不一致' });
       return;
     }
+    submitLock.current = true;
     setSubmitting(true);
     setSubmitError(null);
+    clearErrors();
     try {
-      await register({
+      const result = await register({
         username: values.username,
         email: values.email,
         password: values.password,
         displayName: resolveRegistrationNickname(values.username, values.displayName),
         onChallenge: waitForChallenge,
       });
-      Alert.alert('注册成功', '请先查收 Authentik 验证邮件，完成邮箱验证后再登录。', [{ text: '去登录', onPress: () => navigation.replace('Login', { registeredUsername: values.username }) }]);
+      navigation.replace('VerifyEmail', { email: result.email, username: result.username });
     } catch (error) {
-      setSubmitError(getErrorMessage(error));
+      const fieldErrors = getRegistrationFieldErrors(error);
+      Object.entries(fieldErrors).forEach(([name, message]) => {
+        if (message) setError(name as keyof RegisterForm, { type: 'server', message });
+      });
+      if (Object.keys(fieldErrors).length === 0) setSubmitError(getErrorMessage(error));
     } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   });
@@ -242,8 +269,89 @@ export function RegisterScreen({ navigation }: RegisterProps) {
         <View style={[styles.authCard, styles.healthGuideCard]}><Text style={styles.registerCardTitle}>接下来完善健康资料</Text><Text style={styles.healthGuideText}>完成邮箱验证并首次登录后，我们会引导你填写基础档案、身体测量、健康目标与饮食提醒。所有内容都可以之后再编辑。</Text></View>
         {challenge ? <ChallengeCard challenge={challenge} onSubmit={submitChallenge} /> : null}
         {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
-        <AppButton label="创建账号并继续" loading={submitting} disabled={Boolean(challenge)} onPress={submit} />
+        <AppButton label="创建账号并继续" loading={submitting} disabled={submitting || Boolean(challenge)} onPress={submit} />
       </ScrollView>
+    </AuthShell>
+  );
+}
+
+const RESEND_COOLDOWN_SECONDS = 60;
+
+export function VerifyEmailScreen({ navigation, route }: VerifyEmailProps) {
+  const resendVerificationEmail = useSessionStore(state => state.resendVerificationEmail);
+  const [email, setEmail] = useState(route.params.email);
+  const [secondsLeft, setSecondsLeft] = useState(route.params.email ? RESEND_COOLDOWN_SECONDS : 0);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState(route.params.email ? '验证邮件已发送，请检查收件箱和垃圾邮件。' : '');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return undefined;
+    const timer = setTimeout(() => setSecondsLeft(value => Math.max(0, value - 1)), 1_000);
+    return () => clearTimeout(timer);
+  }, [secondsLeft]);
+
+  const resend = async () => {
+    const normalizedEmail = email.trim();
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setSubmitError('请输入正确的邮箱地址');
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await resendVerificationEmail(normalizedEmail);
+      setMessage('如果该邮箱存在且需要验证，我们已发送验证邮件。');
+      setSecondsLeft(RESEND_COOLDOWN_SECONDS);
+    } catch (error) {
+      setSubmitError(getErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <AuthShell>
+      <View style={styles.statusCard}>
+        <View style={styles.statusIcon}><Mail color={colors.blue} size={34} /></View>
+        <Text style={styles.statusTitle}>验证你的邮箱</Text>
+        <Text style={styles.statusDescription}>点击邮件中的验证链接后会自动返回 NutriAI。链接过期时，可以在这里重新发送。</Text>
+        <TextInput
+          accessibilityLabel="邮箱"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          onChangeText={setEmail}
+          placeholder="name@example.com"
+          placeholderTextColor="#95A4B7"
+          style={inputStyle}
+          value={email}
+        />
+        {message ? <Text style={styles.successMessage}>{message}</Text> : null}
+        {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
+        <AppButton
+          label={secondsLeft > 0 ? `${secondsLeft} 秒后可重新发送` : '重发验证邮件'}
+          loading={submitting}
+          disabled={submitting || secondsLeft > 0}
+          onPress={resend}
+        />
+        <Pressable onPress={() => navigation.replace('Login', { registeredUsername: route.params.username })} style={styles.secondaryAction}>
+          <Text style={styles.switchAction}>返回登录</Text>
+        </Pressable>
+      </View>
+    </AuthShell>
+  );
+}
+
+export function EmailVerifiedScreen({ navigation }: EmailVerifiedProps) {
+  return (
+    <AuthShell>
+      <View style={styles.statusCard}>
+        <View style={[styles.statusIcon, styles.verifiedIcon]}><CircleCheck color="#22A764" size={38} /></View>
+        <Text style={styles.statusTitle}>邮箱验证成功</Text>
+        <Text style={styles.statusDescription}>你的账号已经激活，现在可以登录并继续完善健康资料。</Text>
+        <AppButton label="返回登录" onPress={() => navigation.replace('Login', { emailVerified: true })} />
+      </View>
     </AuthShell>
   );
 }
@@ -277,9 +385,11 @@ const styles = StyleSheet.create({
   eye: { position: 'absolute', right: 14, top: 15 },
   fieldError: { color: '#C93025', fontFamily: fonts.body, fontSize: 11, marginTop: 5 },
   submitError: { color: '#C93025', backgroundColor: colors.redSoft, borderRadius: radii.sm, padding: spacing.sm, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
+  successMessage: { color: '#187A49', backgroundColor: '#E8F8EF', borderRadius: radii.sm, padding: spacing.sm, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
   switchRow: { alignSelf: 'center', flexDirection: 'row', gap: 4, marginTop: spacing.lg, padding: 4 },
   switchText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
   switchAction: { color: colors.blue, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
+  secondaryAction: { alignSelf: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md },
   disclaimer: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: spacing.xl, paddingHorizontal: spacing.md },
   backText: { alignSelf: 'flex-start', paddingVertical: spacing.md },
   backTextLabel: { color: colors.blue, fontFamily: fonts.body, fontWeight: '700', fontSize: 13 },
@@ -289,4 +399,9 @@ const styles = StyleSheet.create({
   challengeCard: { gap: spacing.sm, padding: spacing.md, marginBottom: spacing.md, borderRadius: radii.md, backgroundColor: colors.blueSoft },
   challengeTitle: { color: colors.ink, fontFamily: fonts.body, fontWeight: '800', fontSize: 13 },
   challengeDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
+  statusCard: { backgroundColor: 'rgba(255,255,255,0.96)', borderRadius: radii.lg, padding: spacing.xl, gap: spacing.md, alignItems: 'stretch' },
+  statusIcon: { alignSelf: 'center', width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blueSoft },
+  verifiedIcon: { backgroundColor: '#E8F8EF' },
+  statusTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '800', textAlign: 'center' },
+  statusDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20, textAlign: 'center', marginBottom: spacing.sm },
 });

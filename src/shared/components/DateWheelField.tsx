@@ -12,6 +12,8 @@ export function DateWheelField({ label, value, onChange, optional = false }: {
   onChange: (value: string) => void;
   optional?: boolean;
   mode?: DateWheelMode;
+  minimumDate?: Date;
+  maximumDate?: Date;
 }) {
   return (
     <View style={styles.field}>

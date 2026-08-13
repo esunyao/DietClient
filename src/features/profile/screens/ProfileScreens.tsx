@@ -59,6 +59,8 @@ import {
   inputStyle,
 } from '../../../shared/components/ui';
 import { DateWheelField } from '../../../shared/components/DateWheelField';
+import { NumericWheelField } from '../../../shared/components/NumericWheelField';
+import { HealthSelectField, type HealthPickerOption } from '../../../shared/components/HealthPickerSheet';
 import { useToast } from '../../../shared/components/Toast';
 import { useScrollChrome } from '../../../shared/scrollChrome/ScrollChromeProvider';
 import { scheduleIdleTask } from '../../../shared/perf/scheduleIdleTask';
@@ -445,6 +447,12 @@ export function ProfileScreen({ navigation }: ProfileProps) {
         />
       </View>
 
+      {!profile?.profileCompletedAt ? (
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate('EditProfile')} style={styles.completeProfilePrompt}>
+          <View><Text style={styles.completeProfileTitle}>继续完善基础档案</Text><Text style={styles.completeProfileText}>补充出生日期、性别、身高与活动水平，获得更贴合的健康参考。</Text></View><ChevronRight color={colors.blue} size={19} />
+        </Pressable>
+      ) : null}
+
       <SectionTitle
         title="基础档案"
         action={
@@ -559,6 +567,8 @@ function ProfileField({
   keyboardType = 'default',
   date = false,
   rules,
+  minimumDate,
+  maximumDate,
 }: {
   control: Control<EditForm>;
   name: keyof EditForm;
@@ -567,6 +577,8 @@ function ProfileField({
   keyboardType?: 'default' | 'numeric';
   date?: boolean;
   rules?: RegisterOptions<EditForm, keyof EditForm>;
+  minimumDate?: Date;
+  maximumDate?: Date;
 }) {
   return (
     <Controller
@@ -579,6 +591,8 @@ function ProfileField({
       }) => date ? (
         <DateWheelField
           label={label}
+          minimumDate={minimumDate}
+          maximumDate={maximumDate}
           optional
           value={value}
           onChange={nextValue => {
@@ -605,6 +619,20 @@ function ProfileField({
   );
 }
 
+function ProfileNumericWheel({ control, name, label, minimum, maximum, step, unit }: {
+  control: Control<EditForm>;
+  name: 'heightCm' | 'dailyWaterTargetMl';
+  label: string;
+  minimum: number;
+  maximum: number;
+  step: number;
+  unit: string;
+}) {
+  return <Controller control={control} name={name} render={({ field: { onBlur, onChange, value } }) => (
+    <NumericWheelField label={label} maximum={maximum} minimum={minimum} onChange={nextValue => { onChange(nextValue); onBlur(); }} step={step} unit={unit} value={value} />
+  )} />;
+}
+
 function ChoiceGroup<T extends string>({
   label,
   value,
@@ -614,36 +642,15 @@ function ChoiceGroup<T extends string>({
   label: string;
   value: T | '';
   onChange: (value: T) => void;
-  options: Array<{ value: T; label: string }>;
+  options: Array<{ value: T; label: string; description?: string }>;
 }) {
-  return (
-    <View style={styles.formField}>
-      <Text style={styles.formLabel}>{label}</Text>
-      <View style={styles.choiceGroup}>
-        {options.map(item => (
-          <Pressable
-            key={item.value}
-            onPress={() => onChange(item.value)}
-            style={[styles.choice, value === item.value && styles.choiceActive]}
-          >
-            <Text
-              style={[
-                styles.choiceText,
-                value === item.value && styles.choiceTextActive,
-              ]}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
+  return <HealthSelectField label={label} onChange={next => onChange(next as T)} options={options as HealthPickerOption[]} value={value} />;
 }
 
 export function EditProfileScreen({ navigation, route }: EditProps) {
   const profile = useSessionStore(state => state.profile);
   const setProfile = useSessionStore(state => state.setProfile);
+  const completeProfileOnboarding = useSessionStore(state => state.completeProfileOnboarding);
   const { show } = useToast();
   const { control, handleSubmit, reset, setValue } = useForm<EditForm>({
     defaultValues: {
@@ -688,7 +695,11 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
       setProfile(nextProfile);
       show('基础档案已保存', 'success');
       if (route.params?.onboarding) {
-        navigation.replace('HealthRecords', { onboarding: true });
+        await completeProfileOnboarding();
+        // 首次基础资料保存后结束引导并回到“我的”根页，恢复底部导航。
+        // 健康记录仍可从个人页的“管理”入口随时补充，避免新用户停留在
+        // 没有底栏的二级管理页。
+        navigation.reset({ index: 0, routes: [{ name: 'ProfileMain' }] });
       } else {
         navigation.goBack();
       }
@@ -731,6 +742,8 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
             label="出生日期"
             placeholder="YYYY-MM-DD"
             date
+            minimumDate={new Date(new Date().getFullYear() - 120, 0, 1)}
+            maximumDate={new Date(new Date().getFullYear() - 10, 11, 31)}
             rules={{
               pattern: {
                 value: /^\d{4}-\d{2}-\d{2}$/,
@@ -743,25 +756,13 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
             value={gender}
             onChange={value => setValue('gender', value)}
             options={[
-              { value: 'male', label: '男' },
-              { value: 'female', label: '女' },
-              { value: 'other', label: '其他' },
-              { value: 'unknown', label: '未说明' },
+              { value: 'male', label: '男', description: '用于基础健康参考' },
+              { value: 'female', label: '女', description: '用于基础健康参考' },
+              { value: 'other', label: '其他', description: '使用中性健康建议' },
+              { value: 'unknown', label: '暂不说明', description: '之后可随时补充' },
             ]}
           />
-          <ProfileField
-            control={control}
-            name="heightCm"
-            label="身高（cm）"
-            placeholder="例如 175"
-            keyboardType="numeric"
-            rules={{
-              validate: value =>
-                !value ||
-                (Number(value) >= 50 && Number(value) <= 300) ||
-                '请输入 50–300 cm',
-            }}
-          />
+          <ProfileNumericWheel control={control} label="身高" maximum={300} minimum={50} name="heightCm" step={0.1} unit="cm" />
           <ChoiceGroup
             label="活动水平"
             value={activityLevel}
@@ -769,21 +770,10 @@ export function EditProfileScreen({ navigation, route }: EditProps) {
             options={Object.entries(activityLabels).map(([value, label]) => ({
               value: value as ActivityLevel,
               label,
+              description: value === 'sedentary' ? '日常久坐，运动较少' : value === 'light' ? '偶尔步行或轻运动' : value === 'moderate' ? '规律中等强度活动' : value === 'active' ? '每周高频运动' : '高强度或体力活动较多',
             }))}
           />
-          <ProfileField
-            control={control}
-            name="dailyWaterTargetMl"
-            label="每日饮水目标（ml）"
-            placeholder="例如 2000"
-            keyboardType="numeric"
-            rules={{
-              validate: value =>
-                !value ||
-                (Number(value) >= 0 && Number(value) <= 10000) ||
-                '请输入 0–10000 ml',
-            }}
-          />
+          <ProfileNumericWheel control={control} label="每日饮水目标" maximum={10000} minimum={0} name="dailyWaterTargetMl" step={100} unit="ml" />
         </View>
       </GlassCard>
       {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
@@ -807,6 +797,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.lg,
   },
+  completeProfilePrompt: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.md, borderWidth: 1, borderColor: '#B9DBFA', backgroundColor: colors.blueSoft, padding: spacing.md },
+  completeProfileTitle: { color: colors.blue, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' },
+  completeProfileText: { flex: 1, color: colors.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16, marginTop: 3 },
   identityCopy: { flex: 1, gap: 3 },
   identityName: {
     color: colors.ink,

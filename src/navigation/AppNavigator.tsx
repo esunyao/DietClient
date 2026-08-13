@@ -10,8 +10,10 @@ import { durations, timing } from '../shared/animation/config';
 
 // 认证相关页面
 import {
+  EmailVerifiedScreen,
   LoginScreen,
   RegisterScreen,
+  VerifyEmailScreen,
 } from '../features/auth/screens/AuthScreens';
 // 会话/登录状态 Store
 import { useSessionStore } from '../features/auth/store/sessionStore';
@@ -77,6 +79,8 @@ function AuthNavigator() {
     >
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
+      <AuthStack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+      <AuthStack.Screen name="EmailVerified" component={EmailVerifiedScreen} />
     </AuthStack.Navigator>
   );
 }
@@ -100,14 +104,14 @@ function renderFrostedTabBar(props: BottomTabBarProps) {
 
 // 个人中心 Stack
 function ProfileNavigator() {
-  const profile = useSessionStore(state => state.profile);
+  const profileOnboardingRequired = useSessionStore(state => state.profileOnboardingRequired);
   return (
     <ProfileStack.Navigator
-      initialRouteName={profile?.profileCompletedAt ? 'ProfileMain' : 'EditProfile'}
+      initialRouteName={profileOnboardingRequired ? 'EditProfile' : 'ProfileMain'}
       screenOptions={{ headerShown: false, animation: 'fade' }}
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
-      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} initialParams={{ onboarding: !profile?.profileCompletedAt }} />
+      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} initialParams={{ onboarding: profileOnboardingRequired }} />
       <ProfileStack.Screen name="HealthRecords" component={HealthRecordsScreen} />
       <ProfileStack.Screen name="HealthRecordForm" component={HealthRecordFormScreen} />
     </ProfileStack.Navigator>
@@ -117,10 +121,10 @@ function ProfileNavigator() {
 // 主应用 Tab 导航
 // 底部Tab
 function MainNavigator() {
-  const profile = useSessionStore(state => state.profile);
+  const profileOnboardingRequired = useSessionStore(state => state.profileOnboardingRequired);
   return (
     <Tab.Navigator
-      initialRouteName={profile?.profileCompletedAt ? 'HomeTab' : 'ProfileTab'}
+      initialRouteName={profileOnboardingRequired ? 'ProfileTab' : 'HomeTab'}
       tabBar={renderFrostedTabBar}
       detachInactiveScreens
       screenOptions={{
@@ -190,20 +194,30 @@ function SessionSplash() {
 }
 
 /** 根路由通过会话状态切换认证区与主应用 */
+const linking = {
+  prefixes: ['diethealth://'],
+  config: {
+    screens: {
+      EmailVerified: 'auth/email-verified',
+    },
+  },
+};
+
 export function AppNavigator() {
   const status = useSessionStore(state => state.status);
+  const onboardingResolved = useSessionStore(state => state.onboardingResolved);
   const hydrate = useSessionStore(state => state.hydrate);
 
   useEffect(() => {
     hydrate().catch(() => undefined);
   }, [hydrate]);
 
-  if (status === 'restoring') {
+  if (status === 'restoring' || (status === 'signedIn' && !onboardingResolved)) {
     return <SessionSplash />;
   }
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer linking={linking} theme={navigationTheme}>
       {status === 'signedIn' ? (
         <ScrollChromeProvider>
           <MainNavigator />

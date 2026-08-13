@@ -12,10 +12,8 @@ import com.facebook.react.bridge.ReactMethod
 import kotlin.math.roundToInt
 
 /**
- * 仅在用户点击目标体重字段时创建的原生双轮盘。
- *
- * Android NumberPicker 的滚动和惯性完全运行在原生 UI 线程；关闭后 Dialog 与子 View
- * 一并释放，不会给健康档案表单留下常驻的 JS 轮盘负担。
+ * 健康目标专用的原生体重选择器。保持既有交互，不与基础档案和身体测量的
+ * 参数化 NumericPicker 共用，避免基础资料改动波及健康计划与提醒。
  */
 class WeightPickerModule(private val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {

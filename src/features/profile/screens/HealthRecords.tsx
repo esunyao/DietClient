@@ -12,6 +12,8 @@ import { AppButton, AppScreen, EmptyState, GlassCard, ScreenHeader, SectionTitle
 import { DestructiveConfirmSheet } from '../../../shared/components/DestructiveConfirmSheet';
 import { DateWheelField } from '../../../shared/components/DateWheelField';
 import { WeightWheelField } from '../../../shared/components/WeightWheelField';
+import { NumericWheelField } from '../../../shared/components/NumericWheelField';
+import { HealthPickerSheet, HealthSelectField, type HealthPickerOption } from '../../../shared/components/HealthPickerSheet';
 import { PerfRegion } from '../../../shared/perf/PerfRegion';
 import { scheduleIdleTask } from '../../../shared/perf/scheduleIdleTask';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
@@ -144,15 +146,24 @@ const RecordRow = memo(function ({ title, detail, badges, onPress }: { title: st
 });
 
 function Field({ label, value, onChange, placeholder, numeric = false, multiline = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; numeric?: boolean; multiline?: boolean }) {
+  if (label === '体脂率 (%)') return <MeasurementBodyFatField value={value} onChange={onChange} />;
+  const wheel = label === '体重 (kg)' ? { label: '体重', minimum: 10, maximum: 500, step: 0.1, unit: 'kg' }
+    : label === '腰围 (cm)' ? { label: '腰围', minimum: 20, maximum: 300, step: 0.1, unit: 'cm' }
+    : label === '本次身高 (cm)' ? { label: '本次身高', minimum: 50, maximum: 300, step: 0.1, unit: 'cm' }
+    : label === '收缩压 (mmHg)' ? { label: '收缩压', minimum: 40, maximum: 300, step: 1, unit: 'mmHg' }
+    : label === '舒张压 (mmHg)' ? { label: '舒张压', minimum: 20, maximum: 200, step: 1, unit: 'mmHg' }
+    : label === '静息心率 (bpm)' ? { label: '静息心率', minimum: 20, maximum: 250, step: 1, unit: 'bpm' }
+    : null;
+  if (wheel) return <NumericWheelField {...wheel} onChange={onChange} value={value} />;
   return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text><TextInput accessibilityLabel={label} keyboardType={numeric ? 'decimal-pad' : 'default'} multiline={multiline} onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#94A3B8" style={[inputStyle, multiline && styles.multiline]} value={value} /></View>;
 }
 
-function DateField({ label, value, onChange, mode = 'date', optional = false }: { label: string; value: string; onChange: (value: string) => void; mode?: 'date' | 'datetime'; optional?: boolean }) {
-  return <DateWheelField label={label} mode={mode} optional={optional} value={value} onChange={onChange} />;
+function DateField({ label, value, onChange, mode = 'date', optional = false, minimumDate, maximumDate }: { label: string; value: string; onChange: (value: string) => void; mode?: 'date' | 'datetime'; optional?: boolean; minimumDate?: Date; maximumDate?: Date }) {
+  return <DateWheelField label={label} maximumDate={maximumDate} minimumDate={minimumDate} mode={mode} optional={optional} value={value} onChange={onChange} />;
 }
 
 function Choices({ label, value, values, onChange }: { label: string; value: string; values: Array<[string, string]>; onChange: (value: string) => void }) {
-  return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text><View style={styles.choices}>{values.map(([key, text]) => <Pressable key={key} onPress={() => onChange(key)} style={[styles.choice, value === key && styles.choiceActive]}><Text style={[styles.choiceText, value === key && styles.choiceTextActive]}>{text}</Text></Pressable>)}</View></View>;
+  return <HealthSelectField label={label} onChange={onChange} options={values.map(([itemValue, itemLabel]) => ({ value: itemValue, label: itemLabel })) as HealthPickerOption[]} value={value} />;
 }
 
 function asNumber(value: string): number | undefined {
@@ -171,38 +182,40 @@ function isPercentage(value: string): boolean {
 }
 
 function BodyFatField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(value);
   const parsed = asNumber(value);
   const sliderValue = parsed == null || parsed < 0 || parsed > 100 ? 0 : parsed;
-  const changeText = (nextValue: string) => {
-    if (nextValue === '' || (/^\d{0,3}(?:\.\d?)?$/.test(nextValue) && Number(nextValue) <= 100)) {
-      onChange(nextValue);
-    }
-  };
-  return <View style={styles.field}>
-    <View style={styles.sliderLabelRow}><Text style={styles.fieldLabel}>目标体脂率 (%)</Text><Text style={styles.sliderValue}>{value ? `${sliderValue.toFixed(1)}%` : '未设置'}</Text></View>
-    <Slider accessibilityLabel="目标体脂率滑块" maximumTrackTintColor="#D9E4EF" maximumValue={100} minimumTrackTintColor={colors.blue} minimumValue={0} step={0.1} thumbTintColor={colors.blue} value={sliderValue} onValueChange={nextValue => onChange(nextValue.toFixed(1))} />
-    <TextInput accessibilityLabel="精确输入目标体脂率" keyboardType="decimal-pad" onChangeText={changeText} placeholder="输入 0.0–100.0" placeholderTextColor="#94A3B8" style={inputStyle} value={value} />
-    <Text style={styles.fieldHint}>滑动选择或输入数值，精确到 0.1%。</Text>
-  </View>;
+  const draftValue = asNumber(draft) ?? 0;
+  return <View style={styles.field}><Text style={styles.fieldLabel}>目标体脂率 (%)</Text><Pressable onPress={() => { setDraft(value); setOpen(true); }} style={styles.selectValueCard}><Text style={styles.selectValue}>{value ? `${sliderValue.toFixed(1)}%` : '暂不设置'}</Text><ChevronRight color={colors.blue} size={18} /></Pressable><HealthPickerSheet confirmLabel="保存体脂率" onCancel={() => setOpen(false)} onConfirm={() => { onChange(draft); setOpen(false); }} title="目标体脂率" value={value} visible={open}><View style={styles.sliderSheet}><Text style={styles.sheetMetric}>{draft ? `${draftValue.toFixed(1)}%` : '暂不设置'}</Text><Slider accessibilityLabel="目标体脂率滑块" maximumTrackTintColor="#D9E4EF" maximumValue={100} minimumTrackTintColor={colors.blue} minimumValue={0} step={0.1} thumbTintColor={colors.blue} value={draftValue} onValueChange={nextValue => setDraft(nextValue.toFixed(1))} /><Pressable onPress={() => setDraft('')} style={styles.clearMetric}><Text style={styles.clearMetricText}>暂不设置体脂率</Text></Pressable></View></HealthPickerSheet></View>;
+}
+
+function MeasurementBodyFatField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const parsed = asNumber(value);
+  const sliderValue = parsed == null || parsed < 0 || parsed > 100 ? 0 : parsed;
+  const draftValue = asNumber(draft) ?? 0;
+  return <View style={styles.field}><Text style={styles.fieldLabel}>体脂率 (%)</Text><Pressable onPress={() => { setDraft(value); setOpen(true); }} style={styles.selectValueCard}><Text style={styles.selectValue}>{value ? `${sliderValue.toFixed(1)}%` : '暂不设置'}</Text><ChevronRight color={colors.blue} size={18} /></Pressable><HealthPickerSheet confirmLabel="保存体脂率" onCancel={() => setOpen(false)} onConfirm={() => { onChange(draft); setOpen(false); }} title="体脂率" value={value} visible={open}><View style={styles.sliderSheet}><Text style={styles.sheetMetric}>{draft ? `${draftValue.toFixed(1)}%` : '暂不设置'}</Text><Slider accessibilityLabel="体脂率滑块" maximumTrackTintColor="#D9E4EF" maximumValue={100} minimumTrackTintColor={colors.blue} minimumValue={0} step={0.1} thumbTintColor={colors.blue} value={draftValue} onValueChange={nextValue => setDraft(nextValue.toFixed(1))} /><Pressable onPress={() => setDraft('')} style={styles.clearMetric}><Text style={styles.clearMetricText}>暂不设置体脂率</Text></Pressable></View></HealthPickerSheet></View>;
 }
 
 function PriorityRating({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(value);
   const score = Math.max(1, Math.min(10, Number(value) || 1));
-  return <View style={styles.field}>
-    <View style={styles.sliderLabelRow}><Text style={styles.fieldLabel}>优先级</Text><Text style={styles.sliderValue}>{score}/10 分</Text></View>
-    <View accessibilityLabel={`当前优先级 ${score} 分`} style={styles.stars}>
+  const draftScore = Math.max(1, Math.min(10, Number(draft) || 1));
+  const stars = <View accessibilityLabel={`当前优先级 ${draftScore} 分`} style={styles.stars}>
       {Array.from({ length: 5 }, (_, index) => {
-        const filledPercent = Math.max(0, Math.min(100, (score - index * 2) * 50));
+        const filledPercent = Math.max(0, Math.min(100, (draftScore - index * 2) * 50));
         return <View key={index} style={styles.starHitArea}>
           <Star color="#F0A000" fill="transparent" size={31} strokeWidth={1.8} />
           {filledPercent > 0 ? <View pointerEvents="none" style={[styles.starFill, { width: `${filledPercent}%` }]}><Star color="#F0A000" fill="#FFD166" size={31} strokeWidth={1.8} /></View> : null}
-          <Pressable accessibilityLabel={`优先级 ${index * 2 + 1} 分`} accessibilityRole="button" onPress={() => onChange(String(index * 2 + 1))} style={styles.starHalfLeft} />
-          <Pressable accessibilityLabel={`优先级 ${index * 2 + 2} 分`} accessibilityRole="button" onPress={() => onChange(String(index * 2 + 2))} style={styles.starHalfRight} />
+          <Pressable accessibilityLabel={`优先级 ${index * 2 + 1} 分`} accessibilityRole="button" onPress={() => setDraft(String(index * 2 + 1))} style={styles.starHalfLeft} />
+          <Pressable accessibilityLabel={`优先级 ${index * 2 + 2} 分`} accessibilityRole="button" onPress={() => setDraft(String(index * 2 + 2))} style={styles.starHalfRight} />
         </View>;
       })}
-    </View>
-    <Text style={styles.fieldHint}>轻点星星的左半或右半，选择 1–10 分。</Text>
-  </View>;
+    </View>;
+  return <View style={styles.field}><Text style={styles.fieldLabel}>优先级</Text><Pressable onPress={() => { setDraft(value); setOpen(true); }} style={styles.selectValueCard}><Text style={styles.selectValue}>{score}/10 分</Text><ChevronRight color={colors.blue} size={18} /></Pressable><HealthPickerSheet confirmLabel="保存优先级" onCancel={() => setOpen(false)} onConfirm={() => { onChange(draft); setOpen(false); }} title="目标优先级" value={value} visible={open}><View style={styles.ratingSheet}><Text style={styles.sheetMetric}>{draftScore}/10 分</Text>{stars}<Text style={styles.fieldHint}>轻点星星左半或右半，选择 1–10 分。</Text></View></HealthPickerSheet></View>;
 }
 
 function initialValues(kind: Kind, record?: BodyMeasurement | HealthGoal | Allergy | MedicalCondition | DietaryRestriction): Record<string, string> {
@@ -329,5 +342,5 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
 }
 
 const styles = StyleSheet.create({
-  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, recordRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }, recordRowCopy: { flex: 1, minWidth: 0 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, recordBadges: { maxWidth: '45%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 5 }, recordBadge: { maxWidth: '100%', borderRadius: radii.pill, backgroundColor: colors.blueSoft, paddingHorizontal: 8, paddingVertical: 4 }, recordBadgeText: { color: colors.blue, fontFamily: fonts.body, fontSize: 10, fontWeight: '800' }, recordBadgeAmber: { backgroundColor: '#FFF4E4' }, recordBadgeAmberText: { color: '#B76B00' }, recordBadgeRed: { backgroundColor: '#FFF0F0' }, recordBadgeRedText: { color: colors.red }, recordBadgeGreen: { backgroundColor: '#EAF9EF' }, recordBadgeGreenText: { color: colors.green }, recordBadgePlain: { backgroundColor: '#F1F5F9' }, recordBadgePlainText: { color: colors.muted }, formCard: { gap: spacing.md }, listScreen: { flex: 1 }, listContent: { paddingHorizontal: spacing.lg, paddingBottom: 104, gap: spacing.sm }, recordListCard: { paddingVertical: 0 }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, sliderLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, sliderValue: { color: colors.blue, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' }, fieldHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 }, stars: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36 }, starHitArea: { width: 31, height: 34 }, starFill: { position: 'absolute', top: 0, left: 0, height: 34, overflow: 'hidden' }, starHalfLeft: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%' }, starHalfRight: { position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteDisabled: { opacity: 0.48 }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
+  overview: { gap: spacing.sm }, overviewTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' }, overviewText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }, sectionCard: { paddingVertical: 0 }, recordSection: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }, recordIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F7FD' }, recordCopy: { flex: 1 }, recordTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, count: { minWidth: 38, alignItems: 'flex-end' }, countText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, loading: { color: colors.muted, fontFamily: fonts.body, textAlign: 'center', fontSize: 12 }, recordRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }, recordRowCopy: { flex: 1, minWidth: 0 }, rowTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' }, rowDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 }, recordBadges: { maxWidth: '45%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 5 }, recordBadge: { maxWidth: '100%', borderRadius: radii.pill, backgroundColor: colors.blueSoft, paddingHorizontal: 8, paddingVertical: 4 }, recordBadgeText: { color: colors.blue, fontFamily: fonts.body, fontSize: 10, fontWeight: '800' }, recordBadgeAmber: { backgroundColor: '#FFF4E4' }, recordBadgeAmberText: { color: '#B76B00' }, recordBadgeRed: { backgroundColor: '#FFF0F0' }, recordBadgeRedText: { color: colors.red }, recordBadgeGreen: { backgroundColor: '#EAF9EF' }, recordBadgeGreenText: { color: colors.green }, recordBadgePlain: { backgroundColor: '#F1F5F9' }, recordBadgePlainText: { color: colors.muted }, formCard: { gap: spacing.md }, listScreen: { flex: 1 }, listContent: { paddingHorizontal: spacing.lg, paddingBottom: 104, gap: spacing.sm }, recordListCard: { paddingVertical: 0 }, field: { gap: 7 }, fieldLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, sliderLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, sliderValue: { color: colors.blue, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' }, fieldHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 }, selectValueCard: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#DCE7F1', borderRadius: radii.md, backgroundColor: 'rgba(255,255,255,0.78)', paddingHorizontal: spacing.md }, selectValue: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '800' }, sliderSheet: { gap: spacing.md, paddingVertical: spacing.md }, ratingSheet: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md }, sheetMetric: { color: colors.blue, fontFamily: fonts.display, fontSize: 28, fontWeight: '800' }, clearMetric: { alignSelf: 'center', padding: spacing.sm }, clearMetricText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, stars: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36 }, starHitArea: { width: 31, height: 34 }, starFill: { position: 'absolute', top: 0, left: 0, height: 34, overflow: 'hidden' }, starHalfLeft: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%' }, starHalfRight: { position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%' }, multiline: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, choice: { backgroundColor: '#F1F5F9', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8 }, choiceActive: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#B9DBFA' }, choiceText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, choiceTextActive: { color: colors.blue }, delete: { alignSelf: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, padding: spacing.sm }, deleteDisabled: { opacity: 0.48 }, deleteText: { color: colors.red, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
 });

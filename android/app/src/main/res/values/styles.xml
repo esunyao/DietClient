@@ -8,4 +8,12 @@
         <item name="android:windowLightNavigationBar">true</item>
     </style>
 
+    <style name="HealthPickerDialog" parent="Theme.AppCompat.Light.Dialog">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:colorAccent">#0071E3</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
 </resources>
