@@ -2,7 +2,6 @@ import React, { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import Slider from '@react-native-community/slider';
 import { ChevronRight, Ruler, Scale, ShieldAlert, Star, Stethoscope, Target, Trash2, Utensils } from 'lucide-react-native';
 
 import type { ProfileStackParamList } from '../../../navigation/types';
@@ -13,11 +12,13 @@ import { DestructiveConfirmSheet } from '../../../shared/components/DestructiveC
 import { DateWheelField } from '../../../shared/components/DateWheelField';
 import { WeightWheelField } from '../../../shared/components/WeightWheelField';
 import { NumericWheelField } from '../../../shared/components/NumericWheelField';
+import { PercentageSliderField } from '../../../shared/components/PercentageSliderField';
 import { HealthPickerSheet, HealthSelectField, type HealthPickerOption } from '../../../shared/components/HealthPickerSheet';
 import { PerfRegion } from '../../../shared/perf/PerfRegion';
 import { scheduleIdleTask } from '../../../shared/perf/scheduleIdleTask';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { Allergy, BodyMeasurement, DietaryRestriction, HealthGoal, MedicalCondition } from '../../../shared/types/api';
+import { normalizePercentageInput, PERCENTAGE_VALIDATION_MESSAGE } from '../../../shared/validation/percentage';
 import { useToast } from '../../../shared/components/Toast';
 import { healthApi } from '../api/healthApi';
 import { getHealthRecordDeleteSummary } from './healthRecordDeleteSummary';
@@ -146,7 +147,6 @@ const RecordRow = memo(function ({ title, detail, badges, onPress }: { title: st
 });
 
 function Field({ label, value, onChange, placeholder, numeric = false, multiline = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; numeric?: boolean; multiline?: boolean }) {
-  if (label === '体脂率 (%)') return <MeasurementBodyFatField value={value} onChange={onChange} />;
   const wheel = label === '体重 (kg)' ? { label: '体重', minimum: 10, maximum: 500, step: 0.1, unit: 'kg' }
     : label === '腰围 (cm)' ? { label: '腰围', minimum: 20, maximum: 300, step: 0.1, unit: 'cm' }
     : label === '本次身高 (cm)' ? { label: '本次身高', minimum: 50, maximum: 300, step: 0.1, unit: 'cm' }
@@ -174,29 +174,6 @@ function asNumber(value: string): number | undefined {
 function isWeight(value: string): boolean {
   const number = Number(value);
   return /^\d{1,3}(?:\.\d)?$/.test(value) && number >= 10 && number <= 500;
-}
-
-function isPercentage(value: string): boolean {
-  const number = Number(value);
-  return /^\d{1,3}(?:\.\d)?$/.test(value) && number >= 0 && number <= 100;
-}
-
-function BodyFatField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const parsed = asNumber(value);
-  const sliderValue = parsed == null || parsed < 0 || parsed > 100 ? 0 : parsed;
-  const draftValue = asNumber(draft) ?? 0;
-  return <View style={styles.field}><Text style={styles.fieldLabel}>目标体脂率 (%)</Text><Pressable onPress={() => { setDraft(value); setOpen(true); }} style={styles.selectValueCard}><Text style={styles.selectValue}>{value ? `${sliderValue.toFixed(1)}%` : '暂不设置'}</Text><ChevronRight color={colors.blue} size={18} /></Pressable><HealthPickerSheet confirmLabel="保存体脂率" onCancel={() => setOpen(false)} onConfirm={() => { onChange(draft); setOpen(false); }} title="目标体脂率" value={value} visible={open}><View style={styles.sliderSheet}><Text style={styles.sheetMetric}>{draft ? `${draftValue.toFixed(1)}%` : '暂不设置'}</Text><Slider accessibilityLabel="目标体脂率滑块" maximumTrackTintColor="#D9E4EF" maximumValue={100} minimumTrackTintColor={colors.blue} minimumValue={0} step={0.1} thumbTintColor={colors.blue} value={draftValue} onValueChange={nextValue => setDraft(nextValue.toFixed(1))} /><Pressable onPress={() => setDraft('')} style={styles.clearMetric}><Text style={styles.clearMetricText}>暂不设置体脂率</Text></Pressable></View></HealthPickerSheet></View>;
-}
-
-function MeasurementBodyFatField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const parsed = asNumber(value);
-  const sliderValue = parsed == null || parsed < 0 || parsed > 100 ? 0 : parsed;
-  const draftValue = asNumber(draft) ?? 0;
-  return <View style={styles.field}><Text style={styles.fieldLabel}>体脂率 (%)</Text><Pressable onPress={() => { setDraft(value); setOpen(true); }} style={styles.selectValueCard}><Text style={styles.selectValue}>{value ? `${sliderValue.toFixed(1)}%` : '暂不设置'}</Text><ChevronRight color={colors.blue} size={18} /></Pressable><HealthPickerSheet confirmLabel="保存体脂率" onCancel={() => setOpen(false)} onConfirm={() => { onChange(draft); setOpen(false); }} title="体脂率" value={value} visible={open}><View style={styles.sliderSheet}><Text style={styles.sheetMetric}>{draft ? `${draftValue.toFixed(1)}%` : '暂不设置'}</Text><Slider accessibilityLabel="体脂率滑块" maximumTrackTintColor="#D9E4EF" maximumValue={100} minimumTrackTintColor={colors.blue} minimumValue={0} step={0.1} thumbTintColor={colors.blue} value={draftValue} onValueChange={nextValue => setDraft(nextValue.toFixed(1))} /><Pressable onPress={() => setDraft('')} style={styles.clearMetric}><Text style={styles.clearMetricText}>暂不设置体脂率</Text></Pressable></View></HealthPickerSheet></View>;
 }
 
 function PriorityRating({ value, onChange }: { value: string; onChange: (value: string) => void }) {
@@ -275,7 +252,8 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
     if ((kind === 'allergy' && !values.allergenName.trim()) || (kind === 'condition' && !values.conditionName.trim()) || (kind === 'restriction' && !values.restrictionName.trim())) { show('请填写记录名称', 'error'); return; }
     if (kind === 'measurement' && !['heightCm', 'weightKg', 'bodyFatPercentage', 'waistCm', 'systolicBp', 'diastolicBp', 'restingHeartRate'].some(key => values[key].trim())) { show('请至少填写一个身体指标', 'error'); return; }
     if (kind === 'goal' && values.targetWeightKg && !isWeight(values.targetWeightKg)) { show('目标体重应为 10.0–500.0 kg，最多一位小数', 'error'); return; }
-    if (kind === 'goal' && values.targetBodyFatPercentage && !isPercentage(values.targetBodyFatPercentage)) { show('目标体脂率应为 0.0–100.0%，最多一位小数', 'error'); return; }
+    if (kind === 'measurement' && values.bodyFatPercentage && normalizePercentageInput(values.bodyFatPercentage) == null) { show(PERCENTAGE_VALIDATION_MESSAGE, 'error'); return; }
+    if (kind === 'goal' && values.targetBodyFatPercentage && normalizePercentageInput(values.targetBodyFatPercentage) == null) { show(PERCENTAGE_VALIDATION_MESSAGE, 'error'); return; }
     setSaving(true);
     try {
       if (kind === 'measurement') { const payload = { measuredAt: values.measuredAt || undefined, heightCm: asNumber(values.heightCm), weightKg: asNumber(values.weightKg), bodyFatPercentage: asNumber(values.bodyFatPercentage), waistCm: asNumber(values.waistCm), systolicBp: asNumber(values.systolicBp), diastolicBp: asNumber(values.diastolicBp), restingHeartRate: asNumber(values.restingHeartRate), source: 'manual' as const, notes: values.notes.trim() || undefined }; const saved = id ? await healthApi.bodyMeasurements.update(id, payload) : await healthApi.bodyMeasurements.create(payload); upsertHealthRecord('measurements', saved); }
@@ -318,7 +296,14 @@ export function HealthRecordFormScreen({ navigation, route }: FormProps) {
       </PerfRegion>
     );
   }, [idField, kind, openItem]);
-  const fields = kind === 'measurement' ? <><DateField label="测量时间" mode="datetime" value={values.measuredAt} onChange={set('measuredAt')} /><Field label="体重 (kg)" value={values.weightKg} onChange={set('weightKg')} numeric /><Field label="体脂率 (%)" value={values.bodyFatPercentage} onChange={set('bodyFatPercentage')} numeric /><Field label="腰围 (cm)" value={values.waistCm} onChange={set('waistCm')} numeric /><Field label="本次身高 (cm)" value={values.heightCm} onChange={set('heightCm')} numeric /><Field label="收缩压 (mmHg)" value={values.systolicBp} onChange={set('systolicBp')} numeric /><Field label="舒张压 (mmHg)" value={values.diastolicBp} onChange={set('diastolicBp')} numeric /><Field label="静息心率 (bpm)" value={values.restingHeartRate} onChange={set('restingHeartRate')} numeric /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'goal' ? <><Choices label="目标方向" value={values.goalType} onChange={set('goalType')} values={[["weight_loss", "减重"], ["muscle_gain", "增肌"], ["maintain", "保持"], ["health_improve", "改善健康"]]} /><WeightWheelField label="目标体重 (kg)" value={values.targetWeightKg} onChange={set('targetWeightKg')} /><BodyFatField value={values.targetBodyFatPercentage} onChange={set('targetBodyFatPercentage')} /><PriorityRating value={values.priority} onChange={set('priority')} /><DateField label="开始日期" value={values.startedOn} onChange={set('startedOn')} /><DateField label="目标日期" optional value={values.targetDate} onChange={set('targetDate')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'allergy' ? <><Field label="过敏原名称" value={values.allergenName} onChange={set('allergenName')} placeholder="例如：花生" /><Choices label="严重程度" value={values.severity} onChange={set('severity')} values={[["mild", "轻微"], ["moderate", "中等"], ["severe", "严重"], ["life_threatening", "危及生命"]]} /><Choices label="确认状态" value={values.diagnosisStatus} onChange={set('diagnosisStatus')} values={[["self_reported", "自行记录"], ["suspected", "疑似"], ["confirmed", "已确认"]]} /><DateField label="记录日期" optional value={values.recordedOn} onChange={set('recordedOn')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'condition' ? <><Field label="疾病名称" value={values.conditionName} onChange={set('conditionName')} /><Choices label="当前状态" value={values.status} onChange={set('status')} values={[["active", "进行中"], ["remission", "缓解"], ["resolved", "已解决"]]} /><DateField label="诊断日期" optional value={values.diagnosedOn} onChange={set('diagnosedOn')} /><DateField label="结束日期" optional value={values.resolvedOn} onChange={set('resolvedOn')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : <><Field label="限制名称" value={values.restrictionName} onChange={set('restrictionName')} placeholder="例如：不吃牛肉" /><Choices label="限制类别" value={values.category} onChange={set('category')} values={[["medical", "医疗"], ["religious", "宗教"], ["lifestyle", "生活方式"], ["preference", "个人偏好"]]} /><DateField label="生效日期" optional value={values.startsOn} onChange={set('startsOn')} /><DateField label="结束日期" optional value={values.endsOn} onChange={set('endsOn')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></>;
+  const allowPercentageClear = !id || (recordState === 'ready' && (
+    kind === 'measurement'
+      ? (current as BodyMeasurement | undefined)?.bodyFatPercentage == null
+      : kind === 'goal'
+        ? (current as HealthGoal | undefined)?.targetBodyFatPercentage == null
+        : true
+  ));
+  const fields = kind === 'measurement' ? <><DateField label="测量时间" mode="datetime" value={values.measuredAt} onChange={set('measuredAt')} /><Field label="体重 (kg)" value={values.weightKg} onChange={set('weightKg')} numeric /><PercentageSliderField allowClear={allowPercentageClear} label="体脂率" value={values.bodyFatPercentage} onChange={set('bodyFatPercentage')} /><Field label="腰围 (cm)" value={values.waistCm} onChange={set('waistCm')} numeric /><Field label="本次身高 (cm)" value={values.heightCm} onChange={set('heightCm')} numeric /><Field label="收缩压 (mmHg)" value={values.systolicBp} onChange={set('systolicBp')} numeric /><Field label="舒张压 (mmHg)" value={values.diastolicBp} onChange={set('diastolicBp')} numeric /><Field label="静息心率 (bpm)" value={values.restingHeartRate} onChange={set('restingHeartRate')} numeric /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'goal' ? <><Choices label="目标方向" value={values.goalType} onChange={set('goalType')} values={[["weight_loss", "减重"], ["muscle_gain", "增肌"], ["maintain", "保持"], ["health_improve", "改善健康"]]} /><WeightWheelField label="目标体重 (kg)" value={values.targetWeightKg} onChange={set('targetWeightKg')} /><PercentageSliderField allowClear={allowPercentageClear} label="目标体脂率" value={values.targetBodyFatPercentage} onChange={set('targetBodyFatPercentage')} /><PriorityRating value={values.priority} onChange={set('priority')} /><DateField label="开始日期" value={values.startedOn} onChange={set('startedOn')} /><DateField label="目标日期" optional value={values.targetDate} onChange={set('targetDate')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'allergy' ? <><Field label="过敏原名称" value={values.allergenName} onChange={set('allergenName')} placeholder="例如：花生" /><Choices label="严重程度" value={values.severity} onChange={set('severity')} values={[["mild", "轻微"], ["moderate", "中等"], ["severe", "严重"], ["life_threatening", "危及生命"]]} /><Choices label="确认状态" value={values.diagnosisStatus} onChange={set('diagnosisStatus')} values={[["self_reported", "自行记录"], ["suspected", "疑似"], ["confirmed", "已确认"]]} /><DateField label="记录日期" optional value={values.recordedOn} onChange={set('recordedOn')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : kind === 'condition' ? <><Field label="疾病名称" value={values.conditionName} onChange={set('conditionName')} /><Choices label="当前状态" value={values.status} onChange={set('status')} values={[["active", "进行中"], ["remission", "缓解"], ["resolved", "已解决"]]} /><DateField label="诊断日期" optional value={values.diagnosedOn} onChange={set('diagnosedOn')} /><DateField label="结束日期" optional value={values.resolvedOn} onChange={set('resolvedOn')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></> : <><Field label="限制名称" value={values.restrictionName} onChange={set('restrictionName')} placeholder="例如：不吃牛肉" /><Choices label="限制类别" value={values.category} onChange={set('category')} values={[["medical", "医疗"], ["religious", "宗教"], ["lifestyle", "生活方式"], ["preference", "个人偏好"]]} /><DateField label="生效日期" optional value={values.startsOn} onChange={set('startsOn')} /><DateField label="结束日期" optional value={values.endsOn} onChange={set('endsOn')} /><Field label="备注" value={values.notes} onChange={set('notes')} multiline /></>;
   if (!id && !route.params.create) return <AppScreen scroll={false} contentStyle={styles.listScreen} header={<ScreenHeader title={kindTitle[kind]} subtitle="查看、修改或添加健康记录" onBack={() => navigation.goBack()} />}>
     <FlatList
       data={records}

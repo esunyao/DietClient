@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-/**
+/**1
  * 设计 token 来自 htmlTest 的蓝绿健康语言。
  * 组件只引用 token，后续调整品牌色时不会散落修改页面样式。
  */
