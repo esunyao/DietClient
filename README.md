@@ -1,4 +1,28 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# DietClient
+
+Diet 健康管理客户端（React Native 0.86 + React 19 + TypeScript）。
+
+## 项目结构
+
+```
+src/
+├── features/            # 业务功能模块（按域拆分）
+│   ├── auth/            # 认证：api / screens / services / store
+│   ├── diet/            # 饮食：api / screens / services
+│   │   └── services/
+│   │       ├── mealDraft/    # 餐次草稿校验与格式化（每服务一文件夹）
+│   │       └── mealImage/    # 餐食图片上传（含 native/web 平台变体）
+│   └── profile/         # 健康档案：api / screens / services
+│       └── services/
+│           ├── avatar/        # 头像上传
+│           └── healthRecords/ # 健康记录缓存与删除摘要
+├── navigation/          # 导航栈与类型
+└── shared/              # 跨功能公共代码
+    ├── api/             # HTTP 客户端 / token 存储 / 无损 JSON
+    ├── components/      # 组件桶：fields（输入）/ overlays（浮层）/ surfaces（玻璃）+ ui 基础件
+    ├── upload/          # 公有上传管理类（native 文件流 + web Blob 统一封装）
+    ├── theme/ types/ validation/ perf/ scrollChrome/ animation/ native/ config/
+```
 
 # Getting Started
 
