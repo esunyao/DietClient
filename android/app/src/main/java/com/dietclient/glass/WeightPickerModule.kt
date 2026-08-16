@@ -1,9 +1,9 @@
 package com.dietclient.glass
 
 import android.app.AlertDialog
-import android.view.ViewGroup
-import android.widget.LinearLayout
+import android.view.LayoutInflater
 import android.widget.NumberPicker
+import com.dietclient.R
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -14,6 +14,7 @@ import kotlin.math.roundToInt
 /**
  * 健康目标专用的原生体重选择器。保持既有交互，不与基础档案和身体测量的
  * 参数化 NumericPicker 共用，避免基础资料改动波及健康计划与提醒。
+ * 界面布局在 res/layout/weight_picker_dialog.xml。
  */
 class WeightPickerModule(private val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
@@ -28,23 +29,23 @@ class WeightPickerModule(private val reactContext: ReactApplicationContext) :
     }
 
     activity.runOnUiThread {
+      val content = LayoutInflater.from(activity).inflate(R.layout.weight_picker_dialog, null)
+      val integerPicker = content.findViewById<NumberPicker>(R.id.wp_integer)
+      val decimalPicker = content.findViewById<NumberPicker>(R.id.wp_decimal)
+
       val initialTenths = (initialValue.coerceIn(MIN_WEIGHT, MAX_WEIGHT) * 10).roundToInt()
-      val integerPicker = NumberPicker(activity).apply {
-        minValue = MIN_WEIGHT.toInt()
-        maxValue = MAX_WEIGHT.toInt()
-        value = initialTenths / 10
-        wrapSelectorWheel = false
-        descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
-        setFormatter { "$it kg" }
-      }
-      val decimalPicker = NumberPicker(activity).apply {
-        minValue = 0
-        maxValue = 9
-        value = initialTenths % 10
-        wrapSelectorWheel = true
-        descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
-        setFormatter { ".$it" }
-      }
+      integerPicker.minValue = MIN_WEIGHT.toInt()
+      integerPicker.maxValue = MAX_WEIGHT.toInt()
+      integerPicker.value = initialTenths / 10
+      integerPicker.wrapSelectorWheel = false
+      integerPicker.descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
+      integerPicker.setFormatter { "$it kg" }
+      decimalPicker.minValue = 0
+      decimalPicker.maxValue = 9
+      decimalPicker.value = initialTenths % 10
+      decimalPicker.wrapSelectorWheel = true
+      decimalPicker.descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
+      decimalPicker.setFormatter { ".$it" }
 
       fun normalizeMaximum() {
         if (integerPicker.value == MAX_WEIGHT.toInt() && decimalPicker.value != 0) {
@@ -53,15 +54,6 @@ class WeightPickerModule(private val reactContext: ReactApplicationContext) :
       }
       integerPicker.setOnValueChangedListener { _, _, _ -> normalizeMaximum() }
       decimalPicker.setOnValueChangedListener { _, _, _ -> normalizeMaximum() }
-
-      val density = activity.resources.displayMetrics.density
-      val pickerWidth = (112 * density).roundToInt()
-      val content = LinearLayout(activity).apply {
-        orientation = LinearLayout.HORIZONTAL
-        setPadding((12 * density).roundToInt(), 0, (12 * density).roundToInt(), 0)
-        addView(integerPicker, LinearLayout.LayoutParams(pickerWidth, ViewGroup.LayoutParams.WRAP_CONTENT))
-        addView(decimalPicker, LinearLayout.LayoutParams(pickerWidth, ViewGroup.LayoutParams.WRAP_CONTENT))
-      }
 
       var settled = false
       fun settle(action: String, value: Double? = null) {
@@ -74,11 +66,11 @@ class WeightPickerModule(private val reactContext: ReactApplicationContext) :
       }
 
       val dialog = AlertDialog.Builder(activity)
-        .setTitle("选择目标体重")
+        .setTitle(R.string.weight_picker_title)
         .setView(content)
-        .setNegativeButton("取消") { _, _ -> settle("cancel") }
-        .setNeutralButton("清除") { _, _ -> settle("clear") }
-        .setPositiveButton("确定") { _, _ ->
+        .setNegativeButton(R.string.picker_cancel) { _, _ -> settle("cancel") }
+        .setNeutralButton(R.string.picker_clear) { _, _ -> settle("clear") }
+        .setPositiveButton(R.string.picker_confirm) { _, _ ->
           normalizeMaximum()
           settle("confirm", integerPicker.value + decimalPicker.value / 10.0)
         }

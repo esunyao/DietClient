@@ -1,3 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DietClient</string>
+    <!-- 选择器弹窗文案 -->
+    <string name="picker_clear">清除</string>
+    <string name="picker_cancel">取消</string>
+    <string name="picker_confirm">确定</string>
+    <string name="weight_picker_title">选择目标体重</string>
 </resources>

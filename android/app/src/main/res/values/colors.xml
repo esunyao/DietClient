@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 选择器弹窗配色（与旧代码硬编码颜色一一对应） -->
+    <color name="picker_sheet_bg">#F9FCFF</color>
+    <color name="picker_handle">#C9D5E2</color>
+    <color name="picker_title_text">#0F172A</color>
+    <color name="picker_accent">#0071E3</color>
+    <color name="picker_line">#B4DBF9</color>
+    <color name="picker_clear_text">#64748B</color>
+    <color name="picker_cancel_text">#475569</color>
+
+    <!-- 玻璃表面材质（AndroidGlassSurface 背景，对应原 Kotlin onDraw 硬编码值） -->
+    <color name="glass_soft_fill">#BFFFFFFF</color>
+    <color name="glass_soft_border">#E0FFFFFF</color>
+    <color name="glass_nav_fill">#E0FFFFFF</color>
+    <color name="glass_nav_border">#7A94B7B8</color>
+    <color name="glass_sheen">#BEFFFFFF</color>
+</resources>

@@ -3,16 +3,14 @@ package com.dietclient.glass
 import android.animation.ValueAnimator
 import android.app.Dialog
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.ColorDrawable
+import android.view.ContextThemeWrapper
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
-import android.view.ContextThemeWrapper
 import android.view.animation.DecelerateInterpolator
-import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.NumberPicker
 import android.widget.TextView
 import com.dietclient.R
@@ -26,6 +24,7 @@ import kotlin.math.roundToInt
 /**
  * A short-lived native bottom picker. It deliberately owns its colors and motion so
  * Android's DayNight theme cannot make the wheel unreadable on a light surface.
+ * 界面布局在 res/layout/numeric_picker_dialog.xml，本类只负责滚轮配置与交互逻辑。
  */
 class NumericPickerModule(private val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
@@ -64,130 +63,69 @@ class NumericPickerModule(private val reactContext: ReactApplicationContext) :
         val value = if (decimals == 0) number.roundToInt().toString() else "%1$.${decimals}f".format(number)
         return if (unit.isBlank()) value else "$value $unit"
       }
-      fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
-        setColor(color)
-        cornerRadius = dp(radius).toFloat()
-      }
 
-      val root = LinearLayout(pickerContext).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(20), dp(10), dp(20), dp(20))
-        background = GradientDrawable().apply {
-          setColor(Color.rgb(249, 252, 255))
-          cornerRadii = floatArrayOf(
-            dp(28).toFloat(), dp(28).toFloat(), dp(28).toFloat(), dp(28).toFloat(),
-            0f, 0f, 0f, 0f,
-          )
-        }
-      }
+      val root = LayoutInflater.from(pickerContext).inflate(R.layout.numeric_picker_dialog, null)
+      val titleView = root.findViewById<TextView>(R.id.np_title)
+      val summary = root.findViewById<TextView>(R.id.np_summary)
+      val tenthsRow = root.findViewById<View>(R.id.np_row_tenths)
+      val integerWheel = root.findViewById<NumberPicker>(R.id.np_wheel_int)
+      val decimalWheel = root.findViewById<NumberPicker>(R.id.np_wheel_dec)
+      val singleWheel = root.findViewById<NumberPicker>(R.id.np_wheel)
+      val clearButton = root.findViewById<TextView>(R.id.np_clear)
+      val cancelButton = root.findViewById<TextView>(R.id.np_cancel)
+      val confirmButton = root.findViewById<TextView>(R.id.np_confirm)
+      titleView.text = title
 
-      root.addView(View(pickerContext).apply {
-        background = rounded(Color.rgb(201, 213, 226), 3)
-      }, LinearLayout.LayoutParams(dp(36), dp(4)).apply {
-        gravity = Gravity.CENTER_HORIZONTAL
-        bottomMargin = dp(16)
-      })
-      root.addView(TextView(pickerContext).apply {
-        text = title
-        textSize = 21f
-        setTextColor(Color.rgb(15, 23, 42))
-        setTypeface(typeface, 1)
-      })
-      val summary = TextView(pickerContext).apply {
-        textSize = 16f
-        setTextColor(Color.rgb(0, 113, 227))
-        setTypeface(typeface, 1)
-        gravity = Gravity.CENTER
-        setPadding(0, dp(12), 0, dp(6))
-      }
-      root.addView(summary, LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.MATCH_PARENT,
-        LinearLayout.LayoutParams.WRAP_CONTENT,
-      ))
-
-      val wheelFrame = FrameLayout(pickerContext)
-      val pickerRow = LinearLayout(pickerContext).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER
-      }
-      val numberPicker: NumberPicker
-      val decimalPicker: NumberPicker?
-      val selectedValue: () -> Double
+      var selectedValue: () -> Double
 
       if (decimals == 1 && minimum == minimum.roundToInt().toDouble() && maximum == maximum.roundToInt().toDouble()) {
+        // 带一位小数的双滚轮形态：整数轮 + 小数轮
+        tenthsRow.visibility = View.VISIBLE
+        singleWheel.visibility = View.GONE
         val initialTenths = (initialValue.coerceIn(minimum, maximum) * 10).roundToInt()
-        numberPicker = NumberPicker(pickerContext).apply {
-          minValue = minimum.roundToInt()
-          maxValue = maximum.roundToInt()
-          value = initialTenths / 10
-          wrapSelectorWheel = false
-          descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
-          setFormatter { "$it" }
-        }
-        decimalPicker = NumberPicker(pickerContext).apply {
-          minValue = 0
-          maxValue = 9
-          value = initialTenths % 10
-          wrapSelectorWheel = true
-          descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
-          setFormatter { ".$it" }
-        }
+        integerWheel.minValue = minimum.roundToInt()
+        integerWheel.maxValue = maximum.roundToInt()
+        integerWheel.value = initialTenths / 10
+        integerWheel.wrapSelectorWheel = false
+        integerWheel.descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
+        integerWheel.setFormatter { "$it" }
+        decimalWheel.minValue = 0
+        decimalWheel.maxValue = 9
+        decimalWheel.value = initialTenths % 10
+        decimalWheel.wrapSelectorWheel = true
+        decimalWheel.descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
+        decimalWheel.setFormatter { ".$it" }
         fun normalizeMaximum() {
-          if (numberPicker.value == maximum.roundToInt() && decimalPicker.value != 0) {
-            decimalPicker.value = 0
+          if (integerWheel.value == maximum.roundToInt() && decimalWheel.value != 0) {
+            decimalWheel.value = 0
           }
         }
-        fun currentValue(): Double = numberPicker.value + decimalPicker.value / 10.0
+        fun currentValue(): Double = integerWheel.value + decimalWheel.value / 10.0
         fun refresh() {
           normalizeMaximum()
           summary.text = valueText(currentValue())
         }
-        numberPicker.setOnValueChangedListener { _, _, _ -> refresh() }
-        decimalPicker.setOnValueChangedListener { _, _, _ -> refresh() }
-        styleWheel(numberPicker, ::dp)
-        styleWheel(decimalPicker, ::dp)
+        integerWheel.setOnValueChangedListener { _, _, _ -> refresh() }
+        decimalWheel.setOnValueChangedListener { _, _, _ -> refresh() }
+        styleWheel(integerWheel, ::dp)
+        styleWheel(decimalWheel, ::dp)
         selectedValue = { currentValue() }
-        pickerRow.addView(numberPicker, LinearLayout.LayoutParams(0, dp(190), 1.35f))
-        pickerRow.addView(decimalPicker, LinearLayout.LayoutParams(0, dp(190), 1f))
         refresh()
       } else {
-        decimalPicker = null
-        numberPicker = NumberPicker(pickerContext).apply {
-          minValue = 0
-          maxValue = count
-          value = initialIndex
-          wrapSelectorWheel = false
-          descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
-          setFormatter { index -> valueText(valueAt(index)) }
-          setOnValueChangedListener { _, _, next -> summary.text = valueText(valueAt(next)) }
-        }
-        styleWheel(numberPicker, ::dp)
-        selectedValue = { valueAt(numberPicker.value) }
-        pickerRow.addView(numberPicker, LinearLayout.LayoutParams(
-          LinearLayout.LayoutParams.MATCH_PARENT,
-          dp(190),
-        ))
+        // 通用步进单滚轮形态
+        tenthsRow.visibility = View.GONE
+        singleWheel.visibility = View.VISIBLE
+        singleWheel.minValue = 0
+        singleWheel.maxValue = count
+        singleWheel.value = initialIndex
+        singleWheel.wrapSelectorWheel = false
+        singleWheel.descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
+        singleWheel.setFormatter { index -> valueText(valueAt(index)) }
+        singleWheel.setOnValueChangedListener { _, _, next -> summary.text = valueText(valueAt(next)) }
+        styleWheel(singleWheel, ::dp)
+        selectedValue = { valueAt(singleWheel.value) }
         summary.text = valueText(selectedValue())
       }
-      wheelFrame.addView(pickerRow, FrameLayout.LayoutParams(
-        FrameLayout.LayoutParams.MATCH_PARENT,
-        dp(190),
-      ))
-      val focusTop = dp(75)
-      listOf(focusTop, focusTop + dp(40)).forEach { topMargin ->
-        wheelFrame.addView(View(pickerContext).apply {
-          background = ColorDrawable(Color.rgb(180, 219, 249))
-          isClickable = false
-          isFocusable = false
-        }, FrameLayout.LayoutParams(
-          FrameLayout.LayoutParams.MATCH_PARENT,
-          dp(1),
-        ).apply { gravity = Gravity.TOP; this.topMargin = topMargin })
-      }
-      root.addView(wheelFrame, LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.MATCH_PARENT,
-        dp(190),
-      ))
 
       var settled = false
       fun settle(action: String, value: Double? = null) {
@@ -217,31 +155,10 @@ class NumericPickerModule(private val reactContext: ReactApplicationContext) :
         animateDim(dialog, 0f, 140)
       }
 
-      val actions = LinearLayout(pickerContext).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(0, dp(12), 0, 0)
-      }
-      fun action(text: String, textColor: Int, fillColor: Int?, onClick: () -> Unit): TextView = TextView(pickerContext).apply {
-        this.text = text
-        textSize = 15f
-        gravity = Gravity.CENTER
-        setTypeface(typeface, 1)
-        setTextColor(textColor)
-        minHeight = dp(48)
-        background = fillColor?.let { rounded(it, 14) }
-        setOnClickListener { onClick() }
-      }
-      if (allowClear) {
-        actions.addView(action("清除", Color.rgb(100, 116, 139), null) { close("clear") },
-          LinearLayout.LayoutParams(0, dp(48), 1f))
-      }
-      actions.addView(action("取消", Color.rgb(71, 85, 105), null) { close("cancel") },
-        LinearLayout.LayoutParams(0, dp(48), 1f))
-      actions.addView(action("确定", Color.WHITE, Color.rgb(0, 113, 227)) {
-        close("confirm", selectedValue())
-      }, LinearLayout.LayoutParams(0, dp(48), 1f))
-      root.addView(actions)
+      clearButton.visibility = if (allowClear) View.VISIBLE else View.GONE
+      clearButton.setOnClickListener { close("clear") }
+      cancelButton.setOnClickListener { close("cancel") }
+      confirmButton.setOnClickListener { close("confirm", selectedValue()) }
 
       dialog = Dialog(activity, R.style.HealthPickerDialog).apply {
         requestWindowFeature(Window.FEATURE_NO_TITLE)

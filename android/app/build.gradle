@@ -95,6 +95,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2
         versionName "0.2.0"
+        // 只声明支持中文：消除多语言未翻译警告，并裁掉依赖库的非中文资源
+        resConfigs "zh"
     }
     signingConfigs {
         debug {

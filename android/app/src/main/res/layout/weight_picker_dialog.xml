@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 体重选择器内容区。AlertDialog 窗口与按钮见 WeightPickerModule.kt。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingLeft="12dp"
+    android:paddingRight="12dp">
+
+    <NumberPicker
+        android:id="@+id/wp_integer"
+        android:layout_width="112dp"
+        android:layout_height="wrap_content" />
+
+    <NumberPicker
+        android:id="@+id/wp_decimal"
+        android:layout_width="112dp"
+        android:layout_height="wrap_content" />
+</LinearLayout>
