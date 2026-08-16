@@ -4,8 +4,8 @@ import type {
   DietaryRestriction,
   HealthGoal,
   MedicalCondition,
-} from '../../../shared/types/api';
-import { healthApi } from '../api/healthApi';
+} from '../../../../shared/types/api';
+import { healthApi } from '../../api/healthApi';
 
 export type HealthRecordsSnapshot = {
   measurements: BodyMeasurement[];

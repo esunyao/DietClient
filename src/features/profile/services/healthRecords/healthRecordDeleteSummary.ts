@@ -1,4 +1,4 @@
-import type { Allergy, BodyMeasurement, DietaryRestriction, HealthGoal, MedicalCondition } from '../../../shared/types/api';
+import type { Allergy, BodyMeasurement, DietaryRestriction, HealthGoal, MedicalCondition } from '../../../../shared/types/api';
 
 export type HealthRecordDeleteKind = 'measurement' | 'goal' | 'allergy' | 'condition' | 'restriction';
 export type HealthRecordDeleteRecord = BodyMeasurement | HealthGoal | Allergy | MedicalCondition | DietaryRestriction;

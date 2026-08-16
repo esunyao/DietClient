@@ -7,15 +7,12 @@ import { ChevronRight, Clock3, ImagePlus, ListPlus, Plus, Search, Trash2, Utensi
 
 import type { DietStackParamList } from '../../../navigation/types';
 import { getErrorMessage } from '../../../shared/api/client';
-import { AppButton, AppScreen, EmptyState, GlassCard, ScreenHeader, SectionTitle, Tag, inputStyle } from '../../../shared/components/ui';
-import { useToast } from '../../../shared/components/Toast';
+import { AppButton, AppScreen, EmptyState, GlassCard, ScreenHeader, SectionTitle, Tag, inputStyle, useToast } from '../../../shared/components';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import { useSessionStore } from '../../auth/store/sessionStore';
 import { nutriApi } from '../api/nutriApi';
 import type { Food, FoodType, Meal, MealImage, MealType } from '../api/nutriTypes';
-import { uploadConfirmedMealImage } from '../services/mealImageService';
-import { prepareMealImageFile } from '../services/mealImageUpload';
-import type { MealImageFile } from '../services/mealImageUpload.types';
+import { prepareMealImageFile, uploadConfirmedMealImage, type MealImageFile } from '../services/mealImage';
 import {
   createIdempotencyKey,
   formatLocalDateTime,

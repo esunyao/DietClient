@@ -1,5 +1,5 @@
-import { nutriApi } from '../api/nutriApi';
-import type { MealId } from '../api/nutriTypes';
+import { nutriApi } from '../../api/nutriApi';
+import type { MealId } from '../../api/nutriTypes';
 import { uploadMealImageBinary } from './mealImageUpload';
 import type { MealImageFile, MealImageUploadProgress } from './mealImageUpload.types';
 

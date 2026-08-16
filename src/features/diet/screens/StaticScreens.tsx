@@ -19,8 +19,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSpring, wit
 
 import { durations, springGentle, timing } from '../../../shared/animation/config';
 import type { HomeStackParamList } from '../../../navigation/types';
-import { AppButton, AppScreen, GlassCard, MetricProgress, ScoreRing, SectionTitle, Tag } from '../../../shared/components/ui';
-import { useToast } from '../../../shared/components/Toast';
+import { AppButton, AppScreen, GlassCard, MetricProgress, ScoreRing, SectionTitle, Tag, useToast } from '../../../shared/components';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import { nutriApi } from '../api/nutriApi';
 import type { Meal, NutrientValue } from '../api/nutriTypes';

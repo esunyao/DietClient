@@ -1,4 +1,4 @@
-jest.mock('../api/healthApi', () => ({
+jest.mock('../../api/healthApi', () => ({
   healthApi: {
     bodyMeasurements: { list: jest.fn() },
     healthGoals: { list: jest.fn() },
@@ -8,7 +8,7 @@ jest.mock('../api/healthApi', () => ({
   },
 }));
 
-import { healthApi } from '../api/healthApi';
+import { healthApi } from '../../api/healthApi';
 import {
   getCachedHealthRecords,
   getHealthRecords,

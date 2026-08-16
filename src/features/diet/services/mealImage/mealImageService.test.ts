@@ -1,9 +1,9 @@
-jest.mock('../api/nutriApi', () => ({
+jest.mock('../../api/nutriApi', () => ({
   nutriApi: { presignMealImage: jest.fn(), confirmMealImage: jest.fn() },
 }));
 jest.mock('./mealImageUpload', () => ({ uploadMealImageBinary: jest.fn() }));
 
-import { nutriApi } from '../api/nutriApi';
+import { nutriApi } from '../../api/nutriApi';
 import { uploadMealImageBinary } from './mealImageUpload';
 import { uploadConfirmedMealImage } from './mealImageService';
 

@@ -7,27 +7,21 @@ import { ChevronRight, Ruler, Scale, ShieldAlert, Star, Stethoscope, Target, Tra
 import type { ProfileStackParamList } from '../../../navigation/types';
 import { getErrorMessage } from '../../../shared/api/client';
 import { PressableScale } from '../../../shared/animation/PressableScale';
-import { AppButton, AppScreen, EmptyState, GlassCard, ScreenHeader, SectionTitle, inputStyle } from '../../../shared/components/ui';
-import { DestructiveConfirmSheet } from '../../../shared/components/DestructiveConfirmSheet';
-import { DateWheelField } from '../../../shared/components/DateWheelField';
-import { WeightWheelField } from '../../../shared/components/WeightWheelField';
-import { NumericWheelField } from '../../../shared/components/NumericWheelField';
-import { PercentageSliderField } from '../../../shared/components/PercentageSliderField';
-import { HealthPickerSheet, HealthSelectField, type HealthPickerOption } from '../../../shared/components/HealthPickerSheet';
+import { AppButton, AppScreen, DateWheelField, DestructiveConfirmSheet, EmptyState, GlassCard, HealthPickerSheet, HealthSelectField, NumericWheelField, PercentageSliderField, ScreenHeader, SectionTitle, WeightWheelField, inputStyle, type HealthPickerOption } from '../../../shared/components';
 import { PerfRegion } from '../../../shared/perf/PerfRegion';
 import { scheduleIdleTask } from '../../../shared/perf/scheduleIdleTask';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { Allergy, BodyMeasurement, DietaryRestriction, HealthGoal, MedicalCondition } from '../../../shared/types/api';
 import { normalizePercentageInput, PERCENTAGE_VALIDATION_MESSAGE } from '../../../shared/validation/percentage';
-import { useToast } from '../../../shared/components/Toast';
+import { useToast } from '../../../shared/components';
 import { healthApi } from '../api/healthApi';
-import { getHealthRecordDeleteSummary } from './healthRecordDeleteSummary';
 import {
   getCachedHealthRecords,
+  getHealthRecordDeleteSummary,
   getHealthRecords,
   removeHealthRecord,
   upsertHealthRecord,
-} from '../services/healthRecordsCache';
+} from '../services/healthRecords';
 
 type HealthProps = NativeStackScreenProps<ProfileStackParamList, 'HealthRecords'>;
 type FormProps = NativeStackScreenProps<ProfileStackParamList, 'HealthRecordForm'>;

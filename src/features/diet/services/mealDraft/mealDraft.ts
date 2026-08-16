@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 
-import type { FoodId, MealItemInput, MealType } from '../api/nutriTypes';
+import type { FoodId, MealItemInput, MealType } from '../../api/nutriTypes';
 
 export type MealDraftItem = {
   foodId: FoodId | null;

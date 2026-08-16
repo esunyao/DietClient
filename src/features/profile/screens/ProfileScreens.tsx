@@ -57,11 +57,9 @@ import {
   SectionTitle,
   Tag,
   inputStyle,
-} from '../../../shared/components/ui';
-import { DateWheelField } from '../../../shared/components/DateWheelField';
-import { NumericWheelField } from '../../../shared/components/NumericWheelField';
-import { HealthSelectField, type HealthPickerOption } from '../../../shared/components/HealthPickerSheet';
-import { useToast } from '../../../shared/components/Toast';
+  useToast,
+} from '../../../shared/components';
+import { DateWheelField, HealthSelectField, NumericWheelField, type HealthPickerOption } from '../../../shared/components';
 import { useScrollChrome } from '../../../shared/scrollChrome/ScrollChromeProvider';
 import { scheduleIdleTask } from '../../../shared/perf/scheduleIdleTask';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
@@ -76,8 +74,8 @@ import { userApi } from '../api/userApi';
 import {
   prepareAvatarFile,
   uploadAvatarBinary,
-} from '../services/avatarUpload';
-import { getHealthRecords } from '../services/healthRecordsCache';
+} from '../services/avatar';
+import { getHealthRecords } from '../services/healthRecords';
 
 type ProfileProps = NativeStackScreenProps<
   ProfileStackParamList,
