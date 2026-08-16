@@ -3,8 +3,8 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check, ChevronDown } from 'lucide-react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { colors, fonts, radii, spacing } from '../theme/tokens';
-import { GlassSurface } from './GlassSurface';
+import { colors, fonts, radii, spacing } from '../../theme/tokens';
+import { GlassSurface } from '../surfaces/GlassSurface';
 
 export type HealthPickerOption = { value: string; label: string; description?: string };
 

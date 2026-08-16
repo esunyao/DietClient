@@ -4,8 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import DatePicker from 'react-native-date-picker';
 
 import type { DateWheelMode } from './DateWheelField';
-import { HealthPickerSheet } from './HealthPickerSheet';
-import { colors, fonts, radii, spacing } from '../theme/tokens';
+import { HealthPickerSheet } from '../overlays/HealthPickerSheet';
+import { colors, fonts, radii, spacing } from '../../theme/tokens';
 
 function pad(value: number) {
   return String(value).padStart(2, '0');

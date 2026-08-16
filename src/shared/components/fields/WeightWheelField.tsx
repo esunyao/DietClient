@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { inputStyle } from './ui';
-import { colors, fonts } from '../theme/tokens';
+import { inputStyle } from '../ui';
+import { colors, fonts } from '../../theme/tokens';
 
 export function WeightWheelField({ label, value, onChange }: {
   label: string;

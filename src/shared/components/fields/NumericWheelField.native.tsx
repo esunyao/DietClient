@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react-native';
 import { NativeModules, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { NumericWheelFieldProps } from './NumericWheelField';
-import { colors, fonts, radii, spacing } from '../theme/tokens';
+import { colors, fonts, radii, spacing } from '../../theme/tokens';
 
 type PickerResult = { action: 'cancel' | 'clear' | 'confirm'; value: number | null };
 type NumericPickerModule = {

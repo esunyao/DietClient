@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '../../../shared/api/client';
 import { ScreenTransition } from '../../../shared/animation/ScreenTransition';
-import { AppButton, LogoMark, inputStyle } from '../../../shared/components/ui';
+import { AppButton, LogoMark, inputStyle } from '../../../shared/components';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import type { AuthStackParamList } from '../../../navigation/types';
 import { useSessionStore } from '../store/sessionStore';

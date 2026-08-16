@@ -2,8 +2,8 @@ import React, { createContext, useCallback, useContext, useMemo, useRef, useStat
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 
-import { durations } from '../animation/config';
-import { colors, fonts, radii, spacing } from '../theme/tokens';
+import { durations } from '../../animation/config';
+import { colors, fonts, radii, spacing } from '../../theme/tokens';
 
 type ToastTone = 'success' | 'error' | 'info';
 type ToastItem = { id: number; message: string; tone: ToastTone };

@@ -13,7 +13,7 @@ import Animated, {
 
 import { durations } from '../../shared/animation/config';
 import { PressableScale } from '../../shared/animation/PressableScale';
-import { GlassSurface } from '../../shared/components/GlassSurface';
+import { GlassSurface } from '../../shared/components';
 import { PerfRegion } from '../../shared/perf/PerfRegion';
 import { useScrollChrome } from '../../shared/scrollChrome/ScrollChromeProvider';
 import { colors, fonts } from '../../shared/theme/tokens';

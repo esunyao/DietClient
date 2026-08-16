@@ -10,8 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ShieldAlert, Trash2 } from 'lucide-react-native';
 
-import { GlassSurface } from './GlassSurface';
-import { colors, fonts, radii, spacing } from '../theme/tokens';
+import { GlassSurface } from '../surfaces/GlassSurface';
+import { colors, fonts, radii, spacing } from '../../theme/tokens';
 
 export type DestructiveConfirmSheetProps = {
   visible: boolean;

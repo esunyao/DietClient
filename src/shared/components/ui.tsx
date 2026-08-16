@@ -32,7 +32,7 @@ import { durations } from '../animation/config';
 import { PressableScale } from '../animation/PressableScale';
 import { ScreenTransition } from '../animation/ScreenTransition';
 import { colors, fonts, glow, radii, shadows, spacing } from '../theme/tokens';
-import { GlassSurface } from './GlassSurface';
+import { GlassSurface } from './surfaces/GlassSurface';
 import { PerfRegion } from '../perf/PerfRegion';
 import { useScrollChrome } from '../scrollChrome/ScrollChromeProvider';
 

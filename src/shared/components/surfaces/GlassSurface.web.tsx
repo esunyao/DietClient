@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { BlurView } from '@sbaiahmed1/react-native-blur';
 
-import { glass, radii } from '../theme/tokens';
+import { glass, radii } from '../../theme/tokens';
 
 /**
  * 玻璃材质的唯一入口（Web 调试端）。

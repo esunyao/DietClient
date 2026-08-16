@@ -2,8 +2,8 @@ import React from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { BlurView } from '@sbaiahmed1/react-native-blur';
 
-import { AndroidGlassSurface } from '../native/AndroidGlassSurface';
-import { glass, radii } from '../theme/tokens';
+import { AndroidGlassSurface } from '../../native/AndroidGlassSurface';
+import { glass, radii } from '../../theme/tokens';
 
 /**
  * 玻璃材质的唯一入口（原生端）。

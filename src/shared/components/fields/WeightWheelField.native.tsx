@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ChevronDown, Scale } from 'lucide-react-native';
 import { NativeModules, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fonts, radii, spacing } from '../theme/tokens';
+import { colors, fonts, radii, spacing } from '../../theme/tokens';
 
 type WeightPickerResult = { action: 'cancel' | 'clear' | 'confirm'; value: number | null };
 

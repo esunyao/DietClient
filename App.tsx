@@ -5,7 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { ToastProvider } from './src/shared/components/Toast';
+import { ToastProvider } from './src/shared/components';
 import { colors } from './src/shared/theme/tokens';
 
 /**

@@ -3,14 +3,14 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { ChevronRight } from 'lucide-react-native';
 
-import { colors, fonts, radii, spacing } from '../theme/tokens';
+import { colors, fonts, radii, spacing } from '../../theme/tokens';
 import {
   isPercentageInput,
   normalizePercentageInput,
   PERCENTAGE_VALIDATION_MESSAGE,
   percentageFromSlider,
-} from '../validation/percentage';
-import { HealthPickerSheet } from './HealthPickerSheet';
+} from '../../validation/percentage';
+import { HealthPickerSheet } from '../overlays/HealthPickerSheet';
 
 type PercentageSliderFieldProps = {
   label: string;
