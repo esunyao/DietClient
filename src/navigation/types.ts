@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 import type { Food, MealId } from '../features/diet/api/nutriTypes';
 
 export type AuthStackParamList = {
@@ -28,7 +30,7 @@ export type DietStackParamList = {
 
 export type AppTabParamList = {
   HomeTab: undefined;
-  RecognitionTab: undefined;
+  RecognitionTab: NavigatorScreenParams<DietStackParamList> | undefined;
   MealTab: undefined;
   TrendsTab: undefined;
   ReportsTab: undefined;
