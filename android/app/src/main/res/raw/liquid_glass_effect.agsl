@@ -1,0 +1,97 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025 QmDeve
+ *
+ * Adapted from AndroidLiquidGlassView by Donny Yale and Ahmed Sbai:
+ * https://github.com/QmDeve/AndroidLiquidGlassView
+ */
+
+uniform shader content;
+uniform float2 size;
+uniform float2 cornerRadii;
+uniform float refractionHeight;
+uniform float refractionAmount;
+uniform float chromaticAberration;
+uniform float blurRadius;
+uniform float2 sourceOffset;
+
+float radiusAt(float2 coord, float2 radii) {
+    return coord.y < 0.0 ? radii.x : radii.y;
+}
+
+float sdRoundedRect(float2 coord, float2 halfSize, float radius) {
+    float2 cornerCoord = abs(coord) - (halfSize - float2(radius));
+    float outside = length(max(cornerCoord, 0.0)) - radius;
+    float inside = min(max(cornerCoord.x, cornerCoord.y), 0.0);
+    return outside + inside;
+}
+
+float safeSign(float value) {
+    return value < 0.0 ? -1.0 : 1.0;
+}
+
+float2 safeNormalize(float2 value, float2 fallback) {
+    float len = length(value);
+    return len > 0.001 ? value / len : fallback;
+}
+
+float2 gradRoundedRect(float2 coord, float2 halfSize, float radius) {
+    float2 cornerCoord = abs(coord) - (halfSize - float2(radius));
+    if (cornerCoord.x >= 0.0 || cornerCoord.y >= 0.0) {
+        float2 outside = max(cornerCoord, 0.0);
+        float outsideLength = length(outside);
+        if (outsideLength > 0.001) return sign(coord) * (outside / outsideLength);
+        float useX = step(cornerCoord.y, cornerCoord.x);
+        return float2(useX * safeSign(coord.x), (1.0 - useX) * safeSign(coord.y));
+    }
+    float useX = step(cornerCoord.y, cornerCoord.x);
+    return sign(coord) * float2(useX, 1.0 - useX);
+}
+
+float circleMap(float x) {
+    return 1.0 - sqrt(max(0.0, 1.0 - x * x));
+}
+
+half4 sampleContent(float2 coord) {
+    return content.eval(coord + sourceOffset);
+}
+
+// RenderEffect 已被移除，避免把 Fabric RenderNode 再次嵌入根视图。
+// 对小型导航区域使用固定 3x3 高斯采样，blurRadius 保持物理像素语义。
+half4 blurredContent(float2 coord) {
+    float r = max(0.01, blurRadius);
+    half4 result = sampleContent(coord) * 0.20418;
+    result += sampleContent(coord + float2(r, 0.0)) * 0.12384;
+    result += sampleContent(coord + float2(-r, 0.0)) * 0.12384;
+    result += sampleContent(coord + float2(0.0, r)) * 0.12384;
+    result += sampleContent(coord + float2(0.0, -r)) * 0.12384;
+    result += sampleContent(coord + float2(r, r)) * 0.07511;
+    result += sampleContent(coord + float2(-r, r)) * 0.07511;
+    result += sampleContent(coord + float2(r, -r)) * 0.07511;
+    result += sampleContent(coord + float2(-r, -r)) * 0.07511;
+    return result;
+}
+
+half4 main(float2 coord) {
+    float2 halfSize = size * 0.5;
+    float2 centeredCoord = coord - halfSize;
+    float radius = radiusAt(centeredCoord, cornerRadii);
+    float sd = sdRoundedRect(centeredCoord, halfSize, radius);
+    if (-sd >= refractionHeight) return blurredContent(coord);
+
+    sd = min(sd, 0.0);
+    float d = circleMap(1.0 - -sd / refractionHeight) * refractionAmount;
+    float gradRadius = min(max(radius * 1.5, 30.0), min(halfSize.x, halfSize.y));
+    float2 grad = safeNormalize(gradRoundedRect(centeredCoord, halfSize, gradRadius), float2(0.0, -1.0));
+    float2 refractedCoord = coord + d * grad;
+    float dispersionFactor = chromaticAberration * ((centeredCoord.x * centeredCoord.y) / max(1.0, halfSize.x * halfSize.y));
+    float2 dispersedCoord = d * grad * dispersionFactor;
+
+    half4 color;
+    color.r = blurredContent(refractedCoord + dispersedCoord).r;
+    color.g = blurredContent(refractedCoord).g;
+    color.b = blurredContent(refractedCoord - dispersedCoord).b;
+    color.a = blurredContent(refractedCoord).a;
+    return color;
+}

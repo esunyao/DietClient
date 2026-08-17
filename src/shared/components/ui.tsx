@@ -43,6 +43,15 @@ const HEADER_HEIGHT = 44;
 const COMPACT_HEADER_MIN_WIDTH = 86;
 const COMPACT_HEADER_MAX_WIDTH = 158;
 const COMPACT_HEADER_HEIGHT = 26;
+const navigationLiquidGlass = {
+  captureGroup: 'header' as const,
+  touchEffect: true,
+  elasticEffect: true,
+  refractionHeight: 21,
+  refractionOffset: 60,
+  blurRadius: 10,
+  dispersion: 0.8,
+};
 
 /** 底部 tab 显隐过渡（UI 线程）。 */
 const TabSlideTiming = {
@@ -219,7 +228,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
     <PerfRegion name="ScreenHeader">
       <View style={styles.headerShell}>
         <Animated.View pointerEvents={isCollapsed ? 'none' : 'auto'} style={[styles.headerExpanded, expandedStyle]}>
-          <GlassSurface cornerRadius={HEADER_HEIGHT / 2} elevated intensity={50} variant="navigation" style={styles.header}>
+          <GlassSurface cornerRadius={HEADER_HEIGHT / 2} elevated intensity={50} liquid={{ ...navigationLiquidGlass, enabled: !isCollapsed }} variant="navigation" style={styles.header}>
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>{title}</Text>
               {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
@@ -233,13 +242,13 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
           </GlassSurface>
         </Animated.View>
         <Animated.View pointerEvents="none" style={[styles.headerCompact, { width: compactWidth }, compactStyle]}>
-          <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} variant="navigation" style={styles.compactIsland}>
+          <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} liquid={{ ...navigationLiquidGlass, enabled: isCollapsed }} variant="navigation" style={styles.compactIsland}>
             <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.compactTitle, { fontSize: compactFontSize }]}>{title}</Text>
           </GlassSurface>
         </Animated.View>
         {onBack ? (
           <Animated.View pointerEvents={isCollapsed ? 'auto' : 'none'} style={[styles.headerSideLeft, sideStyle]}>
-            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} variant="navigation" style={styles.headerSideButton}>
+            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} liquid={{ ...navigationLiquidGlass, enabled: isCollapsed }} variant="navigation" style={styles.headerSideButton}>
               <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.sideButtonPressable}>
                 <ArrowLeft color={colors.ink} size={17} />
               </Pressable>
@@ -248,7 +257,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
         ) : null}
         {action ? (
           <Animated.View pointerEvents={isCollapsed ? 'auto' : 'none'} style={[styles.headerSideRight, sideStyle]}>
-            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} variant="navigation" style={styles.headerSideButton}>
+            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} liquid={{ ...navigationLiquidGlass, enabled: isCollapsed }} variant="navigation" style={styles.headerSideButton}>
               {action}
             </GlassSurface>
           </Animated.View>

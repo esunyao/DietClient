@@ -7,6 +7,14 @@ export function AndroidGlassSurface({ children, style }: {
   variant: 'soft' | 'navigation';
   elevated?: boolean;
   cornerRadius?: number;
+  liquidEnabled?: boolean;
+  liquidTouchEffect?: boolean;
+  liquidElasticEffect?: boolean;
+  liquidCaptureGroup?: 'header' | 'tab';
+  liquidRefractionHeight?: number;
+  liquidRefractionOffset?: number;
+  liquidBlurRadius?: number;
+  liquidDispersion?: number;
 }) {
   return <View style={style}>{children}</View>;
 }

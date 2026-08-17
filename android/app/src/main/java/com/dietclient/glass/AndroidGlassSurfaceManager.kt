@@ -30,6 +30,38 @@ class AndroidGlassSurfaceManager : ViewGroupManager<AndroidGlassSurface>(),
     view.setCornerRadius(cornerRadius)
   }
 
+  override fun setLiquidEnabled(view: AndroidGlassSurface, liquidEnabled: Boolean) {
+    view.setLiquidEnabled(liquidEnabled)
+  }
+
+  override fun setLiquidTouchEffect(view: AndroidGlassSurface, liquidTouchEffect: Boolean) {
+    view.setLiquidTouchEffect(liquidTouchEffect)
+  }
+
+  override fun setLiquidElasticEffect(view: AndroidGlassSurface, liquidElasticEffect: Boolean) {
+    view.setLiquidElasticEffect(liquidElasticEffect)
+  }
+
+  override fun setLiquidCaptureGroup(view: AndroidGlassSurface, liquidCaptureGroup: String?) {
+    view.setLiquidCaptureGroup(liquidCaptureGroup)
+  }
+
+  override fun setLiquidRefractionHeight(view: AndroidGlassSurface, liquidRefractionHeight: Double) {
+    view.setLiquidRefractionHeight(liquidRefractionHeight)
+  }
+
+  override fun setLiquidRefractionOffset(view: AndroidGlassSurface, liquidRefractionOffset: Double) {
+    view.setLiquidRefractionOffset(liquidRefractionOffset)
+  }
+
+  override fun setLiquidBlurRadius(view: AndroidGlassSurface, liquidBlurRadius: Double) {
+    view.setLiquidBlurRadius(liquidBlurRadius)
+  }
+
+  override fun setLiquidDispersion(view: AndroidGlassSurface, liquidDispersion: Double) {
+    view.setLiquidDispersion(liquidDispersion)
+  }
+
   companion object {
     const val NAME = "AndroidGlassSurface"
   }

@@ -5,6 +5,17 @@ import { BlurView } from '@sbaiahmed1/react-native-blur';
 import { AndroidGlassSurface } from '../../native/AndroidGlassSurface';
 import { glass, radii } from '../../theme/tokens';
 
+type LiquidGlassOptions = {
+  enabled?: boolean;
+  touchEffect?: boolean;
+  elasticEffect?: boolean;
+  captureGroup?: 'header' | 'tab';
+  refractionHeight?: number;
+  refractionOffset?: number;
+  blurRadius?: number;
+  dispersion?: number;
+};
+
 /**
  * 玻璃材质的唯一入口（原生端）。
  * - `frosted`：真 backdrop blur（原生为平台模糊），保持原始高帧率光学质感。
@@ -20,6 +31,7 @@ export function GlassSurface({
   blurRounds = 2,
   elevated = false,
   cornerRadius = radii.lg,
+  liquid,
 }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -29,12 +41,22 @@ export function GlassSurface({
   blurRounds?: number;
   elevated?: boolean;
   cornerRadius?: number;
+  /** 仅 Android 13+ 的导航液态玻璃；未传入时保持静态材质。 */
+  liquid?: LiquidGlassOptions;
 }) {
   if (Platform.OS === 'android') {
     return (
       <AndroidGlassSurface
         cornerRadius={cornerRadius}
         elevated={elevated}
+        liquidBlurRadius={liquid?.blurRadius}
+        liquidDispersion={liquid?.dispersion}
+        liquidElasticEffect={liquid?.elasticEffect}
+        liquidCaptureGroup={liquid?.captureGroup}
+        liquidEnabled={liquid?.enabled}
+        liquidRefractionHeight={liquid?.refractionHeight}
+        liquidRefractionOffset={liquid?.refractionOffset}
+        liquidTouchEffect={liquid?.touchEffect}
         style={style}
         variant={variant === 'navigation' ? 'navigation' : 'soft'}
       >
