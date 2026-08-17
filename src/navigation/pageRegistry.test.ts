@@ -2,6 +2,7 @@ import { isBottomTabVisibleForDietRoute, pageRegistry } from './pageRegistry';
 
 describe('diet page registry', () => {
   it('keeps Recognition as the bottom tab root only', () => {
+    expect(isBottomTabVisibleForDietRoute()).toBe(true);
     expect(isBottomTabVisibleForDietRoute('Recognition')).toBe(true);
     expect(isBottomTabVisibleForDietRoute('MealDetail')).toBe(false);
     expect(pageRegistry.recognition.root).toBe(true);

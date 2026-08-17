@@ -16,5 +16,6 @@ export const pageRegistry: Record<DietPageId, PageDefinition> = {
 };
 
 export function isBottomTabVisibleForDietRoute(routeName?: string): boolean {
-  return routeName === 'Recognition';
+  // React Navigation 首帧可能还未提供嵌套 Stack state；Recognition 是该 Tab 的唯一根页。
+  return (routeName ?? 'Recognition') === 'Recognition';
 }

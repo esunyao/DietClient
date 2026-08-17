@@ -22,7 +22,7 @@ function toPickerDate(value: string): Date {
 
 function formatDisplay(value: string, mode: DateWheelMode): string {
   const date = toPickerDate(value);
-  const datePart = `${date.getFullYear()}年${pad(date.getMonth() + 1)}月${pad(date.getDate())}日`;
+  const datePart = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   return mode === 'datetime' ? `${datePart} ${pad(date.getHours())}:${pad(date.getMinutes())}` : datePart;
 }
 
@@ -50,7 +50,7 @@ export function DateWheelField({ label, value, onChange, optional = false, mode 
       <Text style={styles.label}>{label}</Text>
       <View style={styles.controlRow}>
         <Pressable accessibilityLabel={`选择${label}`} onPress={() => setOpen(true)} style={styles.control}>
-          <Text style={[styles.value, !value && styles.placeholder]}>{value ? formatDisplay(value, mode) : '请选择日期'}</Text>
+          <Text numberOfLines={1} style={[styles.value, !value && styles.placeholder]}>{value ? formatDisplay(value, mode) : '请选择日期'}</Text>
           <CalendarDays color={colors.blue} size={18} />
         </Pressable>
         {optional && value ? (

@@ -1,5 +1,5 @@
 import { nutriApi } from '../../api/nutriApi';
-import type { CaptureSession, CaptureSessionId } from '../../api/nutriTypes';
+import type { CaptureSession, CaptureSessionId, CaptureSubmitRequest, CaptureSubmission } from '../../api/nutriTypes';
 import { clearActiveCaptureSessionId, readActiveCaptureSessionId, saveActiveCaptureSessionId } from './captureSessionStorage';
 import { createIdempotencyKey } from './captureUtils';
 import { uploadCaptureImageBinary } from './mealCaptureUpload';
@@ -40,10 +40,10 @@ export async function endCaptureSession(sessionId: CaptureSessionId): Promise<vo
   await clearActiveCaptureSessionId();
 }
 
-export async function submitCaptureSession(sessionId: CaptureSessionId): Promise<CaptureSession> {
-  return nutriApi.submitCaptureSession(sessionId);
+export async function submitCaptureSession(sessionId: CaptureSessionId, payload: CaptureSubmitRequest): Promise<CaptureSubmission> {
+  return nutriApi.submitCaptureSession(sessionId, payload);
 }
 
-export async function retryCaptureSession(sessionId: CaptureSessionId): Promise<CaptureSession> {
+export async function retryCaptureSession(sessionId: CaptureSessionId): Promise<CaptureSubmission> {
   return nutriApi.retryCaptureSession(sessionId);
 }

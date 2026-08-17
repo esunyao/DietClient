@@ -4,7 +4,7 @@ jest.mock('./mealCaptureUpload', () => ({ uploadCaptureImageBinary: jest.fn() })
 
 import { nutriApi } from '../../api/nutriApi';
 import { readActiveCaptureSessionId, saveActiveCaptureSessionId } from './captureSessionStorage';
-import { createCaptureSession, restoreCaptureSession, uploadAndConfirmCaptureImage } from './mealCaptureService';
+import { createCaptureSession, restoreCaptureSession, submitCaptureSession, uploadAndConfirmCaptureImage } from './mealCaptureService';
 import { uploadCaptureImageBinary } from './mealCaptureUpload';
 
 const session = { captureSessionId: '2086475596958904300', status: 'created', timezone: 'Asia/Shanghai', maxImageCount: 10, expiresAt: '', analysisRequestedAt: null, images: [], createdAt: '', updatedAt: '' } as const;
@@ -26,5 +26,11 @@ describe('meal capture service', () => {
     await uploadAndConfirmCaptureImage(session.captureSessionId, { uri: 'file://plate.jpg', fileName: 'plate.jpg', contentType: 'image/jpeg', byteSize: 100, capturedAt: null }, () => undefined);
     expect((uploadCaptureImageBinary as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan((nutriApi.confirmCaptureImage as jest.Mock).mock.invocationCallOrder[0]);
     expect(nutriApi.confirmCaptureImage).toHaveBeenCalledWith(session.captureSessionId, '2086475596958904301');
+  });
+  it('submits the selected meal metadata', async () => {
+    const response = { captureSession: session, meal: { mealId: '2086475596958904302', analysisStatus: 'queued' } };
+    (nutriApi.submitCaptureSession as jest.Mock).mockResolvedValue(response);
+    await expect(submitCaptureSession(session.captureSessionId, { mealType: 'lunch', notes: '少盐' })).resolves.toEqual(response);
+    expect(nutriApi.submitCaptureSession).toHaveBeenCalledWith(session.captureSessionId, { mealType: 'lunch', notes: '少盐' });
   });
 });
