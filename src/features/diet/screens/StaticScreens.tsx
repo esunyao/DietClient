@@ -22,8 +22,8 @@ import type { HomeStackParamList } from '../../../navigation/types';
 import { AppButton, AppScreen, GlassCard, MetricProgress, ScoreRing, SectionTitle, Tag, useToast } from '../../../shared/components';
 import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
 import { nutriApi } from '../api/nutriApi';
-import type { Meal, NutrientValue } from '../api/nutriTypes';
-import { localDateFromDate } from '../services/mealDraft';
+import type { MealHistoryItem, NutrientValue } from '../api/nutriTypes';
+import { localDateFromDate } from '../services/mealCapture';
 
 type HomeProps = NativeStackScreenProps<HomeStackParamList, 'HomeMain'>;
 type ScoreProps = NativeStackScreenProps<HomeStackParamList, 'ScoreDetail'>;
@@ -80,18 +80,18 @@ function formatNutrient(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
 }
 
-function recordEmoji(meal: Meal): string {
+function recordEmoji(meal: MealHistoryItem): string {
   return ({ breakfast: '🥣', lunch: '🥗', dinner: '🍲', snack: '🍎', other: '🍽️' })[meal.mealType];
 }
 
 export function HomeScreen({ navigation }: HomeProps) {
-  const [todayMeals, setTodayMeals] = useState<Meal[]>([]);
+  const [todayMeals, setTodayMeals] = useState<MealHistoryItem[]>([]);
   const [todayNutrients, setTodayNutrients] = useState<NutrientValue[]>([]);
   const [loadingMeals, setLoadingMeals] = useState(true);
   const today = localDateFromDate();
-  const openDiet = useCallback((screen?: 'MealEntry' | 'MealHistory' | 'MealDetail', params?: { mealId: string }) => {
+  const openDiet = useCallback((screen?: 'Recognition' | 'MealHistory' | 'MealDetail', params?: { mealId: string }) => {
     const tabNavigation = navigation.getParent() as unknown as { navigate: (name: string, params?: unknown) => void } | undefined;
-    if (!screen || screen === 'MealEntry') {
+    if (!screen || screen === 'Recognition') {
       tabNavigation?.navigate('RecognitionTab');
       return;
     }
@@ -152,7 +152,7 @@ export function HomeScreen({ navigation }: HomeProps) {
       </View>
 
       <View style={styles.quickGrid}>
-        <QuickAction icon={<Camera color="#FFFFFF" size={22} />} title="记录餐食" description="手动录入 · 图片附件" blue onPress={() => openDiet()} />
+        <QuickAction icon={<Camera color="#FFFFFF" size={22} />} title="识别这一餐" description="拍照 · AI 分析" blue onPress={() => openDiet()} />
         <QuickAction icon={<Sparkles color={colors.green} size={22} />} title="下一餐处方" description="AI 配餐" />
         <QuickAction icon={<Target color={colors.violet} size={22} />} title="今日目标" description="调整目标" />
         <QuickAction icon={<TrendingUp color={colors.blue} size={22} />} title="历史追踪" description="饮食 & 身体" />
@@ -168,7 +168,7 @@ export function HomeScreen({ navigation }: HomeProps) {
 
       <SectionTitle title="今日饮食记录" action={<Pressable onPress={() => openDiet('MealHistory')}><Text style={styles.actionText}>全部记录</Text></Pressable>} />
       <GlassCard style={styles.records}>
-        {todayMeals.map(meal => <RecordRow key={meal.mealId} emoji={recordEmoji(meal)} name={meal.items.map(item => item.foodNameSnapshot).join('、')} detail={`${meal.mealType === 'breakfast' ? '早餐' : meal.mealType === 'lunch' ? '午餐' : meal.mealType === 'dinner' ? '晚餐' : meal.mealType === 'snack' ? '加餐' : '其他'} · ${new Date(meal.consumedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${formatNutrient(nutrientValue(meal.nutrients, 'ENERGY_KCAL'))} kcal`} tag={`${meal.images.filter(image => image.status === 'confirmed').length} 图`} tone="green" onPress={() => openDiet('MealDetail', { mealId: meal.mealId })} />)}
+        {todayMeals.map(meal => <RecordRow key={meal.mealId} emoji={recordEmoji(meal)} name={meal.notes || '已分析餐食'} detail={`${meal.mealType === 'breakfast' ? '早餐' : meal.mealType === 'lunch' ? '午餐' : meal.mealType === 'dinner' ? '晚餐' : meal.mealType === 'snack' ? '加餐' : '其他'} · ${new Date(meal.consumedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${formatNutrient(nutrientValue(meal.nutrients, 'ENERGY_KCAL'))} kcal`} tag="已分析" tone="green" onPress={() => openDiet('MealDetail', { mealId: meal.mealId })} />)}
         {!loadingMeals && !todayMeals.length ? <Pressable onPress={() => openDiet()} style={styles.emptyRecords}><Text style={styles.emptyRecordsText}>今天还没有餐食记录，点击开始记录。</Text></Pressable> : null}
       </GlassCard>
 

@@ -267,13 +267,14 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
   );
 }
 
-export function AppButton({ label, onPress, loading, disabled, variant = 'primary', style }: {
+export function AppButton({ label, onPress, loading, disabled, variant = 'primary', style, icon }: {
   label: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'danger';
   style?: StyleProp<ViewStyle>;
+  icon?: React.ReactNode;
 }) {
   const isDisabled = Boolean(disabled || loading);
   return (
@@ -290,6 +291,7 @@ export function AppButton({ label, onPress, loading, disabled, variant = 'primar
       ]}
     >
       {loading ? <ActivityIndicator color={variant === 'secondary' ? colors.blue : '#FFFFFF'} size="small" /> : null}
+      {!loading ? icon : null}
       <Text style={[styles.buttonText, variant === 'secondary' && styles.buttonSecondaryText]}>{label}</Text>
     </PressableScale>
   );

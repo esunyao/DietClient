@@ -10,43 +10,31 @@ import { nutriApi } from './nutriApi';
 const getMock = apiClient.get as unknown as jest.Mock;
 const postMock = apiClient.post as unknown as jest.Mock;
 const putMock = apiClient.put as unknown as jest.Mock;
-const deleteMock = apiClient.delete as unknown as jest.Mock;
 const snowflakeId = '2086475596958904300';
 
-describe('nutriApi contract paths', () => {
+describe('NutriMemo photo capture contract', () => {
   beforeEach(() => jest.clearAllMocks());
-
-  it('passes query filters to the meal history endpoint', async () => {
+  it('keeps snowflake and presigned image IDs as strings', async () => {
+    postMock.mockResolvedValue({ data: { data: { imageId: snowflakeId, uploadUrl: 'https://oss.example/upload', objectKey: 'private/x', requiredHeaders: {}, expiresInSeconds: 300 } } });
+    const result = await nutriApi.presignCaptureImage(snowflakeId, { fileName: 'plate.jpg', contentType: 'image/jpeg', contentLength: 1024 });
+    expect(result.imageId).toBe(snowflakeId);
+    expect(postMock).toHaveBeenCalledWith(`v1/nutri/capture-sessions/${snowflakeId}/images/presign`, expect.objectContaining({ fileName: 'plate.jpg' }));
+  });
+  it('sends idempotency key when creating a session', async () => {
+    postMock.mockResolvedValue({ data: { data: { captureSessionId: snowflakeId } } });
+    await nutriApi.createCaptureSession({ timezone: 'Asia/Shanghai' }, '98fcaaf7-7a6e-44c2-98d0-57ddbc315346');
+    expect(postMock).toHaveBeenCalledWith('v1/nutri/capture-sessions', { timezone: 'Asia/Shanghai' }, { headers: { 'X-Idempotency-Key': '98fcaaf7-7a6e-44c2-98d0-57ddbc315346' } });
+  });
+  it('passes keyword and pagination to history', async () => {
     getMock.mockResolvedValue({ data: { data: { items: [], page: {} } } });
-    await nutriApi.listMeals({ dateFrom: '2026-08-01', dateTo: '2026-08-07', mealType: 'lunch', page: 2 });
-    expect(getMock).toHaveBeenCalledWith('v1/nutri/meals', {
-      params: { dateFrom: '2026-08-01', dateTo: '2026-08-07', mealType: 'lunch', page: 2, pageSize: 20 },
-    });
+    await nutriApi.listMeals({ dateFrom: '2026-08-01', dateTo: '2026-08-07', mealType: 'lunch', q: '鸡胸', page: 2 });
+    expect(getMock).toHaveBeenCalledWith('v1/nutri/meals', { params: { dateFrom: '2026-08-01', dateTo: '2026-08-07', mealType: 'lunch', q: '鸡胸', page: 2, pageSize: 20 } });
   });
-
-  it('uses an exact snowflake ID and UUID header when creating a meal', async () => {
-    postMock.mockResolvedValue({ data: { data: { mealId: snowflakeId } } });
-    const payload = {
-      mealType: 'lunch' as const,
-      consumedAt: '2026-08-13T04:00:00.000Z',
-      timezone: 'Asia/Shanghai',
-      entrySource: 'manual' as const,
-      items: [{ foodId: snowflakeId, consumedAmountG: 150 }],
-    };
-    await nutriApi.createMeal(payload, '98fcaaf7-7a6e-44c2-98d0-57ddbc315346');
-    expect(postMock).toHaveBeenCalledWith('v1/nutri/meals', payload, {
-      headers: { 'X-Idempotency-Key': '98fcaaf7-7a6e-44c2-98d0-57ddbc315346' },
-    });
-  });
-
-  it('uses exact IDs for image deletion and meal replacement', async () => {
-    deleteMock.mockResolvedValue({ data: { code: 200 } });
-    putMock.mockResolvedValue({ data: { data: { mealId: snowflakeId } } });
-    await nutriApi.deleteMealImage(snowflakeId, '2086475596958904301');
-    await nutriApi.replaceMeal(snowflakeId, {
-      mealType: 'dinner', consumedAt: '2026-08-13T10:00:00.000Z', timezone: 'Asia/Shanghai', entrySource: 'manual', items: [{ foodId: snowflakeId, consumedAmountG: 120 }],
-    });
-    expect(deleteMock).toHaveBeenCalledWith(`v1/nutri/meals/${snowflakeId}/images/2086475596958904301`);
-    expect(putMock).toHaveBeenCalledWith(`v1/nutri/meals/${snowflakeId}`, expect.any(Object));
+  it('confirms by imageId and replaces a whole meal without foodId', async () => {
+    postMock.mockResolvedValue({ data: { data: { imageId: snowflakeId } } }); putMock.mockResolvedValue({ data: { data: { mealId: snowflakeId } } });
+    await nutriApi.confirmCaptureImage('session-id', snowflakeId);
+    await nutriApi.replaceMeal(snowflakeId, { mealType: 'lunch', consumedAt: '2026-08-17T04:00:00.000Z', timezone: 'Asia/Shanghai', items: [{ displayName: '鸡胸肉', estimatedWeightG: 120, nutrients: [{ nutrientCode: 'PROTEIN', amount: 31 }] }] });
+    expect(postMock).toHaveBeenCalledWith(`v1/nutri/capture-sessions/session-id/images/${snowflakeId}/confirm`);
+    expect(putMock).toHaveBeenCalledWith(`v1/nutri/meals/${snowflakeId}`, expect.not.objectContaining({ foodId: expect.anything() }));
   });
 });

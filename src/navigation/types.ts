@@ -1,6 +1,6 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
-import type { Food, MealId } from '../features/diet/api/nutriTypes';
+import type { MealId } from '../features/diet/api/nutriTypes';
 
 export type AuthStackParamList = {
   Login: { registeredUsername?: string; emailVerified?: boolean } | undefined;
@@ -22,10 +22,10 @@ export type ProfileStackParamList = {
 };
 
 export type DietStackParamList = {
-  MealEntry: { mealId?: MealId; createdFood?: Food } | undefined;
+  Recognition: undefined;
   MealHistory: undefined;
   MealDetail: { mealId: MealId };
-  CustomFood: undefined;
+  MealCorrection: { mealId: MealId };
 };
 
 export type AppTabParamList = {

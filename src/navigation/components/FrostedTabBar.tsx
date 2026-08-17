@@ -18,6 +18,7 @@ import { PerfRegion } from '../../shared/perf/PerfRegion';
 import { useScrollChrome } from '../../shared/scrollChrome/ScrollChromeProvider';
 import { colors, fonts } from '../../shared/theme/tokens';
 import { useSessionStore } from '../../features/auth/store/sessionStore';
+import { isBottomTabVisibleForDietRoute } from '../pageRegistry';
 
 const tabMeta = {
   HomeTab: { label: '首页', Icon: Home },
@@ -86,7 +87,8 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
   const nestedRoute = nestedState?.routes?.[nestedState.index ?? 0]?.name;
   const tabRootRoute: Partial<Record<string, string>> = { HomeTab: 'HomeMain', ProfileTab: 'ProfileMain' };
   // 嵌套 Stack 只在其根页渲染全局底栏，所有详情/编辑页不保留悬浮 Tab。
-  const hideForChildScreen = Boolean(nestedRoute && tabRootRoute[activeRoute?.name ?? ''] !== nestedRoute);
+  const hideForDietChildScreen = activeRoute?.name === 'RecognitionTab' && !isBottomTabVisibleForDietRoute(nestedRoute);
+  const hideForChildScreen = activeRoute?.name === 'RecognitionTab' ? hideForDietChildScreen : Boolean(nestedRoute && tabRootRoute[activeRoute?.name ?? ''] !== nestedRoute);
   // 新注册账号首次进入时 Profile Stack 直接以 EditProfile 为初始页，首帧尚未生成
   // nestedState。此处只看首次引导状态，绝不能用档案完整度推断。
   const hideForProfileOnboarding = activeRoute?.name === 'ProfileTab' && !nestedRoute && profileOnboardingRequired;

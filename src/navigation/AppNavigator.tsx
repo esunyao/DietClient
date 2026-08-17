@@ -25,7 +25,10 @@ import {
   TrendsScreen,
 } from '../features/diet/screens/StaticScreens';
 import { HomeScreen } from '../features/diet/screens/StaticScreens';
-import { CustomFoodScreen, MealDetailScreen, MealEntryScreen, MealHistoryScreen } from '../features/diet/screens/MealScreens';
+import { RecognitionScreen } from '../features/diet/screens/RecognitionScreen';
+import { MealHistoryScreen } from '../features/diet/screens/MealHistoryScreen';
+import { MealDetailScreen } from '../features/diet/screens/MealDetailScreen';
+import { MealCorrectionScreen } from '../features/diet/screens/MealCorrectionScreen';
 // 个人中心相关页面
 import {
   EditProfileScreen,
@@ -99,14 +102,14 @@ function HomeNavigator() {
   );
 }
 
-/** 餐食录入使用独立 Stack，历史、详情与自定义食物不会污染底部 Tab 状态。 */
+/** 识别页为底栏根页；历史、报告与修正页统一由页面注册表隐藏底栏。 */
 function DietNavigator() {
   return (
     <DietStack.Navigator screenOptions={{ headerShown: false, animation: stackAnimation }}>
-      <DietStack.Screen name="MealEntry" component={MealEntryScreen} />
+      <DietStack.Screen name="Recognition" component={RecognitionScreen} />
       <DietStack.Screen name="MealHistory" component={MealHistoryScreen} />
       <DietStack.Screen name="MealDetail" component={MealDetailScreen} />
-      <DietStack.Screen name="CustomFood" component={CustomFoodScreen} />
+      <DietStack.Screen name="MealCorrection" component={MealCorrectionScreen} />
     </DietStack.Navigator>
   );
 }
