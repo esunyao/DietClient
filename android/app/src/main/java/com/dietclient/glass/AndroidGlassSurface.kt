@@ -27,6 +27,10 @@ import kotlin.math.max
  *
  * 液态模式采样 React 根视图的 Bitmap 像素，而不是引用其 RenderNode。这样既能保留
  * Fabric 内容，又不会产生「根视图 -> 玻璃 -> 根视图」的 display list 递归。
+ *
+ * 快照由 RootBackdropSnapshotCoordinator 按 captureScale 降采样输出；本类把
+ * contentScale 与 content 空间 blurRadius 作为 uniform 传给 AGSL shader，采样坐标
+ * 在 shader 内统一换算回 content 空间，视觉与 1x 捕获等价。
  */
 class AndroidGlassSurface(context: Context) : ReactViewGroup(context) {
   private val density = resources.displayMetrics.density
@@ -360,7 +364,9 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context) {
     runtimeShader.setFloatUniform("refractionHeight", refractionHeightPx)
     runtimeShader.setFloatUniform("refractionAmount", -refractionOffsetPx)
     runtimeShader.setFloatUniform("chromaticAberration", dispersion)
-    runtimeShader.setFloatUniform("blurRadius", blurRadiusPx)
+    // 快照已按 captureScale 降采样：blurRadius 换算为 content 空间半径，采样坐标同步缩放。
+    runtimeShader.setFloatUniform("blurRadius", blurRadiusPx * RootBackdropSnapshotPolicy.captureScale)
+    runtimeShader.setFloatUniform("contentScale", RootBackdropSnapshotPolicy.captureScale)
     runtimeShader.setFloatUniform("sourceOffset", if (sourceOffsetX.isNaN()) 0f else sourceOffsetX, if (sourceOffsetY.isNaN()) 0f else sourceOffsetY)
   }
 

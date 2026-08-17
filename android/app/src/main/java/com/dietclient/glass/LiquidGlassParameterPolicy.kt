@@ -25,9 +25,20 @@ internal object RootBackdropSnapshotPolicy {
   const val maxGroupBytes = 12 * 1024 * 1024
   const val maxTotalBytes = 24 * 1024 * 1024
   const val bufferCount = 2
-  const val fastIntervalMs = 50L
-  const val slowIntervalMs = 83L
+  const val fastIntervalMs = 83L
+  const val slowIntervalMs = 100L
   const val slowCaptureMs = 8L
+
+  /**
+   * 捕获降采样比例：快照 Bitmap 按此比例缩小后再交给 GPU 采样。
+   * 液态玻璃透出的是模糊背景，0.5x 下视觉无差异，但软件光栅化像素数与
+   * 纹理上传带宽均降为 1/4，显著降低主线程与 RenderThread 压力。
+   */
+  const val captureScale = 0.5f
+
+  /** 按 captureScale 计算降采样后的边长，至少 1px。 */
+  fun downscaledSize(sizePx: Int, scale: Float = captureScale): Int =
+    kotlin.math.ceil(sizePx * scale).toInt().coerceAtLeast(1)
 
   fun capturePaddingPx(refractionHeightPx: Float, refractionOffsetPx: Float, blurRadiusPx: Float, density: Float): Int =
     kotlin.math.ceil(kotlin.math.max(refractionHeightPx, refractionOffsetPx) + blurRadiusPx * 2f + density * 4f).toInt()

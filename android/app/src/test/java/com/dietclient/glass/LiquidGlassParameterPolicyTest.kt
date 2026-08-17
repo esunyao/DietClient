@@ -37,8 +37,8 @@ class LiquidGlassParameterPolicyTest {
     assertTrue(RootBackdropSnapshotPolicy.fitsMemoryBudget(4L * 1024 * 1024, 24L * 1024 * 1024))
     assertFalse(RootBackdropSnapshotPolicy.fitsMemoryBudget(13L * 1024 * 1024, 20L * 1024 * 1024))
     assertFalse(RootBackdropSnapshotPolicy.fitsMemoryBudget(4L * 1024 * 1024, 25L * 1024 * 1024))
-    assertEquals(50L, RootBackdropSnapshotPolicy.nextIntervalMs(8L))
-    assertEquals(83L, RootBackdropSnapshotPolicy.nextIntervalMs(9L))
+    assertEquals(83L, RootBackdropSnapshotPolicy.nextIntervalMs(8L))
+    assertEquals(100L, RootBackdropSnapshotPolicy.nextIntervalMs(9L))
   }
 
   @Test

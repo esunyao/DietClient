@@ -18,6 +18,11 @@ import java.util.WeakHashMap
  *
  * 不能把根视图录制为 RenderNode：液态宿主本身是根视图的后代，会造成 display list 环。
  * 本协调器只输出 Bitmap；液态表面随后把 BitmapShader 作为 RuntimeShader 输入使用。
+ *
+ * 性能策略（对应 BLASTBufferQueue 缓冲饱和问题的修复）：
+ * - 捕获按 captureScale 降采样（默认 0.5x），软件光栅化与纹理上传成本降为 1/4；
+ * - 区域与像素未变时（sameAs 去重）保留旧快照，避免轮换 bitmap 触发无意义失效；
+ * - 捕获冷却按上次耗时自适应（fast/slow 两档）。
  */
 internal object RootBackdropSnapshotCoordinator {
   private const val debugTag = "LiquidGlassSnapshot"
@@ -137,13 +142,19 @@ internal object RootBackdropSnapshotCoordinator {
 
     private fun capture(group: String, rect: Rect, state: GroupState, now: Long) {
       try {
-        val bitmap = state.obtainBitmap(rect.width(), rect.height())
+        // 降采样：快照 Bitmap 按 captureScale 缩小，软件光栅化像素数与纹理上传带宽降为 1/4。
+        val scale = RootBackdropSnapshotPolicy.captureScale
+        val bitmapWidth = RootBackdropSnapshotPolicy.downscaledSize(rect.width(), scale)
+        val bitmapHeight = RootBackdropSnapshotPolicy.downscaledSize(rect.height(), scale)
+        val bitmap = state.obtainBitmap(bitmapWidth, bitmapHeight)
         val startedAt = SystemClock.uptimeMillis()
         Canvas(bitmap).apply {
           drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
           val saveCount = save()
           try {
             clipRect(0, 0, bitmap.width, bitmap.height)
+            // 先 scale 再 translate：captureRect 的 root 坐标经矩阵映射到整个缩小后的 Bitmap。
+            scale(scale, scale)
             translate(-rect.left.toFloat(), -rect.top.toFloat())
             AndroidGlassSurface.beginRootBitmapCapture()
             try {
@@ -156,6 +167,19 @@ internal object RootBackdropSnapshotCoordinator {
           }
         }
         val elapsed = SystemClock.uptimeMillis() - startedAt
+
+        // 内容去重：区域与像素都未变化时保留旧快照，不轮换 bitmap、不触发失效，
+        // 打破「捕获 -> acceptRootSnapshot -> invalidate -> 再捕获」的放大回路。
+        // 同时延长冷却：否则活动期间 pre-draw 每帧触发，会退化为每帧重复光栅化。
+        val prev = state.snapshot
+        if (prev != null && state.rect == rect &&
+          prev.bitmap.width == bitmap.width && prev.bitmap.height == bitmap.height &&
+          bitmap.sameAs(prev.bitmap)
+        ) {
+          state.nextCaptureAtMs = now + RootBackdropSnapshotPolicy.nextIntervalMs(elapsed)
+          return
+        }
+
         state.rect.set(rect)
         state.snapshot = RootSnapshot(bitmap, Rect(rect), ++state.version)
         state.nextCaptureAtMs = now + RootBackdropSnapshotPolicy.nextIntervalMs(elapsed)
@@ -168,12 +192,19 @@ internal object RootBackdropSnapshotCoordinator {
     }
 
     private fun exceedsMemoryBudget(rect: Rect, currentGroup: String, requests: Map<String, List<SnapshotRequest>>): Boolean {
-      val bytes = bytesFor(rect.width(), rect.height())
+      // 按降采样后的实际 Bitmap 尺寸核算，与 capture() 保持一致。
+      val scaled = { w: Int, h: Int ->
+        bytesFor(
+          RootBackdropSnapshotPolicy.downscaledSize(w),
+          RootBackdropSnapshotPolicy.downscaledSize(h),
+        )
+      }
+      val bytes = scaled(rect.width(), rect.height())
       if (bytes > RootBackdropSnapshotPolicy.maxGroupBytes) return true
       var total = 0L
       requests.forEach { (group, groupRequests) ->
         val requestRect = if (group == currentGroup) rect else union(groupRequests.map { it.captureRect }, root.width, root.height)
-        if (requestRect != null) total += bytesFor(requestRect.width(), requestRect.height()) * RootBackdropSnapshotPolicy.bufferCount
+        if (requestRect != null) total += scaled(requestRect.width(), requestRect.height()) * RootBackdropSnapshotPolicy.bufferCount
       }
       return !RootBackdropSnapshotPolicy.fitsMemoryBudget(bytes, total)
     }

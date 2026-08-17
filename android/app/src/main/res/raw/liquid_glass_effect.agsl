@@ -15,6 +15,7 @@ uniform float refractionAmount;
 uniform float chromaticAberration;
 uniform float blurRadius;
 uniform float2 sourceOffset;
+uniform float contentScale;
 
 float radiusAt(float2 coord, float2 radii) {
     return coord.y < 0.0 ? radii.x : radii.y;
@@ -53,12 +54,14 @@ float circleMap(float x) {
     return 1.0 - sqrt(max(0.0, 1.0 - x * x));
 }
 
+// 快照 Bitmap 按 contentScale 降采样（native 侧与 captureScale 保持一致），
+// 因此采样坐标先换算回 content 空间：root 像素 -> content 像素。
 half4 sampleContent(float2 coord) {
-    return content.eval(coord + sourceOffset);
+    return content.eval((coord + sourceOffset) * contentScale);
 }
 
 // RenderEffect 已被移除，避免把 Fabric RenderNode 再次嵌入根视图。
-// 对小型导航区域使用固定 3x3 高斯采样，blurRadius 保持物理像素语义。
+// 对小型导航区域使用固定 3x3 高斯采样；blurRadius 由 native 侧换算为 content 空间半径。
 half4 blurredContent(float2 coord) {
     float r = max(0.01, blurRadius);
     half4 result = sampleContent(coord) * 0.20418;

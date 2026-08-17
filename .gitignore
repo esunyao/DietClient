@@ -91,3 +91,6 @@ src/shared/config/appConfig.ts
 
 # IDE文件
 .idea/*
+
+# 猫娘DOC
+**/docs/
