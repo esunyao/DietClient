@@ -148,9 +148,14 @@ apiClient.interceptors.response.use(
       request.headers = headers;
       return apiClient(request);
     } catch {
-      await tokenStorage.clear();
-      setApiAccessToken(null);
-      onSessionInvalid?.();
+      try {
+        await tokenStorage.clear();
+      } catch {
+        // 会话状态仍需立即失效；下次启动会再次尝试清理安全存储。
+      } finally {
+        setApiAccessToken(null);
+        onSessionInvalid?.();
+      }
       // 当前请求的真实失败原因是 Gateway 的 401；刷新失败仅代表无法恢复该会话。
       return Promise.reject(error);
     }

@@ -114,6 +114,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   error: null,
 
   hydrate: async () => {
+    clearRefreshTimer();
     set({ status: 'restoring', error: null });
     const tokens = await tokenStorage.hydrate();
     if (!tokens) {
@@ -182,7 +183,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   clearLocalSession: async () => {
     clearRefreshTimer();
-    await tokenStorage.clear();
+    try {
+      await tokenStorage.clear();
+    } catch {
+      // 即使系统安全存储暂时不可用，也必须清空当前内存会话。
+    }
     setApiAccessToken(null);
     set({
       status: 'signedOut',

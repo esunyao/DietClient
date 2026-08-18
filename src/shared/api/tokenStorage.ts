@@ -1,9 +1,6 @@
 import type { OidcTokenSet } from '../types/api';
 
-/**
- * 认证凭证只存在当前 JS 进程内。
- * 不写入 AsyncStorage、Keychain 或其他持久化介质；应用重启后必须重新登录。
- */
+/** 非原生/非 Web 环境的内存回退；平台构建会解析 tokenStorage.native/web。 */
 let currentTokens: OidcTokenSet | null = null;
 
 export const tokenStorage = {

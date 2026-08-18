@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary, type Asset } from 'react-native-image-picker';
-import { Camera, List, Send, X } from 'lucide-react-native';
+import { Camera, Send, X } from 'lucide-react-native';
 
 import type { DietStackParamList } from '../../../navigation/types';
 import { PageShell } from '../../../navigation/components/PageShell';
 import { getErrorMessage } from '../../../shared/api/client';
-import { AppButton, EmptyState, GlassCard, SectionTitle, Tag, inputStyle, useToast } from '../../../shared/components';
+import { AppButton, DestructiveConfirmSheet, EmptyState, GlassCard, SectionTitle, Tag, inputStyle, useToast } from '../../../shared/components';
 import { colors, fonts } from '../../../shared/theme/tokens';
 import { CaptureDraftStrip, CaptureImageGrid, MealHistoryRow, MealTypeSegmentedControl, NutrientMetricGrid } from '../components';
 import { nutriApi } from '../api/nutriApi';
@@ -54,6 +54,8 @@ export function RecognitionScreen({ navigation }: Props) {
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [draftToDelete, setDraftToDelete] = useState<string | null>(null);
+  const [deletingDraft, setDeletingDraft] = useState(false);
   const [mealType, setMealType] = useState<MealType>(() => defaultMealType());
   const [notes, setNotes] = useState('');
   const [recent, setRecent] = useState<MealHistoryItem[]>([]);
@@ -143,14 +145,40 @@ export function RecognitionScreen({ navigation }: Props) {
     catch (error) { show(getErrorMessage(error), 'error'); }
   }, [refreshDrafts, session, show]);
 
-  const historyAction = <Pressable accessibilityLabel="查看饮食记录" onPress={() => navigation.navigate('MealHistory')} style={recognitionMetaStyles.historyAction}><List color={colors.blue} size={17} /><Text style={recognitionMetaStyles.historyActionText}>历史</Text></Pressable>;
-  if (mode === 'canteen') return <PageShell pageId="recognition" action={historyAction}><ModeSwitch mode={mode} onChange={setMode} /><CanteenDemo /><RecentHistory meals={recent} state={historyState} onRetry={refreshRecent} onAll={() => navigation.navigate('MealHistory')} onOpen={mealId => navigation.navigate('MealDetail', { mealId })} /></PageShell>;
+  const deleteDraft = useCallback(async () => {
+    if (!draftToDelete || deletingDraft) return;
+    const id = draftToDelete;
+    const isCurrent = id === selectedDraftId;
+    setDeletingDraft(true);
+    try {
+      await nutriApi.cancelCaptureSession(id);
+      if (isCurrent) {
+        await clearActiveCaptureSessionId();
+        setSelectedDraftId(null);
+        setSession(null);
+        setFiles([]);
+        setProgress({});
+        setNotes('');
+        setMealType(defaultMealType());
+      }
+      setDraftToDelete(null);
+      await refreshDrafts(isCurrent ? null : selectedDraftId);
+      show('草稿已删除。', 'success');
+    } catch (error) {
+      show(getErrorMessage(error), 'error');
+      throw error;
+    } finally {
+      setDeletingDraft(false);
+    }
+  }, [deletingDraft, draftToDelete, refreshDrafts, selectedDraftId, show]);
+
+  if (mode === 'canteen') return <PageShell pageId="recognition"><ModeSwitch mode={mode} onChange={setMode} /><CanteenDemo /><RecentHistory meals={recent} state={historyState} onRetry={refreshRecent} onAll={() => navigation.navigate('MealHistory')} onOpen={mealId => navigation.navigate('MealDetail', { mealId })} /></PageShell>;
 
   const confirmedCount = session?.images.filter(item => item.status === 'confirmed').length ?? 0;
   const draftLimit = policy?.maxDraftSessionCount ?? null;
-  return <PageShell pageId="recognition" action={historyAction}>
+  return <PageShell pageId="recognition">
     <ModeSwitch mode={mode} onChange={setMode} />
-    <CaptureDraftStrip drafts={drafts} selectedId={selectedDraftId} maxDrafts={draftLimit} disabled={uploading || submitting || draftState === 'loading'} onSelect={selectDraft} onNew={startNew} />
+    <CaptureDraftStrip drafts={drafts} selectedId={selectedDraftId} maxDrafts={draftLimit} disabled={uploading || submitting || deletingDraft || draftState === 'loading'} onSelect={selectDraft} onDelete={setDraftToDelete} onNew={startNew} />
     <GlassCard style={styles.captureCard}>
       <View style={styles.scanFrame}><Camera color={colors.blue} size={35} /><View style={styles.scanLine} /></View>
       <Text style={styles.captureTitle}>把餐盘放进取景框</Text>
@@ -162,6 +190,7 @@ export function RecognitionScreen({ navigation }: Props) {
     {session && confirmedCount > 0 ? <GlassCard style={styles.formCard}><SectionTitle title="提交餐食" detail="提交后立即进入历史，AI 稍后补充营养数据" /><Text style={styles.label}>餐次</Text><MealTypeSegmentedControl value={mealType} onChange={value => setMealType(value as MealType)} /><Text style={styles.label}>备注（选填）</Text><TextInput accessibilityLabel="餐食备注" value={notes} onChangeText={setNotes} multiline style={[inputStyle, styles.textarea]} placeholder="例如：少油、在公司食堂" placeholderTextColor="#94A3B8" /></GlassCard> : null}
     {session ? <GlassCard style={styles.sessionCard}><View style={styles.sessionHead}><View><Text style={styles.sessionTitle}>当前草稿</Text><Text style={styles.sessionMeta}>已确认 {confirmedCount}/{session.maxImageCount} 张</Text></View><Tag label={statusLabel(session.status)} tone="green" /></View><View style={styles.actions}><AppButton label={submitting ? '正在提交…' : '提交餐食'} icon={<Send color="#FFFFFF" size={16} />} disabled={submitting || uploading || confirmedCount === 0} onPress={submit} style={styles.action} /><AppButton label="取消" variant="secondary" icon={<X color={colors.ink} size={16} />} disabled={submitting || uploading} onPress={cancel} style={styles.action} /></View></GlassCard> : <Text style={styles.emptyDraft}>选择图片后才会创建新的服务端草稿。</Text>}
     <RecentHistory meals={recent} state={historyState} onRetry={refreshRecent} onAll={() => navigation.navigate('MealHistory')} onOpen={mealId => navigation.navigate('MealDetail', { mealId })} />
+    <DestructiveConfirmSheet visible={draftToDelete !== null} title="删除未提交草稿" summary="该草稿中的图片和填写内容都会被删除。" onCancel={() => { if (!deletingDraft) setDraftToDelete(null); }} onConfirm={deleteDraft} />
   </PageShell>;
 }
 
@@ -170,5 +199,5 @@ function UploadPolicyHint({ policy, state, onRetry }: { policy: CapturePolicy | 
 function CanteenDemo() { return <><GlassCard><Tag label="演示数据" tone="amber" /><Text style={styles.canteenTitle}>食堂今日午餐</Text><Text style={styles.captureText}>固定菜单与预置营养数据，仅用于展示，不调用 NutriMemo。</Text><View style={styles.menu}><Text style={styles.menuText}>香菇鸡腿饭 · 680 kcal</Text><Text style={styles.menuText}>清炒西兰花 · 蛋白质 32 g</Text><Text style={styles.menuText}>紫菜蛋花汤 · 钠 610 mg</Text></View></GlassCard><GlassCard><SectionTitle title="演示营养报告" detail="静态示例，不会写入历史" /><NutrientMetricGrid nutrients={[{ nutrientCode: 'ENERGY_KCAL', nutrientName: '能量', amount: 570, unit: 'kcal' }, { nutrientCode: 'PROTEIN', nutrientName: '蛋白质', amount: 42, unit: 'g' }, { nutrientCode: 'CARBOHYDRATE', nutrientName: '碳水', amount: 56, unit: 'g' }, { nutrientCode: 'FAT', nutrientName: '脂肪', amount: 18, unit: 'g' }]} /></GlassCard></>; }
 function RecentHistory({ meals, state, onRetry, onAll, onOpen }: { meals: MealHistoryItem[]; state: LoadState; onRetry: () => void; onAll: () => void; onOpen: (id: string) => void }) { return <><SectionTitle title="最近饮食记录" detail="最多展示 6 条" action={<Pressable onPress={onAll}><Text style={styles.all}>查看全部记录</Text></Pressable>} />{state === 'error' ? <EmptyState title="历史记录暂时无法加载" description="不影响拍照识别；请检查网络后重新加载。" action={<AppButton label="重新加载" variant="secondary" onPress={onRetry} />} /> : meals.length ? <View style={styles.recent}>{meals.map(meal => <MealHistoryRow key={meal.mealId} meal={meal} onPress={() => onOpen(meal.mealId)} />)}</View> : <EmptyState title={state === 'loading' ? '正在加载历史记录' : '还没有饮食记录'} description={state === 'loading' ? '请稍候…' : '提交餐盘照片后，记录会立即出现在这里。'} />}</>; }
 
-const recognitionMetaStyles = StyleSheet.create({ historyAction: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 2, paddingVertical: 2 }, historyActionText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' }, retry: { paddingVertical: 4 }, retryText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' } });
+const recognitionMetaStyles = StyleSheet.create({ retry: { paddingVertical: 4 }, retryText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' } });
 const styles = StyleSheet.create({ modeSwitch: { flexDirection: 'row', borderRadius: 18, backgroundColor: '#EAF1F7', padding: 4 }, mode: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 14 }, modeActive: { backgroundColor: '#FFFFFF' }, modeText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' }, modeTextActive: { color: colors.blue }, captureCard: { alignItems: 'center', gap: 11, padding: 18 }, scanFrame: { width: 142, height: 142, borderRadius: 28, borderWidth: 2, borderColor: 'rgba(0,113,227,0.27)', borderStyle: 'dashed', backgroundColor: '#F1F8FE', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, scanLine: { position: 'absolute', left: 17, right: 17, height: 2, backgroundColor: colors.green, top: 69 }, captureTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 19, fontWeight: '800' }, captureText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, textAlign: 'center', lineHeight: 19 }, actions: { width: '100%', flexDirection: 'row', gap: 8 }, action: { flex: 1 }, limit: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, textAlign: 'center' }, formCard: { gap: 11 }, label: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, textarea: { minHeight: 76, textAlignVertical: 'top' }, sessionCard: { gap: 13 }, sessionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, sessionTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 16, fontWeight: '800' }, sessionMeta: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 3 }, emptyDraft: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, textAlign: 'center' }, recent: { gap: 9 }, all: { color: colors.blue, fontFamily: fonts.body, fontWeight: '800', fontSize: 12 }, canteenTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 20, fontWeight: '800', marginTop: 10, marginBottom: 6 }, menu: { gap: 10, marginTop: 14 }, menuText: { color: colors.ink, fontFamily: fonts.body, fontSize: 14 } });

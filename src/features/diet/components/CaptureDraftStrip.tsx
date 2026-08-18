@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Plus, Clock3 } from 'lucide-react-native';
+import { Clock3, Plus, Trash2 } from 'lucide-react-native';
 
 import { colors, fonts } from '../../../shared/theme/tokens';
 import type { CaptureDraftSummary } from '../api/nutriTypes';
@@ -11,6 +11,7 @@ interface Props {
   maxDrafts: number | null;
   disabled?: boolean;
   onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
   onNew: () => void;
 }
 
@@ -20,13 +21,23 @@ function remaining(expiresAt: string): string {
   return `剩余 ${Math.ceil(minutes / 60)} 小时`;
 }
 
-export function CaptureDraftStrip({ drafts, selectedId, maxDrafts, disabled = false, onSelect, onNew }: Props) {
+export function CaptureDraftStrip({ drafts, selectedId, maxDrafts, disabled = false, onSelect, onDelete, onNew }: Props) {
   return <View style={styles.wrap}>
     <View style={styles.heading}><Text style={styles.title}>未提交草稿</Text><Text style={styles.count}>{drafts.length}/{maxDrafts ?? '…'}</Text></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {drafts.map(draft => {
         const image = draft.images[0];
         return <Pressable key={draft.captureSessionId} disabled={disabled} onPress={() => onSelect(draft.captureSessionId)} style={[styles.card, selectedId === draft.captureSessionId && styles.selected, disabled && styles.disabled]}>
+          <Pressable
+            accessibilityLabel="删除草稿"
+            accessibilityRole="button"
+            disabled={disabled}
+            hitSlop={6}
+            onPress={event => { event.stopPropagation(); onDelete(draft.captureSessionId); }}
+            style={styles.deleteButton}
+          >
+            <Trash2 color={colors.ink} size={14} />
+          </Pressable>
           {image?.previewUrl ? <Image source={{ uri: image.previewUrl }} style={styles.thumb} /> : <View style={styles.placeholder}><Text style={styles.placeholderText}>餐盘</Text></View>}
           <View style={styles.meta}><Text style={styles.metaText}>{draft.confirmedImageCount} 张图片</Text><View style={styles.expiry}><Clock3 size={11} color={colors.muted} /><Text style={styles.metaText}>{remaining(draft.expiresAt)}</Text></View></View>
         </Pressable>;
@@ -43,8 +54,9 @@ const styles = StyleSheet.create({
   title: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '800' },
   count: { color: colors.muted, fontFamily: fonts.body, fontSize: 12 },
   row: { gap: 9, paddingVertical: 2 },
-  card: { width: 130, padding: 7, borderRadius: 14, borderWidth: 1, borderColor: colors.line, backgroundColor: '#FFFFFF', gap: 6 },
+  card: { width: 130, padding: 7, borderRadius: 14, borderWidth: 1, borderColor: colors.line, backgroundColor: '#FFFFFF', gap: 6, position: 'relative' },
   selected: { borderColor: colors.blue, borderWidth: 2 },
+  deleteButton: { position: 'absolute', top: 7, right: 7, zIndex: 1, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.92)' },
   thumb: { width: '100%', height: 72, borderRadius: 9, backgroundColor: '#EDF4FA' },
   placeholder: { width: '100%', height: 72, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EDF4FA' },
   placeholderText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12 },

@@ -74,11 +74,11 @@ export function DateWheelField({ label, value, onChange, optional = false, mode 
 }
 
 const styles = StyleSheet.create({
-  field: { gap: 7 },
+  field: { flex: 1, minWidth: 0, gap: 7 },
   label: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },
   controlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  control: { minHeight: 50, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: '#FFFFFF', paddingHorizontal: spacing.md },
-  value: { color: colors.ink, fontFamily: fonts.body, fontSize: 15 },
+  control: { minHeight: 50, minWidth: 0, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: '#FFFFFF', paddingHorizontal: spacing.md },
+  value: { flexShrink: 1, color: colors.ink, fontFamily: fonts.body, fontSize: 15 },
   placeholder: { color: '#94A3B8' },
   clear: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: spacing.sm },
   clearText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' },

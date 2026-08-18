@@ -7,7 +7,7 @@ export interface ApiEnvelope<T> {
   timestamp?: number | string;
 }
 
-/** Authentik OIDC Token Endpoint 返回值。Token 只在内存中使用。 */
+/** Authentik OIDC Token Endpoint 返回值；由平台凭证存储负责持久化。 */
 export interface OidcTokenSet {
   accessToken: string;
   refreshToken: string | null;
