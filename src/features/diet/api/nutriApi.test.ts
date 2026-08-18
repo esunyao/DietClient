@@ -26,6 +26,11 @@ describe('NutriMemo photo capture contract', () => {
     await nutriApi.createCaptureSession({ timezone: 'Asia/Shanghai' }, '98fcaaf7-7a6e-44c2-98d0-57ddbc315346');
     expect(postMock).toHaveBeenCalledWith('v1/nutri/capture-sessions', { timezone: 'Asia/Shanghai' }, { headers: { 'X-Idempotency-Key': '98fcaaf7-7a6e-44c2-98d0-57ddbc315346' } });
   });
+  it('loads server-owned draft sessions', async () => {
+    getMock.mockResolvedValue({ data: { data: { items: [], total: 0 } } });
+    await expect(nutriApi.listCaptureDrafts()).resolves.toEqual({ items: [], total: 0 });
+    expect(getMock).toHaveBeenCalledWith('v1/nutri/capture-sessions/drafts');
+  });
   it('passes keyword and pagination to history', async () => {
     getMock.mockResolvedValue({ data: { data: { items: [], page: 2, pageSize: 20, total: 0 } } });
     await nutriApi.listMeals({ dateFrom: '2026-08-01', dateTo: '2026-08-07', mealType: 'lunch', q: '鸡胸', page: 2 });

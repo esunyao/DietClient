@@ -1,5 +1,5 @@
 import { nutriApi } from '../../api/nutriApi';
-import type { CaptureSession, CaptureSessionId, CaptureSubmitRequest, CaptureSubmission } from '../../api/nutriTypes';
+import type { CaptureDraftPage, CaptureSession, CaptureSessionId, CaptureSubmitRequest, CaptureSubmission } from '../../api/nutriTypes';
 import { clearActiveCaptureSessionId, readActiveCaptureSessionId, saveActiveCaptureSessionId } from './captureSessionStorage';
 import { createIdempotencyKey } from './captureUtils';
 import { uploadCaptureImageBinary } from './mealCaptureUpload';
@@ -13,11 +13,19 @@ export async function createCaptureSession(timezone: string): Promise<CaptureSes
   return session;
 }
 
-export async function restoreCaptureSession(): Promise<CaptureSession | null> {
+export async function listCaptureDrafts(): Promise<CaptureDraftPage> {
+  return nutriApi.listCaptureDrafts();
+}
+
+export async function restoreCaptureSession(drafts?: CaptureDraftPage): Promise<CaptureSession | null> {
   const sessionId = await readActiveCaptureSessionId();
-  if (!sessionId) return null;
+  const available = drafts ?? (nutriApi.listCaptureDrafts ? await nutriApi.listCaptureDrafts() : undefined);
+  const selectedId = sessionId && available?.items.some(item => item.captureSessionId === sessionId)
+    ? sessionId
+    : available?.items[0]?.captureSessionId ?? sessionId;
+  if (!selectedId) return null;
   try {
-    const session = await nutriApi.getCaptureSession(sessionId);
+    const session = await nutriApi.getCaptureSession(selectedId);
     if (terminalStatuses.has(session.status)) await clearActiveCaptureSessionId();
     return terminalStatuses.has(session.status) ? null : session;
   } catch {

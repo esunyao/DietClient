@@ -11,6 +11,16 @@ export interface CaptureImageFile {
   blob?: Blob;
 }
 
+export interface CaptureImagePreview {
+  uri: string;
+  imageId: string;
+  fileName: string;
+  contentType: ImageContentType;
+  byteSize: number;
+  capturedAt: string | null;
+  remote: true;
+}
+
 export type CaptureUploadProgress = (percent: number) => void;
 
 const supportedTypes: ImageContentType[] = ['image/jpeg', 'image/png', 'image/webp'];

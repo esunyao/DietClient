@@ -5,6 +5,7 @@ import type {
   CaptureImageId,
   CaptureImagePresignRequest,
   CapturePolicy,
+  CaptureDraftPage,
   CaptureSession,
   CaptureSessionCreateRequest,
   CaptureSessionId,
@@ -27,6 +28,7 @@ export type MealListQuery = { dateFrom: string; dateTo: string; mealType?: MealT
 export const nutriApi = {
   getCapturePolicy: async (): Promise<CapturePolicy> => unwrapApiResponse(await apiClient.get<ApiEnvelope<CapturePolicy>>(`${path}/capture-policy`)),
   createCaptureSession: async (payload: CaptureSessionCreateRequest, idempotencyKey: string): Promise<CaptureSession> => unwrapApiResponse(await apiClient.post<ApiEnvelope<CaptureSession>>(`${path}/capture-sessions`, payload, { headers: { 'X-Idempotency-Key': idempotencyKey } })),
+  listCaptureDrafts: async (): Promise<CaptureDraftPage> => unwrapApiResponse(await apiClient.get<ApiEnvelope<CaptureDraftPage>>(`${path}/capture-sessions/drafts`)),
   getCaptureSession: async (sessionId: CaptureSessionId): Promise<CaptureSession> => unwrapApiResponse(await apiClient.get<ApiEnvelope<CaptureSession>>(`${path}/capture-sessions/${encodeURIComponent(sessionId)}`)),
   presignCaptureImage: async (sessionId: CaptureSessionId, payload: CaptureImagePresignRequest): Promise<PresignedCaptureUpload> => unwrapApiResponse(await apiClient.post<ApiEnvelope<PresignedCaptureUpload>>(`${path}/capture-sessions/${encodeURIComponent(sessionId)}/images/presign`, payload)),
   confirmCaptureImage: async (sessionId: CaptureSessionId, imageId: CaptureImageId): Promise<CaptureImage> => unwrapApiResponse(await apiClient.post<ApiEnvelope<CaptureImage>>(`${path}/capture-sessions/${encodeURIComponent(sessionId)}/images/${encodeURIComponent(imageId)}/confirm`)),

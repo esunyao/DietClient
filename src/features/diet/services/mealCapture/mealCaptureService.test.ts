@@ -1,10 +1,10 @@
-jest.mock('../../api/nutriApi', () => ({ nutriApi: { createCaptureSession: jest.fn(), getCaptureSession: jest.fn(), presignCaptureImage: jest.fn(), confirmCaptureImage: jest.fn(), cancelCaptureSession: jest.fn(), submitCaptureSession: jest.fn(), retryCaptureSession: jest.fn() } }));
+jest.mock('../../api/nutriApi', () => ({ nutriApi: { createCaptureSession: jest.fn(), listCaptureDrafts: jest.fn(), getCaptureSession: jest.fn(), presignCaptureImage: jest.fn(), confirmCaptureImage: jest.fn(), cancelCaptureSession: jest.fn(), submitCaptureSession: jest.fn(), retryCaptureSession: jest.fn() } }));
 jest.mock('./captureSessionStorage', () => ({ readActiveCaptureSessionId: jest.fn(), saveActiveCaptureSessionId: jest.fn(), clearActiveCaptureSessionId: jest.fn() }));
 jest.mock('./mealCaptureUpload', () => ({ uploadCaptureImageBinary: jest.fn() }));
 
 import { nutriApi } from '../../api/nutriApi';
 import { readActiveCaptureSessionId, saveActiveCaptureSessionId } from './captureSessionStorage';
-import { createCaptureSession, restoreCaptureSession, submitCaptureSession, uploadAndConfirmCaptureImage } from './mealCaptureService';
+import { createCaptureSession, listCaptureDrafts, restoreCaptureSession, submitCaptureSession, uploadAndConfirmCaptureImage } from './mealCaptureService';
 import { uploadCaptureImageBinary } from './mealCaptureUpload';
 
 const session = { captureSessionId: '2086475596958904300', status: 'created', timezone: 'Asia/Shanghai', maxImageCount: 10, expiresAt: '', analysisRequestedAt: null, images: [], createdAt: '', updatedAt: '' } as const;
@@ -19,6 +19,10 @@ describe('meal capture service', () => {
     (readActiveCaptureSessionId as jest.Mock).mockResolvedValue(session.captureSessionId);
     (nutriApi.getCaptureSession as jest.Mock).mockResolvedValue(session);
     await expect(restoreCaptureSession()).resolves.toEqual(session);
+  });
+  it('reads draft list from the server', async () => {
+    (nutriApi.listCaptureDrafts as jest.Mock).mockResolvedValue({ items: [], total: 0 });
+    await expect(listCaptureDrafts()).resolves.toEqual({ items: [], total: 0 });
   });
   it('uses presigned imageId for ordered upload then confirmation', async () => {
     (nutriApi.presignCaptureImage as jest.Mock).mockResolvedValue({ imageId: '2086475596958904301', uploadUrl: 'https://upload', requiredHeaders: {} });

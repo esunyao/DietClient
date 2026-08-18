@@ -1,9 +1,7 @@
-jest.mock('./mealCaptureService', () => ({ restoreCaptureSession: jest.fn() }));
-
 import { loadRecognitionBootstrap, RECENT_MEAL_WINDOW_DAYS, recentMealQuery } from './recognitionBootstrap';
 import type { CapturePolicy } from '../../api/nutriTypes';
 
-const policy: CapturePolicy = { maxImageCount: 10, maxFileSizeBytes: 10 * 1024 * 1024, allowedContentTypes: ['image/jpeg'], sessionExpiresInSeconds: 86_400 };
+const policy: CapturePolicy = { maxImageCount: 10, maxFileSizeBytes: 10 * 1024 * 1024, allowedContentTypes: ['image/jpeg'], sessionExpiresInSeconds: 86_400, maxDraftSessionCount: 5, draftExpiresInSeconds: 86_400 };
 
 describe('recognition bootstrap', () => {
   it('queries at most the recent thirty-day window', () => {
@@ -14,18 +12,18 @@ describe('recognition bootstrap', () => {
   it('preserves an available capture policy when history fails', async () => {
     const result = await loadRecognitionBootstrap({
       policy: async () => policy,
-      session: async () => null,
+      drafts: async () => ({ items: [], total: 0 }),
       history: async () => Promise.reject(new Error('history unavailable')),
     });
     expect(result.policy).toEqual({ status: 'fulfilled', value: policy });
-    expect(result.session).toEqual({ status: 'fulfilled', value: null });
+    expect(result.drafts).toEqual({ status: 'fulfilled', value: { items: [], total: 0 } });
     expect(result.history.status).toBe('rejected');
   });
 
   it('keeps history independent when policy fails', async () => {
     const result = await loadRecognitionBootstrap({
       policy: async () => Promise.reject(new Error('policy unavailable')),
-      session: async () => null,
+      drafts: async () => ({ items: [], total: 0 }),
       history: async () => ({ items: [] }),
     });
     expect(result.policy.status).toBe('rejected');

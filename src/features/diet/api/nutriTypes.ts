@@ -9,9 +9,11 @@ export type CaptureImageStatus = 'pending' | 'confirmed' | 'deleted' | 'expired'
 export type ImageContentType = 'image/jpeg' | 'image/png' | 'image/webp';
 
 export interface NutrientValue { nutrientCode: string; nutrientName: string; unit: string; amount: number; }
-export interface CapturePolicy { maxImageCount: number; maxFileSizeBytes: number; allowedContentTypes: ImageContentType[]; sessionExpiresInSeconds: number; }
-export interface CaptureImage { imageId: CaptureImageId; slotNo: number; objectKey: string; contentType: ImageContentType; contentLength: number; capturedAt: string | null; status: CaptureImageStatus; createdAt: string; }
+export interface CapturePolicy { maxImageCount: number; maxFileSizeBytes: number; allowedContentTypes: ImageContentType[]; sessionExpiresInSeconds: number; maxDraftSessionCount: number; draftExpiresInSeconds: number; }
+export interface CaptureImage { imageId: CaptureImageId; slotNo: number; objectKey: string; contentType: ImageContentType; contentLength: number; capturedAt: string | null; status: CaptureImageStatus; createdAt: string; previewUrl?: string | null; previewExpiresInSeconds?: number | null; }
 export interface CaptureSession { captureSessionId: CaptureSessionId; status: CaptureStatus; timezone: string; maxImageCount: number; expiresAt: string; analysisRequestedAt: string | null; images: CaptureImage[]; createdAt: string; updatedAt: string; }
+export interface CaptureDraftSummary { captureSessionId: CaptureSessionId; status: Extract<CaptureStatus, 'created' | 'uploading'>; confirmedImageCount: number; maxImageCount: number; expiresAt: string; createdAt: string; updatedAt: string; images: CaptureImage[]; }
+export interface CaptureDraftPage { items: CaptureDraftSummary[]; total: number; }
 export interface CaptureSessionCreateRequest { timezone: string; }
 export interface CaptureSubmitRequest { mealType: MealType; notes?: string | null; }
 export interface CaptureImagePresignRequest { fileName: string; contentType: ImageContentType; contentLength: number; capturedAt?: string | null; }
