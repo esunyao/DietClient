@@ -22,6 +22,8 @@ function remaining(expiresAt: string): string {
 }
 
 export function CaptureDraftStrip({ drafts, selectedId, maxDrafts, disabled = false, onSelect, onDelete, onNew }: Props) {
+  if (drafts.length === 0) return null;
+
   return <View style={styles.wrap}>
     <View style={styles.heading}><Text style={styles.title}>未提交草稿</Text><Text style={styles.count}>{drafts.length}/{maxDrafts ?? '…'}</Text></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
