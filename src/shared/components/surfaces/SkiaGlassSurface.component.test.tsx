@@ -54,6 +54,8 @@ describe('SkiaGlassSurface 组件', () => {
           variant="navigation"
           liquid={{
             enabled: true,
+            touchEffect: true,
+            elasticEffect: true,
             captureGroup: 'tab',
             refractionHeight: 21,
             refractionOffset: 60,

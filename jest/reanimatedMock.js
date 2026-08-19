@@ -10,7 +10,7 @@ function makeMutable(initial) {
   return { value: initial };
 }
 
-module.exports = {
+const api = {
   useSharedValue: initial => makeMutable(initial),
   useDerivedValue: fn => ({ value: fn() }),
   useAnimatedStyle: fn => fn(),
@@ -28,4 +28,10 @@ module.exports = {
   interpolate: (value, _input, _output) => value,
   makeMutable,
   Animated: { View },
+};
+
+module.exports = {
+  __esModule: true,
+  ...api,
+  default: api.Animated,
 };

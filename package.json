@@ -86,6 +86,11 @@
     "jsSrcsDir": "src/shared/native",
     "android": {
       "javaPackageName": "com.dietclient.glass"
+    },
+    "ios": {
+      "componentProvider": {
+        "SkiaGlassSurface": "RCTSkiaGlassSurface"
+      }
     }
   }
 }
