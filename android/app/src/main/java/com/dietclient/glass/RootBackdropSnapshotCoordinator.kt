@@ -16,26 +16,32 @@ import java.util.WeakHashMap
 /**
  * 将 React 根视图的一小块区域光栅化为真实像素。
  *
- * 不能把根视图录制为 RenderNode：液态宿主本身是根视图的后代，会造成 display list 环。
- * 本协调器只输出 Bitmap；液态表面随后把 BitmapShader 作为 RuntimeShader 输入使用。
+ * 不能把根视图录制为 RenderNode：玻璃宿主本身是根视图的后代，会造成 display list 环。
+ * 本协调器只输出 Bitmap；宿主（AndroidGlassSurface / SkiaGlassSurface）随后自行消费。
  *
  * 性能策略（对应 BLASTBufferQueue 缓冲饱和问题的修复）：
  * - 捕获按 captureScale 降采样（默认 0.5x），软件光栅化与纹理上传成本降为 1/4；
  * - 区域与像素未变时（sameAs 去重）保留旧快照，避免轮换 bitmap 触发无意义失效；
  * - 捕获冷却按上次耗时自适应（fast/slow 两档）。
  */
-internal object RootBackdropSnapshotCoordinator {
+/**
+ * 捕获协调器入口公开（应用模块内部机械，无泄漏风险）：
+ * Kotlin 接口成员不允许 internal 修饰、public override 又不能引用 internal 签名类型，
+ * 因此契约（接口 + 快照数据类 + 协调器）整体保持 public；
+ * 策略类（RootBackdropSnapshotPolicy 等）仍为 internal，不进任何公开签名。
+ */
+object RootBackdropSnapshotCoordinator {
   private const val debugTag = "LiquidGlassSnapshot"
   private val coordinators = WeakHashMap<View, Coordinator>()
   private val debugStats = mutableMapOf<String, DebugStats>()
 
-  fun register(host: AndroidGlassSurface, root: View) {
+  fun register(host: BackdropSnapshotHost, root: View) {
     checkMainThread()
     val coordinator = coordinators.getOrPut(root) { Coordinator(root) }
     coordinator.add(host)
   }
 
-  fun unregister(host: AndroidGlassSurface, root: View?) {
+  fun unregister(host: BackdropSnapshotHost, root: View?) {
     checkMainThread()
     val coordinator = root?.let { coordinators[it] } ?: return
     coordinator.remove(host)
@@ -67,12 +73,12 @@ internal object RootBackdropSnapshotCoordinator {
 
   private fun checkMainThread() {
     check(android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
-      "液态玻璃快照只能在主线程更新"
+      "玻璃快照只能在主线程更新"
     }
   }
 
   private class Coordinator(private val root: View) {
-    private val hosts = Collections.newSetFromMap(WeakHashMap<AndroidGlassSurface, Boolean>())
+    private val hosts = Collections.newSetFromMap(WeakHashMap<BackdropSnapshotHost, Boolean>())
     private val groups = mutableMapOf<String, GroupState>()
     private var listenerAdded = false
 
@@ -81,7 +87,7 @@ internal object RootBackdropSnapshotCoordinator {
       true
     }
 
-    fun add(host: AndroidGlassSurface) {
+    fun add(host: BackdropSnapshotHost) {
       hosts.add(host)
       if (!listenerAdded && root.viewTreeObserver.isAlive) {
         root.viewTreeObserver.addOnPreDrawListener(preDrawListener)
@@ -89,7 +95,7 @@ internal object RootBackdropSnapshotCoordinator {
       }
     }
 
-    fun remove(host: AndroidGlassSurface) {
+    fun remove(host: BackdropSnapshotHost) {
       hosts.remove(host)
       host.clearRootSnapshot()
       if (hosts.isEmpty()) release()
@@ -156,11 +162,11 @@ internal object RootBackdropSnapshotCoordinator {
             // 先 scale 再 translate：captureRect 的 root 坐标经矩阵映射到整个缩小后的 Bitmap。
             scale(scale, scale)
             translate(-rect.left.toFloat(), -rect.top.toFloat())
-            AndroidGlassSurface.beginRootBitmapCapture()
+            BackdropCaptureGate.begin()
             try {
               root.draw(this)
             } finally {
-              AndroidGlassSurface.endRootBitmapCapture()
+              BackdropCaptureGate.end()
             }
           } finally {
             restoreToCount(saveCount)
@@ -218,13 +224,13 @@ internal object RootBackdropSnapshotCoordinator {
     }
   }
 
-  internal data class SnapshotRequest(
-    val host: AndroidGlassSurface,
+  data class SnapshotRequest(
+    val host: BackdropSnapshotHost,
     val group: String,
     val captureRect: Rect,
   )
 
-  internal data class RootSnapshot(
+  data class RootSnapshot(
     val bitmap: Bitmap,
     val rect: Rect,
     val version: Long,
@@ -265,4 +271,20 @@ internal object RootBackdropSnapshotCoordinator {
   }
 
   private fun bytesFor(width: Int, height: Int): Long = width.toLong() * height.toLong() * 4L
+}
+
+/**
+ * 玻璃宿主参与背景捕获的契约。
+ * 由 RootBackdropSnapshotCoordinator 在 pre-draw 回调，宿主消费快照后自行渲染或上报。
+ * 接口成员隐式 public（Kotlin 不允许接口内 internal），实现类必须用 public override。
+ */
+interface BackdropSnapshotHost {
+  /** 当前帧是否需要捕获；返回 null 表示不需要（如离屏/未激活）。 */
+  fun snapshotRequest(root: View, rootLocation: IntArray): RootBackdropSnapshotCoordinator.SnapshotRequest?
+
+  /** 接收新快照（含版本与区域信息）。 */
+  fun acceptRootSnapshot(snapshot: RootBackdropSnapshotCoordinator.RootSnapshot, rootLocation: IntArray)
+
+  /** 快照失效（区域变化/注销/内存超限）。 */
+  fun clearRootSnapshot()
 }

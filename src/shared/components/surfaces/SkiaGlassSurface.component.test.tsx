@@ -1,0 +1,107 @@
+import React from 'react';
+import { Platform, View } from 'react-native';
+import { act, create } from 'react-test-renderer';
+
+import { SkiaGlassSurface as SkiaGlassSurfaceWrapper } from '../../native/SkiaGlassSurface';
+import { SkiaGlassSurface } from './SkiaGlassSurface.native';
+
+/**
+ * 组件级冒烟测试：依赖 moduleNameMapper 的轻量 mock
+ * （@shopify/react-native-skia / react-native-reanimated / 原生容器组件）。
+ * 固定 Platform.OS = android 跳过 iOS AccessibilityInfo 副作用。
+ */
+describe('SkiaGlassSurface 组件', () => {
+  beforeAll(() => {
+    Platform.OS = 'android';
+  });
+
+  it('soft 变体渲染纯静态层，不挂原生捕获容器', () => {
+    let tree: ReturnType<typeof create>;
+    act(() => {
+      tree = create(
+        <SkiaGlassSurface variant="soft">
+          <View testID="child" />
+        </SkiaGlassSurface>,
+      );
+    });
+    expect(() => tree!.root.findByType(SkiaGlassSurfaceWrapper)).toThrow();
+    expect(tree!.root.findByProps({ testID: 'child' })).toBeTruthy();
+    act(() => tree!.unmount());
+  });
+
+  it('navigation 变体渲染原生捕获容器与子节点', () => {
+    let tree: ReturnType<typeof create>;
+    act(() => {
+      tree = create(
+        <SkiaGlassSurface variant="navigation" cornerRadius={20} intensity={50}>
+          <View testID="child" />
+        </SkiaGlassSurface>,
+      );
+    });
+    const host = tree!.root.findByType(SkiaGlassSurfaceWrapper);
+    expect(host.props.cornerRadius).toBe(20);
+    expect(host.props.live).toBe(true);
+    expect(host.props.liquidEnabled).toBe(false);
+    expect(tree!.root.findByProps({ testID: 'child' })).toBeTruthy();
+    act(() => tree!.unmount());
+  });
+
+  it('liquid 开启时透传液态参数到原生容器', () => {
+    let tree: ReturnType<typeof create>;
+    act(() => {
+      tree = create(
+        <SkiaGlassSurface
+          variant="navigation"
+          liquid={{
+            enabled: true,
+            touchEffect: true,
+            elasticEffect: true,
+            captureGroup: 'tab',
+            refractionHeight: 21,
+            refractionOffset: 60,
+            blurRadius: 10,
+            dispersion: 0.8,
+          }}
+        >
+          <View />
+        </SkiaGlassSurface>,
+      );
+    });
+    const host = tree!.root.findByType(SkiaGlassSurfaceWrapper);
+    expect(host.props.liquidEnabled).toBe(true);
+    expect(host.props.liquidCaptureGroup).toBe('tab');
+    expect(host.props.liquidRefractionHeight).toBe(21);
+    expect(host.props.liquidDispersion).toBe(0.8);
+    act(() => tree!.unmount());
+  });
+
+  it('快照事件按 version 去重并触发图像重建（不抛错）', () => {
+    let tree: ReturnType<typeof create>;
+    act(() => {
+      tree = create(
+        <SkiaGlassSurface variant="frosted">
+          <View />
+        </SkiaGlassSurface>,
+      );
+    });
+    const host = tree!.root.findByType(SkiaGlassSurfaceWrapper);
+    const payload = {
+      jpeg: 'aGVsbG8=', // base64("hello")，mock 解码器直接透传
+      width: 180,
+      height: 60,
+      sourceOffsetX: 0,
+      sourceOffsetY: 0,
+      contentScale: 0.5,
+      version: 1,
+    };
+    act(() => {
+      host.props.onSnapshot(payload);
+      // 相同 version 去重
+      host.props.onSnapshot(payload);
+      // 新 version 更新
+      host.props.onSnapshot({ ...payload, version: 2 });
+    });
+    expect(tree!.root.findByType(SkiaGlassSurfaceWrapper)).toBeTruthy();
+    act(() => tree!.unmount());
+  });
+});

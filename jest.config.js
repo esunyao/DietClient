@@ -1,11 +1,17 @@
 module.exports = {
+  preset: 'react-native',
   testEnvironment: 'node',
-  transform: { '^.+\\.(js|ts|tsx)$': 'babel-jest' },
+  setupFiles: ['<rootDir>/jest/setup.js'],
+  transform: { '^.+[.](js|ts|tsx)$': 'babel-jest' },
   moduleNameMapper: {
     '^react-native-get-random-values$': '<rootDir>/jest/rngMock.js',
+    '^@shopify/react-native-skia$': '<rootDir>/jest/skiaMock.js',
+    '^(?:.*/)SkiaGlassSurfaceNativeComponent$': '<rootDir>/jest/skiaGlassNativeMock.js',
+    '^react-native-reanimated$': '<rootDir>/jest/reanimatedMock.js',
   },
-  // @noble/hashes 发布为 ESM，Jest 需要把它交给 Babel 转译；认证测试不需要加载 RN 原生运行时。
+  // RN preset 的默认规则：转译 react-native 与 @react-native 系列（ESM 产物），
+  // 并补充 @noble/hashes（ESM）与 reanimated mock。
   transformIgnorePatterns: [
-    'node_modules/(?!(@noble/hashes|react-native-get-random-values)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@noble/hashes|react-native-get-random-values|react-native-reanimated)/)',
   ],
 };

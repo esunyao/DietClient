@@ -10,5 +10,5 @@ class AndroidGlassSurfacePackage : ReactPackage {
     listOf(WeightPickerModule(reactContext), NumericPickerModule(reactContext))
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
-    listOf(AndroidGlassSurfaceManager())
+    listOf(AndroidGlassSurfaceManager(), SkiaGlassSurfaceManager())
 }

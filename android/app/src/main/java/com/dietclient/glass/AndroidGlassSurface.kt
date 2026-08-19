@@ -32,7 +32,7 @@ import kotlin.math.max
  * contentScale 与 content 空间 blurRadius 作为 uniform 传给 AGSL shader，采样坐标
  * 在 shader 内统一换算回 content 空间，视觉与 1x 捕获等价。
  */
-class AndroidGlassSurface(context: Context) : ReactViewGroup(context) {
+class AndroidGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnapshotHost {
   private val density = resources.displayMetrics.density
   private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(42, 255, 255, 255) }
   private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -172,7 +172,7 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context) {
 
   override fun draw(canvas: Canvas) {
     // 使用软件 Canvas 采样根视图时只跳过液态宿主；静态玻璃卡片仍应进入快照。
-    if (isRootBitmapCaptureInProgress() && shouldUseLiquid()) return
+    if (BackdropCaptureGate.isActive() && shouldUseLiquid()) return
     super.draw(canvas)
   }
 
@@ -199,7 +199,7 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context) {
     return super.dispatchTouchEvent(event)
   }
 
-  internal fun snapshotRequest(root: View, rootLocation: IntArray): RootBackdropSnapshotCoordinator.SnapshotRequest? {
+  override fun snapshotRequest(root: View, rootLocation: IntArray): RootBackdropSnapshotCoordinator.SnapshotRequest? {
     if (!canDrawLiquid() || source !== root || width <= 0 || height <= 0) return null
     getLocationInWindow(location)
     val left = location[0] - rootLocation[0]
@@ -212,7 +212,7 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context) {
     )
   }
 
-  internal fun acceptRootSnapshot(snapshot: RootBackdropSnapshotCoordinator.RootSnapshot, rootLocation: IntArray) {
+  override fun acceptRootSnapshot(snapshot: RootBackdropSnapshotCoordinator.RootSnapshot, rootLocation: IntArray) {
     if (!canDrawLiquid()) return
     getLocationInWindow(location)
     val nextOffsetX = (location[0] - rootLocation[0] - snapshot.rect.left).toFloat()
@@ -254,7 +254,7 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context) {
     }
   }
 
-  internal fun clearRootSnapshot() {
+  override fun clearRootSnapshot() {
     if (!RootBackdropSnapshotPolicy.needsSnapshotClear(hasRootSnapshot, bitmapShader != null)) return
     hasRootSnapshot = false
     bitmapShader = null
@@ -395,11 +395,4 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context) {
 
   private fun dp(value: Double): Float = (value * density).toFloat()
 
-  companion object {
-    private var rootBitmapCaptureDepth = 0
-
-    internal fun beginRootBitmapCapture() { rootBitmapCaptureDepth++ }
-    internal fun endRootBitmapCapture() { rootBitmapCaptureDepth = (rootBitmapCaptureDepth - 1).coerceAtLeast(0) }
-    private fun isRootBitmapCaptureInProgress(): Boolean = rootBitmapCaptureDepth > 0
-  }
 }
