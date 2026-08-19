@@ -1,29 +1,34 @@
 import React from 'react';
-import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from '@sbaiahmed1/react-native-blur';
 
+import { GLASS_IMPLEMENTATION } from '../../config/appConfig';
 import { AndroidGlassSurface } from '../../native/AndroidGlassSurface';
 import { glass, radii } from '../../theme/tokens';
-
-type LiquidGlassOptions = {
-  enabled?: boolean;
-  touchEffect?: boolean;
-  elasticEffect?: boolean;
-  captureGroup?: 'header' | 'tab';
-  refractionHeight?: number;
-  refractionOffset?: number;
-  blurRadius?: number;
-  dispersion?: number;
-};
+import {
+  SkiaGlassSurface,
+  type SkiaGlassSurfaceProps,
+} from './SkiaGlassSurface.native';
 
 /**
  * 玻璃材质的唯一入口（原生端）。
- * - `frosted`：真 backdrop blur（原生为平台模糊），保持原始高帧率光学质感。
- * - `soft`：半透明白 + 细描边 + 顶部高光，**不开 blur**，用于信息密集的字段卡。
- * - `navigation`：常驻悬浮导航（TabBar/Header）。Android 12+ 用 RenderEffect GPU 模糊，
+ * - frosted：真 backdrop blur（原生为平台模糊），保持原始高帧率光学质感。
+ * - soft：半透明白 + 细描边 + 顶部高光，不开 blur，用于信息密集的字段卡。
+ * - navigation：常驻悬浮导航（TabBar/Header）。Android 12+ 用 RenderEffect GPU 模糊，
  *   iOS/其他回退到 QmBlurView（视觉已验证）。
+ *
+ * 实现切换：GLASS_IMPLEMENTATION === 'skia' 时走 react-native-skia 渲染
+ * （背景快照 + GPU 模糊 + 液态 SkSL），否则走下方旧实现；两套路径可一键回退。
  */
-export function GlassSurface({
+export function GlassSurface(props: SkiaGlassSurfaceProps) {
+  if (GLASS_IMPLEMENTATION === 'skia') {
+    return <SkiaGlassSurface {...props} />;
+  }
+  return <LegacyGlassSurface {...props} />;
+}
+
+/** 旧实现（Android AGSL/RenderEffect + iOS BlurView），保留用于回退对比。 */
+function LegacyGlassSurface({
   children,
   style,
   intensity = 50,
@@ -32,18 +37,7 @@ export function GlassSurface({
   elevated = false,
   cornerRadius = radii.lg,
   liquid,
-}: {
-  children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-  intensity?: number;
-  variant?: 'frosted' | 'soft' | 'navigation';
-  /** QmBlurView 专属：每帧模糊 pass 数，越低越省 CPU，默认 2。 */
-  blurRounds?: number;
-  elevated?: boolean;
-  cornerRadius?: number;
-  /** 仅 Android 13+ 的导航液态玻璃；未传入时保持静态材质。 */
-  liquid?: LiquidGlassOptions;
-}) {
+}: SkiaGlassSurfaceProps) {
   if (Platform.OS === 'android') {
     return (
       <AndroidGlassSurface
@@ -128,7 +122,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.66)',
     borderColor: 'rgba(148, 163, 184, 0.48)',
   },
-  /** 模拟原 QmBlurView 的 overlayColor 白色覆盖，让低强度模糊不显得太透。 */
   /** 顶部细内高光：仿 iOS 材质的高光描边，让玻璃轮廓更分明。 */
   sheen: {
     position: 'absolute',

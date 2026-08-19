@@ -17,6 +17,9 @@ end
 target 'DietClient' do
   config = use_native_modules!
 
+  # Skia 玻璃表面 Fabric 组件（本地 pod，避免手改 pbxproj）
+  pod 'SkiaGlassSurface', :path => './SkiaGlassSurface'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

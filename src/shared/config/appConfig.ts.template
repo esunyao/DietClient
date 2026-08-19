@@ -7,3 +7,11 @@ export const AUTHENTIK_ENROLLMENT_FLOW_SLUG = 'email-registration';
 export const AUTHENTIK_EMAIL_VERIFICATION_RESEND_FLOW_SLUG = 'email-verification-resend';
 export const AUTHENTIK_REDIRECT_URI = 'diethealth://oauth/callback/';
 export const AUTHENTIK_CLIENT_ID = 'replace-with-public-client-id';
+export const AUTHENTIK_SCOPES = 'openid email profile offline_access';
+
+/**
+ * 玻璃材质实现开关（本地调试用，默认 Skia）。
+ * - 'skia'：react-native-skia 渲染（背景快照 + GPU 模糊 + 液态 SkSL）
+ * - 'native'：旧实现（Android RenderEffect/AGSL + iOS BlurView）
+ */
+export const GLASS_IMPLEMENTATION: 'skia' | 'native' = 'skia';
