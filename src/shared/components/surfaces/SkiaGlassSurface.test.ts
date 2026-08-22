@@ -48,8 +48,8 @@ describe('SkiaGlassSurfaceLook', () => {
   });
 
   it('液态与兜底色为常量（供视觉回归参照）', () => {
-    expect(LIQUID_BASE_FILL).toBe('rgba(255, 255, 255, 0.88)');
-    expect(LIQUID_OVERLAY_FILL).toBe('rgba(255, 255, 255, 0.165)');
+    expect(LIQUID_BASE_FILL).toBe('rgba(255, 255, 255, 0.70)');
+    expect(LIQUID_OVERLAY_FILL).toBe('rgba(255, 255, 255, 0.12)');
     expect(OPAQUE_FALLBACK_FILL).toBe('#FFFFFF');
   });
 });

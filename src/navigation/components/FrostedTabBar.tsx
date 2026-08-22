@@ -63,7 +63,7 @@ const TabItem = memo(function ({ meta, focused, routeName, onPressRoute, onLongP
       scaleTo={0.98}
       style={styles.item}
     >
-      <Icon color={focused ? colors.blue : '#7A8BA0'} size={18} strokeWidth={focused ? 2.45 : 2.1} />
+      <Icon color={focused ? colors.blue : colors.muted} size={18} strokeWidth={focused ? 2.45 : 2.1} />
       <Text style={[styles.label, focused && styles.labelFocused]}>{meta.label}</Text>
     </PressableScale>
   );
@@ -72,7 +72,7 @@ const TabItem = memo(function ({ meta, focused, routeName, onPressRoute, onLongP
 /**
  * 模拟稿的悬浮六项底栏：
  * - 紧凑：52 高度 + 大圆角 + 细描边，避免浅色背景下与页面融为一体。
- * - 浅色玻璃：不使用大范围 Skia 光晕或深阴影，消除底部黑色渐变感。
+ * - 浅色玻璃：只保留柔和背景模糊，不启用液态折射或弹性形变。
  * - 选中胶囊：reanimated 驱动 translateX 滑动（onLayout 测量宽度，切 tab 一次性过渡）。
  * - 随滚动隐藏：translateY 由 UI 线程 tabHidden 驱动（带过渡动画）。
  */
@@ -146,17 +146,7 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
         <GlassSurface
           cornerRadius={20}
           elevated
-          intensity={50}
-          liquid={{
-            enabled: true,
-            captureGroup: 'tab',
-            touchEffect: true,
-            elasticEffect: true,
-            refractionHeight: 21,
-            refractionOffset: 60,
-            blurRadius: 10,
-            dispersion: 0.8,
-          }}
+          intensity={38}
           variant="navigation"
           style={styles.bar}
         >
@@ -192,11 +182,11 @@ const styles = StyleSheet.create({
     top: INDICATOR_TOP,
     bottom: INDICATOR_BOTTOM,
     borderRadius: 14,
-    backgroundColor: 'rgba(0, 113, 227, 0.10)',
-    borderColor: 'rgba(0, 113, 227, 0.16)',
+    backgroundColor: colors.blueSoft,
+    borderColor: colors.line,
     borderWidth: StyleSheet.hairlineWidth,
   },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 14, marginVertical: 4 },
-  label: { color: '#7A8BA0', fontFamily: fonts.body, fontSize: 8.5, fontWeight: '700' },
+  label: { color: colors.muted, fontFamily: fonts.body, fontSize: 8.5, fontWeight: '700' },
   labelFocused: { color: colors.blue },
 });

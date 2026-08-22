@@ -27,7 +27,10 @@ const api = {
   runOnJS: fn => fn,
   interpolate: (value, _input, _output) => value,
   makeMutable,
-  Animated: { View },
+  Animated: {
+    View,
+    createAnimatedComponent: Component => Component,
+  },
 };
 
 module.exports = {

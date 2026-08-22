@@ -1,27 +1,30 @@
 import { Platform } from 'react-native';
 
-/**1
- * 设计 token 来自 htmlTest 的蓝绿健康语言。
- * 组件只引用 token，后续调整品牌色时不会散落修改页面样式。
+/**
+ * 浅色系统主题：内容保持安静，系统蓝只承担交互与焦点，语义色只表达健康状态。
+ * 组件只引用 token，避免页面各自调出不同的“白卡 + 蓝绿光晕”。
  */
 export const colors = {
-  canvas: '#F5F8FC',
+  canvas: '#F2F2F7',
   surface: '#FFFFFF',
-  ink: '#0F172A',
-  muted: '#64748B',
-  line: '#E6EDF5',
-  blue: '#0071E3',
+  surfaceMuted: '#F7F7F8',
+  ink: '#1D1D1F',
+  muted: '#6E6E73',
+  placeholder: '#8E8E93',
+  line: 'rgba(60, 60, 67, 0.18)',
+  blue: '#007AFF',
   green: '#34C759',
   amber: '#FF9500',
   red: '#FF3B30',
-  violet: '#6D5DFB',
-  blueSoft: '#EAF4FF',
-  greenSoft: '#EAF9EF',
-  amberSoft: '#FFF5E8',
+  greenInk: '#187A49',
+  amberInk: '#9A5B00',
+  redInk: '#C93025',
+  blueSoft: '#E8F1FF',
+  greenSoft: '#EAF8EF',
+  amberSoft: '#FFF4E5',
   redSoft: '#FFF0EF',
-  glass: 'rgba(255, 255, 255, 0.58)',
-  glassStrong: 'rgba(255, 255, 255, 0.78)',
-  glassBorder: 'rgba(255, 255, 255, 0.88)',
+  inverse: '#FFFFFF',
+  scrim: 'rgba(0, 0, 0, 0.26)',
 };
 
 export const radii = {
@@ -31,34 +34,26 @@ export const radii = {
   pill: 999,
 };
 
-/** 玻璃材质相关 token：外壳（顶栏/底栏）用强玻璃，信息密集卡用 soft 玻璃。 */
-export const glass = {
-  border: 'rgba(255, 255, 255, 0.88)',
-  borderStrong: 'rgba(255, 255, 255, 0.98)',
-  /** 顶部内高光，仿 iOS 材质的高光描边。 */
-  sheen: 'rgba(255, 255, 255, 0.34)',
-  /** 半透明白底色：值越低越透出背景光斑（玻璃感更强）。 */
-  tint: 'rgba(255, 255, 255, 0.50)',
-  // 信息卡只用一层轻薄白底；过高的不透明度会把背景光斑洗成一片白雾。
-  tintSoft: 'rgba(255, 255, 255, 0.54)',
-};
-
-/** 背景光斑与 tab 光晕用色，统一收敛到 token，避免散落硬编码。 */
-export const glow = {
-  orbBlue: 'rgba(0, 113, 227, 0.12)',
-  orbGreen: 'rgba(52, 199, 89, 0.10)',
-  orbViolet: 'rgba(109, 93, 251, 0.09)',
-  blue: 'rgba(0, 113, 227, 0.22)',
-  green: 'rgba(52, 199, 89, 0.07)',
-  white: 'rgba(255, 255, 255, 0.72)',
-  violet: 'rgba(109, 93, 251, 0.09)',
+/**
+ * 材质只分两层：内容面为实体表面，悬浮导航才允许透出背景。
+ * 这样不会把信息卡堆成白雾，也让模糊成本留给真正需要深度的地方。
+ */
+export const materials = {
+  contentFill: '#FFFFFF',
+  contentBorder: 'rgba(60, 60, 67, 0.12)',
+  chromeBase: 'rgba(255, 255, 255, 0.64)',
+  chromeOverlay: 'rgba(255, 255, 255, 0.20)',
+  chromeBorder: 'rgba(255, 255, 255, 0.74)',
+  frostedBase: 'rgba(255, 255, 255, 0.46)',
+  frostedOverlay: 'rgba(255, 255, 255, 0.24)',
+  sheen: 'rgba(255, 255, 255, 0.58)',
 };
 
 /** 常用投影，扁平外壳用软阴影，卡片与 tab 用分层阴影。 */
 export const shadows = {
-  soft: '0 4px 16px rgba(91, 120, 149, 0.10)',
-  card: '0 8px 18px rgba(91, 120, 149, 0.10)',
-  tab: '0 12px 28px rgba(58, 90, 120, 0.16)',
+  soft: '0 2px 8px rgba(0, 0, 0, 0.06)',
+  card: '0 4px 14px rgba(0, 0, 0, 0.07)',
+  tab: '0 10px 28px rgba(0, 0, 0, 0.14)',
 };
 
 export const spacing = {

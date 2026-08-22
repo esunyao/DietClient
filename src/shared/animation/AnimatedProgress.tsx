@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   metricHead: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
   metricLabel: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '600' },
   metricValue: { color: colors.muted, fontFamily: fonts.mono, fontSize: 12, fontWeight: '700' },
-  progressTrack: { height: 6, borderRadius: radii.pill, backgroundColor: '#E8EFF6', overflow: 'hidden' },
+  progressTrack: { height: 6, borderRadius: radii.pill, backgroundColor: colors.surfaceMuted, overflow: 'hidden' },
   // 默认沿 track 拉伸为全宽，scaleX 决定可见占比。
   progressFill: { height: '100%', borderRadius: radii.pill },
 });

@@ -82,6 +82,8 @@ export type SkiaGlassSurfaceProps = {
   style?: StyleProp<ViewStyle>;
   intensity?: number;
   variant?: GlassVariant;
+  /** 临时隐藏的导航层不再捕获背景，避免不可见材质持续占用快照预算。 */
+  capture?: boolean;
   /** 兼容旧签名保留；Skia 模糊质量为 GPU 固定档位，此值仅作 API 兼容。 */
   blurRounds?: number;
   elevated?: boolean;
@@ -105,6 +107,7 @@ export function SkiaGlassSurface({
   style,
   intensity = 50,
   variant = 'frosted',
+  capture,
   blurRounds: _blurRounds = 2,
   elevated = false,
   cornerRadius = radii.lg,
@@ -269,7 +272,7 @@ export function SkiaGlassSurface({
     <SkiaGlassSurfaceNative
       cornerRadius={cornerRadius}
       elevated={elevated}
-      live={look.needsCapture}
+      live={capture ?? look.needsCapture}
       liquidEnabled={useLiquid}
       liquidCaptureGroup={liquid?.captureGroup ?? 'tab'}
       liquidRefractionHeight={liquid?.refractionHeight ?? 20}

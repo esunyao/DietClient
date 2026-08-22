@@ -4,7 +4,7 @@ import { BlurView } from '@sbaiahmed1/react-native-blur';
 
 import { GLASS_IMPLEMENTATION } from '../../config/appConfig';
 import { AndroidGlassSurface } from '../../native/AndroidGlassSurface';
-import { glass, radii } from '../../theme/tokens';
+import { colors, materials, radii } from '../../theme/tokens';
 import {
   SkiaGlassSurface,
   type SkiaGlassSurfaceProps,
@@ -81,8 +81,8 @@ function LegacyGlassSurface({
         blurAmount={intensity}
         blurRounds={1}
         blurType="systemUltraThinMaterialLight"
-        overlayColor="rgba(255, 255, 255, 0.34)"
-        reducedTransparencyFallbackColor="#FFFFFF"
+        overlayColor={materials.chromeOverlay}
+        reducedTransparencyFallbackColor={colors.surface}
         style={[styles.surface, styles.navigationSurface, style]}
       >
         {sheen}
@@ -96,8 +96,8 @@ function LegacyGlassSurface({
       blurAmount={intensity}
       blurRounds={blurRounds}
       blurType="systemUltraThinMaterialLight"
-      overlayColor="rgba(255, 255, 255, 0.34)"
-      reducedTransparencyFallbackColor="#FFFFFF"
+      overlayColor={materials.frostedOverlay}
+      reducedTransparencyFallbackColor={colors.surface}
       style={[styles.surface, style]}
     >
       {sheen}
@@ -110,17 +110,17 @@ const styles = StyleSheet.create({
   surface: {
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: glass.borderStrong,
+    borderColor: materials.chromeBorder,
     borderRadius: radii.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.24)',
+    backgroundColor: materials.frostedBase,
   },
   softSurface: {
-    backgroundColor: glass.tintSoft,
-    borderColor: 'rgba(255, 255, 255, 0.78)',
+    backgroundColor: materials.contentFill,
+    borderColor: materials.contentBorder,
   },
   navigationSurface: {
-    backgroundColor: 'rgba(255, 255, 255, 0.66)',
-    borderColor: 'rgba(148, 163, 184, 0.48)',
+    backgroundColor: materials.chromeBase,
+    borderColor: materials.chromeBorder,
   },
   /** 顶部细内高光：仿 iOS 材质的高光描边，让玻璃轮廓更分明。 */
   sheen: {
@@ -129,9 +129,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: StyleSheet.hairlineWidth * 3,
-    backgroundColor: glass.sheen,
+    backgroundColor: materials.sheen,
   },
   navigationSheen: {
-    backgroundColor: 'rgba(255, 255, 255, 0.68)',
+    backgroundColor: materials.sheen,
   },
 });

@@ -1,8 +1,18 @@
 import React from 'react';
 import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, {
+  Easing,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+
+import { durations, springPress } from './config';
 
 type Props = Omit<PressableProps, 'style'> & {
-  /** 静态样式；按压反馈由原生 Pressable 提供。 */
+  /** 静态样式；反馈由 UI 线程完成。 */
   style?: StyleProp<ViewStyle>;
   /** 按压时的缩放目标（默认 0.98）。 */
   scaleTo?: number;
@@ -11,8 +21,7 @@ type Props = Omit<PressableProps, 'style'> & {
 };
 
 /**
- * 轻量按压反馈。
- * 不为每个可点元素建立 Reanimated 节点，避免 Fabric 页面切换期间的挂载重试。
+ * 轻量按压反馈。仅改 transform 与 opacity，不触发布局或 React 重渲染。
  */
 export function PressableScale({
   children,
@@ -24,22 +33,33 @@ export function PressableScale({
   onPressOut,
   ...rest
 }: Props) {
+  const press = useSharedValue(0);
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: 1 - (1 - pressedOpacity) * press.value,
+    transform: [{ scale: 1 - (1 - scaleTo) * press.value }],
+  }));
+
   return (
-    <Pressable
+    <AnimatedPressable
       disabled={disabled}
       onPressIn={event => {
+        press.value = withTiming(1, {
+          duration: durations.pressIn,
+          easing: Easing.out(Easing.cubic),
+          reduceMotion: ReduceMotion.System,
+        });
         onPressIn?.(event);
       }}
       onPressOut={event => {
+        press.value = withSpring(0, springPress);
         onPressOut?.(event);
       }}
-      style={({ pressed }) => [
-        style,
-        !disabled && pressed && { opacity: pressedOpacity, transform: [{ scale: scaleTo }] },
-      ]}
+      style={[style, animatedStyle]}
       {...rest}
     >
       {children}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);

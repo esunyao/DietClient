@@ -46,6 +46,19 @@ describe('SkiaGlassSurface 组件', () => {
     act(() => tree!.unmount());
   });
 
+  it('不可见的导航层可以显式停止背景捕获', () => {
+    let tree: ReturnType<typeof create>;
+    act(() => {
+      tree = create(
+        <SkiaGlassSurface capture={false} variant="navigation">
+          <View />
+        </SkiaGlassSurface>,
+      );
+    });
+    expect(tree!.root.findByType(SkiaGlassSurfaceWrapper).props.live).toBe(false);
+    act(() => tree!.unmount());
+  });
+
   it('liquid 开启时透传液态参数到原生容器', () => {
     let tree: ReturnType<typeof create>;
     act(() => {

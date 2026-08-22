@@ -99,7 +99,7 @@ export function HealthRecordsScreen({ navigation, route }: HealthProps) {
       <RecordSection icon={<Target color={colors.green} size={19} />} title="健康目标" detail="体重、体脂与改善方向" count={data.goals.length} onPress={() => open('goal')} />
       <RecordSection icon={<ShieldAlert color={colors.amber} size={19} />} title="过敏记录" detail="过敏原、严重程度与反应" count={data.allergies.length} onPress={() => open('allergy')} />
       <RecordSection icon={<Stethoscope color={colors.red} size={19} />} title="疾病记录" detail="诊断状态、日期与备注" count={data.conditions.length} onPress={() => open('condition')} />
-      <RecordSection icon={<Utensils color={colors.violet} size={19} />} title="饮食限制" detail="限制类别、生效日期与备注" count={data.restrictions.length} onPress={() => open('restriction')} />
+      <RecordSection icon={<Utensils color={colors.blue} size={19} />} title="饮食限制" detail="限制类别、生效日期与备注" count={data.restrictions.length} onPress={() => open('restriction')} />
     </GlassCard>
     {loading ? <Text style={styles.loading}>正在更新健康资料…</Text> : null}
   </AppScreen>;

@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   identityMeta: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
-  identityEmail: { color: '#94A3B8', fontFamily: fonts.body, fontSize: 10 },
+  identityEmail: { color: colors.placeholder, fontFamily: fonts.body, fontSize: 10 },
   actionGrid: { flexDirection: 'row', gap: spacing.md },
   profileAction: {
     flex: 1,
@@ -817,8 +817,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
-    backgroundColor: colors.glassStrong,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
   },
   profileActionIcon: {
     width: 32,

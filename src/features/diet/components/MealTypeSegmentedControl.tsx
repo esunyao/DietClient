@@ -12,8 +12,8 @@ export function MealTypeSegmentedControl({ value, onChange, includeAll = false }
 
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  item: { borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: '#FFFFFF', paddingHorizontal: 11, paddingVertical: 7 },
-  active: { backgroundColor: 'rgba(0,113,227,0.1)', borderColor: 'rgba(0,113,227,0.35)' },
+  item: { borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: 11, paddingVertical: 7 },
+  active: { backgroundColor: colors.blueSoft, borderColor: colors.line },
   text: { color: colors.muted, fontFamily: fonts.body, fontWeight: '700', fontSize: 12 },
   activeText: { color: colors.blue },
 });

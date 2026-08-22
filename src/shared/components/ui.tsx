@@ -31,7 +31,7 @@ import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { durations } from '../animation/config';
 import { PressableScale } from '../animation/PressableScale';
 import { ScreenTransition } from '../animation/ScreenTransition';
-import { colors, fonts, glow, radii, shadows, spacing } from '../theme/tokens';
+import { colors, fonts, radii, shadows, spacing } from '../theme/tokens';
 import { GlassSurface } from './surfaces/GlassSurface';
 import { PerfRegion } from '../perf/PerfRegion';
 import { useScrollChrome } from '../scrollChrome/ScrollChromeProvider';
@@ -43,16 +43,6 @@ const HEADER_HEIGHT = 44;
 const COMPACT_HEADER_MIN_WIDTH = 86;
 const COMPACT_HEADER_MAX_WIDTH = 158;
 const COMPACT_HEADER_HEIGHT = 26;
-const navigationLiquidGlass = {
-  captureGroup: 'header' as const,
-  touchEffect: true,
-  elasticEffect: true,
-  refractionHeight: 21,
-  refractionOffset: 60,
-  blurRadius: 10,
-  dispersion: 0.8,
-};
-
 /** 底部 tab 显隐过渡（UI 线程）。 */
 const TabSlideTiming = {
   duration: durations.tabBarSlide,
@@ -171,8 +161,6 @@ export function AppScreen({ children, scroll = true, contentStyle, header }: {
 
   return (
     <ScreenTransition style={styles.screen}>
-      <View pointerEvents="none" style={styles.canvasGlowOne} />
-      <View pointerEvents="none" style={styles.canvasGlowTwo} />
       {content}
       {header ? (
         <View style={[styles.floatingHeader, { top: safeTop + HEADER_SAFE_GAP }]}>
@@ -228,7 +216,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
     <PerfRegion name="ScreenHeader">
       <View style={styles.headerShell}>
         <Animated.View pointerEvents={isCollapsed ? 'none' : 'auto'} style={[styles.headerExpanded, expandedStyle]}>
-          <GlassSurface cornerRadius={HEADER_HEIGHT / 2} elevated intensity={50} liquid={{ ...navigationLiquidGlass, enabled: !isCollapsed }} variant="navigation" style={styles.header}>
+          <GlassSurface capture={!isCollapsed} cornerRadius={HEADER_HEIGHT / 2} elevated intensity={38} variant="navigation" style={styles.header}>
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>{title}</Text>
               {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
@@ -242,13 +230,13 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
           </GlassSurface>
         </Animated.View>
         <Animated.View pointerEvents="none" style={[styles.headerCompact, { width: compactWidth }, compactStyle]}>
-          <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} liquid={{ ...navigationLiquidGlass, enabled: isCollapsed }} variant="navigation" style={styles.compactIsland}>
+          <GlassSurface capture={isCollapsed} cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={38} variant="navigation" style={styles.compactIsland}>
             <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.compactTitle, { fontSize: compactFontSize }]}>{title}</Text>
           </GlassSurface>
         </Animated.View>
         {onBack ? (
           <Animated.View pointerEvents={isCollapsed ? 'auto' : 'none'} style={[styles.headerSideLeft, sideStyle]}>
-            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} liquid={{ ...navigationLiquidGlass, enabled: isCollapsed }} variant="navigation" style={styles.headerSideButton}>
+            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated variant="soft" style={styles.headerSideButton}>
               <Pressable accessibilityLabel="返回" hitSlop={10} onPress={onBack} style={styles.sideButtonPressable}>
                 <ArrowLeft color={colors.ink} size={17} />
               </Pressable>
@@ -257,7 +245,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
         ) : null}
         {action ? (
           <Animated.View pointerEvents={isCollapsed ? 'auto' : 'none'} style={[styles.headerSideRight, sideStyle]}>
-            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={50} liquid={{ ...navigationLiquidGlass, enabled: isCollapsed }} variant="navigation" style={styles.headerSideButton}>
+            <GlassSurface cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated variant="soft" style={styles.headerSideButton}>
               {action}
             </GlassSurface>
           </Animated.View>
@@ -440,7 +428,7 @@ export const inputStyle: TextStyle = {
   borderWidth: 1,
   borderColor: colors.line,
   borderRadius: radii.md,
-  backgroundColor: '#FFFFFF',
+  backgroundColor: colors.surface,
   color: colors.ink,
   fontFamily: fonts.body,
   fontSize: 15,
@@ -452,8 +440,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   scrollContent: { zIndex: 1, paddingHorizontal: spacing.lg, paddingBottom: 104, gap: spacing.lg },
   floatingHeader: { position: 'absolute', left: spacing.lg, right: spacing.lg, zIndex: 60 },
-  canvasGlowOne: { position: 'absolute', width: 250, height: 250, borderRadius: 125, top: -120, right: -90, backgroundColor: glow.orbBlue },
-  canvasGlowTwo: { position: 'absolute', width: 210, height: 210, borderRadius: 105, bottom: 100, left: -110, backgroundColor: glow.orbGreen },
   card: {
     padding: spacing.lg,
   },
@@ -465,7 +451,7 @@ const styles = StyleSheet.create({
   headerCompact: { position: 'absolute', top: 0, alignSelf: 'center', height: COMPACT_HEADER_HEIGHT },
   header: { height: HEADER_HEIGHT, borderRadius: HEADER_HEIGHT / 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   compactIsland: { height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.sm },
-  backButton: { position: 'absolute', left: 6, top: (HEADER_HEIGHT - 32) / 2, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.6)' },
+  backButton: { position: 'absolute', left: 6, top: (HEADER_HEIGHT - 32) / 2, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255, 255, 255, 0.46)' },
   headerText: { alignItems: 'center', maxWidth: '70%' },
   headerTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
   headerSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 9, marginTop: 1 },
@@ -476,7 +462,7 @@ const styles = StyleSheet.create({
   headerSideButton: { width: COMPACT_HEADER_HEIGHT, height: COMPACT_HEADER_HEIGHT, borderRadius: COMPACT_HEADER_HEIGHT / 2, alignItems: 'center', justifyContent: 'center' },
   sideButtonPressable: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: COMPACT_HEADER_HEIGHT / 2 },
   button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderRadius: radii.md, backgroundColor: colors.blue, paddingHorizontal: spacing.lg },
-  buttonSecondary: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#D5E9FC' },
+  buttonSecondary: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: colors.line },
   buttonDanger: { backgroundColor: colors.red },
   buttonDisabled: { opacity: 0.55 },
   buttonText: { color: '#FFFFFF', fontFamily: fonts.body, fontWeight: '700', fontSize: 15 },
@@ -489,7 +475,7 @@ const styles = StyleSheet.create({
   tagGreen: { backgroundColor: colors.greenSoft },
   tagAmber: { backgroundColor: colors.amberSoft },
   tagRed: { backgroundColor: colors.redSoft },
-  tagPlain: { backgroundColor: '#F1F5F9' },
+  tagPlain: { backgroundColor: colors.surfaceMuted },
   tagText: { color: colors.blue, fontFamily: fonts.body, fontWeight: '700', fontSize: 11 },
   tagGreenText: { color: '#16803D' },
   tagAmberText: { color: '#B76600' },

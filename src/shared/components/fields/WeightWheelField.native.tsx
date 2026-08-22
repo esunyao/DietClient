@@ -53,9 +53,9 @@ export function WeightWheelField({ label, value, onChange }: {
 const styles = StyleSheet.create({
   field: { gap: 7 },
   label: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },
-  control: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: '#FFFFFF', paddingHorizontal: spacing.md },
+  control: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: colors.surface, paddingHorizontal: spacing.md },
   controlDisabled: { opacity: 0.55 },
   valueGroup: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   value: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '700' },
-  placeholder: { color: '#94A3B8', fontWeight: '500' },
+  placeholder: { color: colors.placeholder, fontWeight: '500' },
 });

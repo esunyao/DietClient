@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getErrorMessage } from '../../../shared/api/client';
 import { ScreenTransition } from '../../../shared/animation/ScreenTransition';
 import { AppButton, LogoMark, inputStyle } from '../../../shared/components';
-import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
+import { colors, fonts, radii, shadows, spacing } from '../../../shared/theme/tokens';
 import type { AuthStackParamList } from '../../../navigation/types';
 import { useSessionStore } from '../store/sessionStore';
 import {
@@ -72,7 +72,7 @@ function FormField<T extends FieldValues>({
               onBlur={onBlur}
               onChangeText={onChange}
               placeholder={placeholder}
-              placeholderTextColor="#95A4B7"
+              placeholderTextColor={colors.placeholder}
               secureTextEntry={secureTextEntry ? hidden : false}
               style={[inputStyle, styles.input]}
               value={value}
@@ -95,8 +95,6 @@ function AuthShell({ children }: { children: React.ReactNode }) {
     <SafeAreaView style={styles.safeArea}>
       <ScreenTransition style={styles.screenTransition}>
         <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', default: undefined })} style={styles.keyboard}>
-          <View style={styles.orbOne} />
-          <View style={styles.orbTwo} />
           <View style={styles.content}>{children}</View>
         </KeyboardAvoidingView>
       </ScreenTransition>
@@ -127,7 +125,7 @@ function ChallengeCard({ challenge, onSubmit }: { challenge: FlowChallenge; onSu
         keyboardType={challenge.component.includes('authenticator') ? 'numeric' : 'default'}
         onChangeText={setValue}
         placeholder={fieldName}
-        placeholderTextColor="#95A4B7"
+              placeholderTextColor={colors.placeholder}
         secureTextEntry={challenge.component.includes('password')}
         style={inputStyle}
         value={value}
@@ -323,7 +321,7 @@ export function VerifyEmailScreen({ navigation, route }: VerifyEmailProps) {
           keyboardType="email-address"
           onChangeText={setEmail}
           placeholder="name@example.com"
-          placeholderTextColor="#95A4B7"
+              placeholderTextColor={colors.placeholder}
           style={inputStyle}
           value={email}
         />
@@ -347,7 +345,7 @@ export function EmailVerifiedScreen({ navigation }: EmailVerifiedProps) {
   return (
     <AuthShell>
       <View style={styles.statusCard}>
-        <View style={[styles.statusIcon, styles.verifiedIcon]}><CircleCheck color="#22A764" size={38} /></View>
+        <View style={[styles.statusIcon, styles.verifiedIcon]}><CircleCheck color={colors.green} size={38} /></View>
         <Text style={styles.statusTitle}>邮箱验证成功</Text>
         <Text style={styles.statusDescription}>你的账号已经激活，现在可以登录并继续完善健康资料。</Text>
         <AppButton label="返回登录" onPress={() => navigation.replace('Login', { emailVerified: true })} />
@@ -361,17 +359,15 @@ const styles = StyleSheet.create({
   screenTransition: { flex: 1 },
   keyboard: { flex: 1, justifyContent: 'center' },
   content: { paddingHorizontal: spacing.xl, zIndex: 1 },
-  orbOne: { position: 'absolute', top: 38, right: -55, width: 170, height: 170, borderRadius: 85, backgroundColor: '#D7F3E2', opacity: 0.72 },
-  orbTwo: { position: 'absolute', bottom: -48, left: -60, width: 200, height: 200, borderRadius: 100, backgroundColor: '#DDEEFF', opacity: 0.82 },
   brandBlock: { alignItems: 'center', marginBottom: spacing.xl },
   brandName: { color: colors.ink, fontFamily: fonts.display, fontSize: 29, fontWeight: '800', letterSpacing: -0.8, marginTop: spacing.md },
   brandSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, marginTop: 5 },
-  authCard: { backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: radii.lg, padding: spacing.xl, borderWidth: 1, borderColor: '#FFFFFF', boxShadow: '0 12px 24px rgba(76, 108, 138, 0.14)' },
+  authCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.xl, borderWidth: 1, borderColor: colors.line, boxShadow: shadows.card },
   registerCard: { paddingVertical: spacing.lg },
   registerScroll: { gap: spacing.md, paddingBottom: spacing.xxl },
   registerCardTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: '800' },
   registerCardCaption: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginBottom: spacing.lg, marginTop: 3 },
-  healthGuideCard: { gap: spacing.sm, backgroundColor: '#F7FBFF' },
+  healthGuideCard: { gap: spacing.sm, backgroundColor: colors.blueSoft },
   healthGuideText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 19 },
   cardHeading: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', marginBottom: spacing.xl },
   headingIcon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blueSoft },
@@ -383,9 +379,9 @@ const styles = StyleSheet.create({
   inputError: { borderRadius: radii.md, borderWidth: 1, borderColor: colors.red },
   input: { paddingRight: 48 },
   eye: { position: 'absolute', right: 14, top: 15 },
-  fieldError: { color: '#C93025', fontFamily: fonts.body, fontSize: 11, marginTop: 5 },
-  submitError: { color: '#C93025', backgroundColor: colors.redSoft, borderRadius: radii.sm, padding: spacing.sm, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
-  successMessage: { color: '#187A49', backgroundColor: '#E8F8EF', borderRadius: radii.sm, padding: spacing.sm, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
+  fieldError: { color: colors.redInk, fontFamily: fonts.body, fontSize: 11, marginTop: 5 },
+  submitError: { color: colors.redInk, backgroundColor: colors.redSoft, borderRadius: radii.sm, padding: spacing.sm, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
+  successMessage: { color: colors.greenInk, backgroundColor: colors.greenSoft, borderRadius: radii.sm, padding: spacing.sm, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginBottom: spacing.md },
   switchRow: { alignSelf: 'center', flexDirection: 'row', gap: 4, marginTop: spacing.lg, padding: 4 },
   switchText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
   switchAction: { color: colors.blue, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
@@ -399,9 +395,9 @@ const styles = StyleSheet.create({
   challengeCard: { gap: spacing.sm, padding: spacing.md, marginBottom: spacing.md, borderRadius: radii.md, backgroundColor: colors.blueSoft },
   challengeTitle: { color: colors.ink, fontFamily: fonts.body, fontWeight: '800', fontSize: 13 },
   challengeDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
-  statusCard: { backgroundColor: 'rgba(255,255,255,0.96)', borderRadius: radii.lg, padding: spacing.xl, gap: spacing.md, alignItems: 'stretch' },
+  statusCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.xl, gap: spacing.md, alignItems: 'stretch' },
   statusIcon: { alignSelf: 'center', width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blueSoft },
-  verifiedIcon: { backgroundColor: '#E8F8EF' },
+  verifiedIcon: { backgroundColor: colors.greenSoft },
   statusTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '800', textAlign: 'center' },
   statusDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20, textAlign: 'center', marginBottom: spacing.sm },
 });

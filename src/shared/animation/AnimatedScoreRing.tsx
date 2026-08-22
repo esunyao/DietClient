@@ -47,7 +47,7 @@ export function AnimatedScoreRing({ score, size = 104, caption = '综合评分' 
             <Stop offset="1" stopColor={colors.green} />
           </LinearGradient>
         </Defs>
-        <Circle cx="50" cy="50" r={radius} stroke="#DDEAF7" strokeWidth="7" fill="none" />
+        <Circle cx="50" cy="50" r={radius} stroke={colors.line} strokeWidth="7" fill="none" />
         <AnimatedCircle
           cx="50"
           cy="50"

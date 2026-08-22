@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { BlurView } from '@sbaiahmed1/react-native-blur';
 
-import { glass, radii } from '../../theme/tokens';
+import { colors, materials, radii } from '../../theme/tokens';
 
 /**
  * 玻璃材质的唯一入口（Web 调试端）。
@@ -21,6 +21,7 @@ export function GlassSurface({
   intensity?: number;
   variant?: 'frosted' | 'soft' | 'navigation';
   blurRounds?: number;
+  capture?: boolean;
 }) {
   const sheen = (
     <View
@@ -44,8 +45,8 @@ export function GlassSurface({
       // 导航浮层内容简单，单 pass 模糊视觉已够。
       blurRounds={variant === 'navigation' ? 1 : blurRounds}
       blurType="systemUltraThinMaterialLight"
-      overlayColor="rgba(255, 255, 255, 0.34)"
-      reducedTransparencyFallbackColor="#FFFFFF"
+      overlayColor={variant === 'navigation' ? materials.chromeOverlay : materials.frostedOverlay}
+      reducedTransparencyFallbackColor={colors.surface}
       style={[
         styles.surface,
         variant === 'navigation' && styles.navigationSurface,
@@ -62,17 +63,17 @@ const styles = StyleSheet.create({
   surface: {
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: glass.borderStrong,
+    borderColor: materials.chromeBorder,
     borderRadius: radii.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.24)',
+    backgroundColor: materials.frostedBase,
   },
   softSurface: {
-    backgroundColor: glass.tintSoft,
-    borderColor: 'rgba(255, 255, 255, 0.78)',
+    backgroundColor: materials.contentFill,
+    borderColor: materials.contentBorder,
   },
   navigationSurface: {
-    backgroundColor: 'rgba(255, 255, 255, 0.66)',
-    borderColor: 'rgba(148, 163, 184, 0.48)',
+    backgroundColor: materials.chromeBase,
+    borderColor: materials.chromeBorder,
   },
   /** 顶部细内高光：仿 iOS 材质的高光描边，让玻璃轮廓更分明。 */
   sheen: {
@@ -81,9 +82,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: StyleSheet.hairlineWidth * 3,
-    backgroundColor: glass.sheen,
+    backgroundColor: materials.sheen,
   },
   navigationSheen: {
-    backgroundColor: 'rgba(255, 255, 255, 0.68)',
+    backgroundColor: materials.sheen,
   },
 });

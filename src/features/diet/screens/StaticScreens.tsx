@@ -20,7 +20,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSpring, wit
 import { durations, springGentle, timing } from '../../../shared/animation/config';
 import type { HomeStackParamList } from '../../../navigation/types';
 import { AppButton, AppScreen, GlassCard, MetricProgress, ScoreRing, SectionTitle, Tag, useToast } from '../../../shared/components';
-import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
+import { colors, fonts, radii, shadows, spacing } from '../../../shared/theme/tokens';
 import { nutriApi } from '../api/nutriApi';
 import type { MealHistoryItem, NutrientValue } from '../api/nutriTypes';
 import { localDateFromDate } from '../services/mealCapture';
@@ -143,7 +143,7 @@ export function HomeScreen({ navigation }: HomeProps) {
       </GlassCard>
 
       <View style={styles.warning}>
-        <CircleAlert color="#B76600" size={18} />
+        <CircleAlert color={colors.amberInk} size={18} />
         <View style={styles.warningCopy}>
           <Text style={styles.warningTitle}>钠摄入预警</Text>
           <Text style={styles.warningText}>已达目标 82%，晚餐请注意控盐。</Text>
@@ -152,9 +152,9 @@ export function HomeScreen({ navigation }: HomeProps) {
       </View>
 
       <View style={styles.quickGrid}>
-        <QuickAction icon={<Camera color="#FFFFFF" size={22} />} title="识别这一餐" description="拍照 · AI 分析" blue onPress={() => openDiet()} />
+        <QuickAction icon={<Camera color={colors.blue} size={22} />} title="识别这一餐" description="拍照 · AI 分析" blue onPress={() => openDiet()} />
         <QuickAction icon={<Sparkles color={colors.green} size={22} />} title="下一餐处方" description="AI 配餐" />
-        <QuickAction icon={<Target color={colors.violet} size={22} />} title="今日目标" description="调整目标" />
+        <QuickAction icon={<Target color={colors.blue} size={22} />} title="今日目标" description="调整目标" />
         <QuickAction icon={<TrendingUp color={colors.blue} size={22} />} title="历史追踪" description="饮食 & 身体" />
       </View>
 
@@ -239,7 +239,7 @@ export function MealPlanScreen() {
     <AppScreen>
       <StaticPageHeading eyebrow="AI 配餐" title="下一餐处方" description="模拟展示基于健康画像与当日摄入生成的三种可选方案。" icon={<Sparkles color={colors.blue} size={15} />} />
       <GlassCard style={styles.planHero}>
-        <View style={styles.planHeroTop}><View style={styles.planSpark}><Sparkles color="#FFFFFF" size={22} /></View><View style={styles.planHeroText}><Text style={styles.planHeroTitle}>晚餐营养处方</Text><Text style={styles.planHeroDescription}>{descriptions[plan]}</Text></View><Tag label={`方案 ${plan}`} tone="green" /></View>
+        <View style={styles.planHeroTop}><View style={styles.planSpark}><Sparkles color={colors.inverse} size={22} /></View><View style={styles.planHeroText}><Text style={styles.planHeroTitle}>晚餐营养处方</Text><Text style={styles.planHeroDescription}>{descriptions[plan]}</Text></View><Tag label={`方案 ${plan}`} tone="green" /></View>
         <View style={styles.planSwitch}>{['A', 'B', 'C'].map(item => <Pressable key={item} onPress={() => setPlan(item)} style={[styles.planSwitchItem, plan === item && styles.planSwitchItemActive]}><Text style={[styles.planSwitchText, plan === item && styles.planSwitchTextActive]}>方案 {item}</Text></Pressable>)}</View>
       </GlassCard>
       <View style={styles.planStats}><PlanStat label="目标热量" value="450" unit="kcal" /><PlanStat label="蛋白质" value="38" unit="g" /><PlanStat label="预计用时" value="25" unit="分钟" /></View>
@@ -283,7 +283,7 @@ export function TrendsScreen() {
       <GlassCard style={styles.metricList}>
         <MetricProgress label="饮食记录完成率" value={86} color={colors.green} rightLabel="86%" />
         <MetricProgress label="营养目标达标率" value={74} color={colors.blue} rightLabel="74%" />
-        <MetricProgress label="餐食满意度" value={89} color={colors.violet} rightLabel="4.5 / 5" />
+        <MetricProgress label="餐食满意度" value={89} color={colors.green} rightLabel="4.5 / 5" />
       </GlassCard>
       <GlassCard style={styles.trendInsight}><Heart color={colors.red} size={20} /><View style={styles.trendInsightCopy}><Text style={styles.trendInsightTitle}>本周健康提示</Text><Text style={styles.trendInsightText}>蛋白质摄入持续改善；周末仍建议留意外卖和调味料中的隐性钠。</Text></View></GlassCard>
     </AppScreen>
@@ -296,7 +296,7 @@ export function ReportsScreen() {
     <AppScreen>
       <StaticPageHeading eyebrow="健康报告" title="报告中心" description="将阶段性饮食与健康数据整理为可读结论。当前为静态预览。" icon={<FileText color={colors.blue} size={15} />} />
       <GlassCard style={styles.reportHero}>
-        <View style={styles.reportIcon}><FileText color="#FFFFFF" size={23} /></View>
+        <View style={styles.reportIcon}><FileText color={colors.inverse} size={23} /></View>
         <View style={styles.reportCopy}><Text style={styles.reportTitle}>本周营养健康报告</Text><Text style={styles.reportDescription}>2026.07.30 – 2026.08.05 · 已生成</Text></View>
         <Tag label="最新" tone="green" />
       </GlassCard>
@@ -368,33 +368,33 @@ const styles = StyleSheet.create({
   greetingTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 25, fontWeight: '800', letterSpacing: -0.7, marginTop: 3 },
   smallBrand: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blueSoft },
   scoreCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, overflow: 'hidden' },
-  scoreHalo: { position: 'absolute', width: 145, height: 145, borderRadius: 73, left: -48, top: -46, backgroundColor: '#DDF7E7', opacity: 0.8 },
+  scoreHalo: { position: 'absolute', width: 145, height: 145, borderRadius: 73, left: -48, top: -46, backgroundColor: colors.greenSoft, opacity: 0.58 },
   scoreCopy: { flex: 1, gap: 6 },
   scoreTitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   scoreTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 17, fontWeight: '800' },
   scoreDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
   detailLink: { flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start', paddingVertical: 4 },
   detailLinkText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' },
-  warning: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.amberSoft, borderRadius: radii.md, borderWidth: 1, borderColor: '#FFE5C4', padding: spacing.md },
+  warning: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.amberSoft, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, padding: spacing.md },
   warningCopy: { flex: 1 },
-  warningTitle: { color: '#A65C00', fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
-  warningText: { color: '#A65C00', fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
+  warningTitle: { color: colors.amberInk, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
+  warningText: { color: colors.amberInk, fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   quickAction: { width: '48%' },
   quickActionCard: { minHeight: 126, padding: spacing.md, justifyContent: 'space-between' },
-  quickActionBlue: { backgroundColor: colors.blue, borderColor: colors.blue },
+  quickActionBlue: { backgroundColor: colors.blueSoft, borderColor: colors.line },
   quickIcon: { width: 39, height: 39, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.greenSoft },
-  quickIconBlue: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  quickIconBlue: { backgroundColor: colors.surface },
   quickTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: '800', marginTop: spacing.sm },
-  quickTitleBlue: { color: '#FFFFFF' },
+  quickTitleBlue: { color: colors.ink },
   quickDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
-  quickDescriptionBlue: { color: 'rgba(255,255,255,0.74)' },
+  quickDescriptionBlue: { color: colors.muted },
   nutritionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   nutritionCard: { width: '48%', borderRadius: radii.md, padding: spacing.md, gap: 8 },
   nutritionLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 12 },
   nutritionValue: { color: colors.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
   nutritionUnit: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, fontWeight: '600' },
-  microTrack: { height: 5, backgroundColor: '#E9F0F6', borderRadius: radii.pill, overflow: 'hidden' },
+  microTrack: { height: 5, backgroundColor: colors.surfaceMuted, borderRadius: radii.pill, overflow: 'hidden' },
   microFill: { height: '100%', borderRadius: radii.pill },
   microFillCalories: { width: '65%', backgroundColor: colors.amber },
   microFillProtein: { width: '45%', backgroundColor: colors.green },
@@ -405,11 +405,11 @@ const styles = StyleSheet.create({
   recordRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 9 },
   emptyRecords: { paddingVertical: spacing.lg, alignItems: 'center' },
   emptyRecordsText: { color: colors.blue, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' },
-  recordEmoji: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#F5F8FC', alignItems: 'center', justifyContent: 'center' },
+  recordEmoji: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   recordInfo: { flex: 1 },
   recordName: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '800' },
   recordDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
-  prescription: { backgroundColor: '#F1F8FF' },
+  prescription: { backgroundColor: colors.blueSoft },
   prescriptionHead: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
   prescriptionTitle: { flex: 1, color: colors.ink, fontFamily: fonts.display, fontSize: 17, fontWeight: '800' },
   prescriptionDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 19, marginTop: spacing.sm },
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   prescriptionMetricLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
   prescriptionMetricValue: { color: colors.ink, fontFamily: fonts.body, fontSize: 12, fontWeight: '800' },
   scanCard: { alignItems: 'center', paddingVertical: spacing.xl },
-  scanFrame: { width: 130, height: 130, borderRadius: radii.lg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#99C8F7', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F9FF', overflow: 'hidden' },
+  scanFrame: { width: 130, height: 130, borderRadius: radii.lg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.blue, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceMuted, overflow: 'hidden' },
   scanLine: { position: 'absolute', left: 17, right: 17, top: 63, height: 2, backgroundColor: colors.green, opacity: 0.7 },
   scanTitle: { color: colors.ink, fontFamily: fonts.display, fontWeight: '800', fontSize: 18, marginTop: spacing.lg },
   scanDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 19, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.lg },
@@ -436,15 +436,15 @@ const styles = StyleSheet.create({
   resultStatUnit: { color: colors.muted, fontSize: 10, fontFamily: fonts.body },
   resultStatLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   metricList: { gap: spacing.lg },
-  planHero: { backgroundColor: '#EEF8FF' },
+  planHero: { backgroundColor: colors.blueSoft },
   planHeroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   planSpark: { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blue },
   planHeroText: { flex: 1 },
   planHeroTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 17, fontWeight: '800' },
   planHeroDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
-  planSwitch: { flexDirection: 'row', backgroundColor: '#DDECF8', borderRadius: radii.pill, padding: 3, marginTop: spacing.lg },
+  planSwitch: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: radii.pill, padding: 3, marginTop: spacing.lg },
   planSwitchItem: { flex: 1, alignItems: 'center', borderRadius: radii.pill, paddingVertical: 8 },
-  planSwitchItemActive: { backgroundColor: '#FFFFFF', boxShadow: '0 2px 5px rgba(0, 113, 227, 0.09)' },
+  planSwitchItemActive: { backgroundColor: colors.surface, boxShadow: shadows.soft },
   planSwitchText: { color: colors.muted, fontFamily: fonts.body, fontWeight: '700', fontSize: 12 },
   planSwitchTextActive: { color: colors.blue },
   planStats: { flexDirection: 'row', gap: spacing.sm },
@@ -460,9 +460,9 @@ const styles = StyleSheet.create({
   reasonRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginTop: spacing.md },
   reasonText: { flex: 1, color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 19 },
   marginTop: { marginTop: spacing.lg },
-  rangeSwitch: { flexDirection: 'row', alignSelf: 'flex-start', backgroundColor: '#E7EFF7', borderRadius: radii.pill, padding: 3 },
+  rangeSwitch: { flexDirection: 'row', alignSelf: 'flex-start', backgroundColor: colors.surfaceMuted, borderRadius: radii.pill, padding: 3 },
   rangeItem: { minWidth: 52, alignItems: 'center', borderRadius: radii.pill, paddingVertical: 7, paddingHorizontal: spacing.sm },
-  rangeItemActive: { backgroundColor: '#FFFFFF' },
+  rangeItemActive: { backgroundColor: colors.surface },
   rangeText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' },
   rangeTextActive: { color: colors.blue },
   chartHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm },
@@ -473,11 +473,11 @@ const styles = StyleSheet.create({
   bar: { width: '66%', minHeight: 10, borderTopLeftRadius: 8, borderTopRightRadius: 8, opacity: 0.92 },
   barValue: { color: colors.muted, fontFamily: fonts.mono, fontSize: 10 },
   barLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, paddingBottom: 4 },
-  trendInsight: { flexDirection: 'row', gap: spacing.md, backgroundColor: '#FFF7F5' },
+  trendInsight: { flexDirection: 'row', gap: spacing.md, backgroundColor: colors.redSoft },
   trendInsightCopy: { flex: 1 },
   trendInsightTitle: { color: colors.ink, fontFamily: fonts.body, fontWeight: '800', fontSize: 14 },
   trendInsightText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 19, marginTop: 4 },
-  reportHero: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: '#EEF8FF' },
+  reportHero: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.blueSoft },
   reportIcon: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blue },
   reportCopy: { flex: 1 },
   reportTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, fontWeight: '800' },

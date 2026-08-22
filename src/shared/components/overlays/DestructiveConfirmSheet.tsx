@@ -12,6 +12,7 @@ import { ShieldAlert, Trash2 } from 'lucide-react-native';
 
 import { GlassSurface } from '../surfaces/GlassSurface';
 import { colors, fonts, radii, spacing } from '../../theme/tokens';
+import { durations, timing } from '../../animation/config';
 
 export type DestructiveConfirmSheetProps = {
   visible: boolean;
@@ -39,14 +40,14 @@ export function DestructiveConfirmSheet({
   React.useEffect(() => {
     if (visible) {
       setMounted(true);
-      translateY.value = withTiming(0, { duration: 180 });
-      opacity.value = withTiming(1, { duration: 140 });
+      translateY.value = withTiming(0, timing(durations.sheetIn));
+      opacity.value = withTiming(1, timing(durations.sheetIn));
       return undefined;
     }
     if (!mounted) return undefined;
-    translateY.value = withTiming(160, { duration: 150 });
-    opacity.value = withTiming(0, { duration: 120 });
-    const timer = setTimeout(() => setMounted(false), 160);
+    translateY.value = withTiming(160, timing(durations.sheetOut));
+    opacity.value = withTiming(0, timing(durations.sheetOut));
+    const timer = setTimeout(() => setMounted(false), durations.sheetOut);
     return () => clearTimeout(timer);
   }, [mounted, opacity, translateY, visible]);
 
@@ -90,7 +91,7 @@ export function DestructiveConfirmSheet({
                 <Text style={styles.keepText}>保留记录</Text>
               </Pressable>
               <Pressable accessibilityRole="button" disabled={confirming} onPress={confirm} style={[styles.action, styles.deleteAction, confirming && styles.disabled]}>
-                <Trash2 color="#FFFFFF" size={16} />
+                <Trash2 color={colors.inverse} size={16} />
                 <Text style={styles.deleteText}>{confirming ? '正在删除…' : '删除记录'}</Text>
               </Pressable>
             </View>
@@ -103,19 +104,19 @@ export function DestructiveConfirmSheet({
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.34)' },
+  backdrop: { flex: 1, backgroundColor: colors.scrim },
   cardWrap: { paddingHorizontal: spacing.md },
   card: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg },
-  handle: { alignSelf: 'center', width: 34, height: 4, borderRadius: 2, backgroundColor: 'rgba(100, 116, 139, 0.42)', marginBottom: spacing.md },
+  handle: { alignSelf: 'center', width: 34, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: spacing.md },
   iconWrap: { alignSelf: 'center', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.redSoft, marginBottom: spacing.sm },
   title: { color: colors.ink, fontFamily: fonts.display, fontSize: 19, fontWeight: '800', textAlign: 'center' },
   summary: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '700', textAlign: 'center', marginTop: spacing.sm },
   detail: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: spacing.xs },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
   action: { flex: 1, minHeight: 46, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
-  keepAction: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: '#C5E1FA' },
+  keepAction: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: colors.line },
   deleteAction: { backgroundColor: colors.red },
   keepText: { color: colors.blue, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' },
-  deleteText: { color: '#FFFFFF', fontFamily: fonts.body, fontSize: 14, fontWeight: '800' },
+  deleteText: { color: colors.inverse, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' },
   disabled: { opacity: 0.58 },
 });

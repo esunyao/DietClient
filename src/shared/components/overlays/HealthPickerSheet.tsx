@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check, ChevronDown } from 'lucide-react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { colors, fonts, radii, spacing } from '../../theme/tokens';
+import { durations, timing } from '../../animation/config';
 import { GlassSurface } from '../surfaces/GlassSurface';
 
 export type HealthPickerOption = { value: string; label: string; description?: string };
@@ -20,9 +21,9 @@ export function HealthPickerSheet({ visible, title, value, options, onCancel, on
 }) {
   const [draft, setDraft] = useState(value);
   const progress = useSharedValue(0);
-  useEffect(() => { if (visible) { setDraft(value); progress.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.cubic) }); } }, [progress, value, visible]);
+  useEffect(() => { if (visible) { setDraft(value); progress.value = withTiming(1, timing(durations.sheetIn)); } }, [progress, value, visible]);
   const panelStyle = useAnimatedStyle(() => ({ opacity: progress.value, transform: [{ translateY: (1 - progress.value) * 34 }] }));
-  const close = () => { progress.value = withTiming(0, { duration: 120, easing: Easing.in(Easing.cubic) }); onCancel(); };
+  const close = () => { progress.value = withTiming(0, timing(durations.sheetOut)); onCancel(); };
   return <Modal animationType="none" onRequestClose={close} transparent visible={visible}>
     <View style={styles.backdrop}>
       <Pressable accessibilityLabel="关闭选择" onPress={close} style={StyleSheet.absoluteFill} />
@@ -45,30 +46,30 @@ export function HealthSelectField({ label, value, options, onChange, placeholder
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.30)' },
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.scrim },
   animatedPanel: { paddingHorizontal: spacing.sm, paddingBottom: spacing.sm },
   panel: { borderRadius: radii.lg, overflow: 'hidden', padding: spacing.lg, gap: spacing.md },
-  handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: '#C9D5E2' },
+  handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.line },
   heading: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   title: { color: colors.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: '800' },
   subtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 3 },
   cancel: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, fontWeight: '700', padding: 4 },
   options: { gap: spacing.sm },
-  option: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.md, paddingHorizontal: spacing.md, backgroundColor: 'rgba(241, 245, 249, 0.84)' },
-  optionActive: { backgroundColor: '#EAF4FF', borderColor: '#A7D6FF', borderWidth: 1 },
+  option: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.md, paddingHorizontal: spacing.md, backgroundColor: colors.surfaceMuted },
+  optionActive: { backgroundColor: colors.blueSoft, borderColor: colors.line, borderWidth: 1 },
   optionCopy: { flex: 1, minWidth: 0 },
   optionText: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '800' },
   optionTextActive: { color: colors.blue },
   optionDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   check: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center', borderRadius: 11, backgroundColor: colors.blue },
-  emptyCheck: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#C9D5E2' },
+  emptyCheck: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.line },
   confirm: { minHeight: 50, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, backgroundColor: colors.blue },
-  confirmText: { color: '#FFFFFF', fontFamily: fonts.body, fontSize: 15, fontWeight: '800' },
+  confirmText: { color: colors.inverse, fontFamily: fonts.body, fontSize: 15, fontWeight: '800' },
   field: { gap: 7 },
   label: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },
-  valueCard: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, borderRadius: radii.md, borderWidth: 1, borderColor: '#DCE7F1', backgroundColor: 'rgba(255,255,255,0.78)', paddingHorizontal: spacing.md },
+  valueCard: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: spacing.md },
   valueCopy: { flex: 1, minWidth: 0 },
   value: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '800' },
-  placeholder: { color: '#94A3B8', fontWeight: '500' },
+  placeholder: { color: colors.placeholder, fontWeight: '500' },
   valueDescription: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
 });

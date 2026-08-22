@@ -1,7 +1,8 @@
+import { materials } from '../../theme/tokens';
+
 /**
  * 玻璃变体的静态视觉层（纯函数，便于单测与跨端一致）。
- * 数值对齐旧实现：iOS BlurView（backgroundColor/overlayColor/reducedTransparencyFallbackColor）、
- * Android drawable（bg_glass_navigation / bg_glass_soft）与 JS theme token。
+ * 内容层保持实体白面；仅悬浮导航和弹层透出背景。
  */
 
 export type GlassVariant = 'frosted' | 'soft' | 'navigation';
@@ -21,39 +22,37 @@ export interface GlassLook {
 
 export const GLASS_LOOKS: Record<GlassVariant, GlassLook> = {
   frosted: {
-    // 对齐旧 BlurView：backgroundColor rgba(255,255,255,0.24) + overlayColor rgba(255,255,255,0.34)
-    baseFill: 'rgba(255, 255, 255, 0.24)',
-    overlay: 'rgba(255, 255, 255, 0.34)',
-    border: 'rgba(255, 255, 255, 0.98)', // glass.borderStrong
-    sheen: 'rgba(255, 255, 255, 0.34)', // glass.sheen
+    baseFill: materials.frostedBase,
+    overlay: materials.frostedOverlay,
+    border: materials.chromeBorder,
+    sheen: materials.sheen,
     needsCapture: true,
   },
   soft: {
-    // 纯静态层：glass.tintSoft + 细白描边 + 顶部高光
-    baseFill: 'rgba(255, 255, 255, 0.54)',
+    // 信息密集卡不模糊背景，保证阅读稳定。
+    baseFill: materials.contentFill,
     overlay: null,
-    border: 'rgba(255, 255, 255, 0.78)',
-    sheen: 'rgba(255, 255, 255, 0.34)',
+    border: materials.contentBorder,
+    sheen: 'rgba(255, 255, 255, 0)',
     needsCapture: false,
   },
   navigation: {
-    // 对齐旧 navigationSurface：backgroundColor rgba(255,255,255,0.66) + overlayColor
-    baseFill: 'rgba(255, 255, 255, 0.66)',
-    overlay: 'rgba(255, 255, 255, 0.34)',
-    border: 'rgba(148, 163, 184, 0.48)',
-    sheen: 'rgba(255, 255, 255, 0.68)',
+    baseFill: materials.chromeBase,
+    overlay: materials.chromeOverlay,
+    border: materials.chromeBorder,
+    sheen: materials.sheen,
     needsCapture: true,
   },
 };
 
-/** 液态模式基底：对齐 Android bg_glass_navigation 填充 #E0FFFFFF（0.878）。 */
-export const LIQUID_BASE_FILL = 'rgba(255, 255, 255, 0.88)';
+/** 液态模式是显式 opt-in；默认导航不会使用折射或弹性形变。 */
+export const LIQUID_BASE_FILL = 'rgba(255, 255, 255, 0.70)';
 
-/** 液态模式覆盖层：对齐 Android AndroidGlassSurface fillPaint（alpha 42 ≈ 0.165）。 */
-export const LIQUID_OVERLAY_FILL = 'rgba(255, 255, 255, 0.165)';
+/** 液态模式覆盖层。 */
+export const LIQUID_OVERLAY_FILL = 'rgba(255, 255, 255, 0.12)';
 
-/** iOS Reduce Transparency 兜底纯色（对齐 reducedTransparencyFallbackColor）。 */
-export const OPAQUE_FALLBACK_FILL = '#FFFFFF';
+/** iOS Reduce Transparency 兜底纯色。 */
+export const OPAQUE_FALLBACK_FILL = materials.contentFill;
 
 /** 触摸光晕半径（canvas 单位），对齐原生 max(width, height) * 0.55。 */
 export function glowRadiusForSize(width: number, height: number): number {
