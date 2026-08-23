@@ -15,9 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, Sparkles, Utensils } from 'lucide-react-native';
 import Animated, {
-  Easing,
   interpolate,
-  ReduceMotion,
   runOnJS,
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -28,7 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
-import { durations } from '../animation/config';
+import { durations, navigationTiming } from '../animation/config';
 import { PressableScale } from '../animation/PressableScale';
 import { ScreenTransition } from '../animation/ScreenTransition';
 import { colors, fonts, radii, shadows, spacing } from '../theme/tokens';
@@ -44,17 +42,9 @@ const COMPACT_HEADER_MIN_WIDTH = 86;
 const COMPACT_HEADER_MAX_WIDTH = 158;
 const COMPACT_HEADER_HEIGHT = 26;
 /** 底部 tab 显隐过渡（UI 线程）。 */
-const TabSlideTiming = {
-  duration: durations.tabBarSlide,
-  easing: Easing.inOut(Easing.cubic),
-  reduceMotion: ReduceMotion.System,
-};
+const TabSlideTiming = navigationTiming(durations.tabBarSlide);
 /** header 折叠过渡（UI 线程）。 */
-const HeaderCollapseTiming = {
-  duration: durations.headerCollapse,
-  easing: Easing.inOut(Easing.cubic),
-  reduceMotion: ReduceMotion.System,
-};
+const HeaderCollapseTiming = navigationTiming(durations.headerCollapse);
 
 /** 每屏 header 状态：进度在 UI 线程，命中层只在跨阈值时同步到 JS。 */
 type HeaderChrome = {

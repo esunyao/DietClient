@@ -26,8 +26,6 @@ import {
   vec,
 } from '@shopify/react-native-skia';
 import Animated, {
-  Easing,
-  ReduceMotion,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -52,16 +50,14 @@ import {
   buildLiquidUniforms,
   type LiquidUniforms,
 } from './SkiaGlassSurfaceShader';
+import { normalizeSnapshotFrame } from './SkiaGlassSnapshotFrame';
+import { durations, timing } from '../../animation/config';
 
 /** canvas 单位换算：Android 为物理 px，iOS 为 points（RN Skia 双端坐标单位不同）。 */
 const unitsPerDp = Platform.OS === 'android' ? PixelRatio.get() : 1;
 
 /** 触摸光晕淡出与弹性回弹过渡。 */
-const TouchTiming = {
-  duration: 140,
-  easing: Easing.out(Easing.quad),
-  reduceMotion: ReduceMotion.System,
-};
+const TouchTiming = timing(durations.touchOut);
 
 /** 顶部高光高度（dp），对齐旧实现 2-3px 的细内高光。 */
 const SHEEN_HEIGHT_DP = 2;
@@ -115,6 +111,7 @@ export function SkiaGlassSurface({
 }: SkiaGlassSurfaceProps) {
   const look = GLASS_LOOKS[variant];
   const useLiquid = Boolean(liquid?.enabled) && variant === 'navigation';
+  const captureEnabled = capture ?? look.needsCapture;
 
   // ---------- 尺寸与快照 ----------
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -140,10 +137,23 @@ export function SkiaGlassSurface({
   }, []);
 
   const handleSnapshot = useCallback((payload: SnapshotPayload) => {
+    if (!payload.jpeg || payload.width <= 0 || payload.height <= 0 || payload.contentScale <= 0) {
+      snapshotVersion.current = -1;
+      setSnapshot(null);
+      return;
+    }
     if (payload.version === snapshotVersion.current) return;
     snapshotVersion.current = payload.version;
     setSnapshot(payload);
   }, []);
+
+  // 捕获关闭时丢弃旧快照，避免 header 折叠或离屏后继续显示上一帧背景。
+  useEffect(() => {
+    if (!captureEnabled) {
+      snapshotVersion.current = -1;
+      setSnapshot(null);
+    }
+  }, [captureEnabled]);
 
   // base64 → SkImage（解码在原生 JSI 内完成，小图亚毫秒级）。
   const snapshotImage = useMemo(() => {
@@ -207,6 +217,20 @@ export function SkiaGlassSurface({
   const radius = cornerRadius * unitsPerDp;
   const sheenHeight = SHEEN_HEIGHT_DP * unitsPerDp;
   const glowRadius = Math.max(canvasW, canvasH) * 0.55;
+  const snapshotFrame = useMemo(
+    () => snapshot
+      ? normalizeSnapshotFrame({
+          width: snapshot.width,
+          height: snapshot.height,
+          sourceOffsetX: snapshot.sourceOffsetX,
+          sourceOffsetY: snapshot.sourceOffsetY,
+          contentScale: snapshot.contentScale,
+          canvasWidth: canvasW,
+          canvasHeight: canvasH,
+        })
+      : null,
+    [canvasH, canvasW, snapshot],
+  );
 
   // 圆角裁剪矩形：Skia clip 只接受 SkRRect，用 RRectXY 构造。
   const clipRRect = useMemo(() => {
@@ -238,7 +262,7 @@ export function SkiaGlassSurface({
     });
   }, [useLiquid, snapshot, canvasW, canvasH, radius, liquid?.refractionHeight, liquid?.refractionOffset, liquid?.dispersion, liquid?.blurRadius]);
 
-  const showSnapshot = Boolean(snapshotImage) && !reduceTransparency;
+  const showSnapshot = Boolean(snapshotImage && snapshotFrame) && !reduceTransparency;
   const baseFill = reduceTransparency
     ? OPAQUE_FALLBACK_FILL
     : useLiquid
@@ -272,7 +296,7 @@ export function SkiaGlassSurface({
     <SkiaGlassSurfaceNative
       cornerRadius={cornerRadius}
       elevated={elevated}
-      live={capture ?? look.needsCapture}
+      live={captureEnabled}
       liquidEnabled={useLiquid}
       liquidCaptureGroup={liquid?.captureGroup ?? 'tab'}
       liquidRefractionHeight={liquid?.refractionHeight ?? 20}
@@ -302,10 +326,10 @@ export function SkiaGlassSurface({
               // 避免 fit 拉伸造成的背景缩放；超出画布部分由圆角裁剪裁掉。
               <SkiaImage
                 image={snapshotImage}
-                x={-snapshot.sourceOffsetX}
-                y={-snapshot.sourceOffsetY}
-                width={snapshot.width / snapshot.contentScale}
-                height={snapshot.height / snapshot.contentScale}
+                x={snapshotFrame?.x ?? 0}
+                y={snapshotFrame?.y ?? 0}
+                width={snapshotFrame?.width ?? 0}
+                height={snapshotFrame?.height ?? 0}
                 fit="fill"
               >
                 <Blur blur={blur} />

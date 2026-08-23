@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
 
 import { durations } from '../../animation/config';
 import { colors, fonts, radii, spacing } from '../../theme/tokens';
@@ -35,8 +35,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <Animated.View
             key={toast.id}
             pointerEvents="none"
-            entering={FadeInDown.duration(durations.toastIn)}
-            exiting={FadeOutUp.duration(durations.toastOut)}
+            entering={FadeInDown.duration(durations.toastIn).reduceMotion(ReduceMotion.System)}
+            exiting={FadeOutUp.duration(durations.toastOut).reduceMotion(ReduceMotion.System)}
             style={styles.layer}
           >
             <View

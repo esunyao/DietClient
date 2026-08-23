@@ -1,14 +1,12 @@
 import React, { createContext, useCallback, useContext, useMemo } from 'react';
 import {
-  Easing,
-  ReduceMotion,
   makeMutable,
   useSharedValue,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { durations } from '../animation/config';
+import { durations, navigationTiming } from '../animation/config';
 
 /**
  * 全局滚动驱动共享状态（UI 线程）。
@@ -39,11 +37,7 @@ export interface ScrollChrome {
   resetTabBar: () => void;
 }
 
-const SlideTiming = {
-  duration: durations.tabBarSlide,
-  easing: Easing.inOut(Easing.cubic),
-  reduceMotion: ReduceMotion.System,
-};
+const SlideTiming = navigationTiming(durations.tabBarSlide);
 
 // Provider 外的兜底单例：避免 AppScreen 等组件在未包裹处因 context 为空而崩溃。
 const fallbackChrome: ScrollChrome = {

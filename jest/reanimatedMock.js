@@ -12,11 +12,14 @@ function makeMutable(initial) {
 
 const api = {
   useSharedValue: initial => makeMutable(initial),
+  useReducedMotion: () => false,
   useDerivedValue: fn => ({ value: fn() }),
   useAnimatedStyle: fn => fn(),
   useAnimatedProps: fn => fn(),
   withTiming: value => value,
   withSpring: value => value,
+  withRepeat: value => value,
+  cancelAnimation: () => {},
   Easing: {
     inOut: fn => fn,
     out: fn => fn,
@@ -24,6 +27,8 @@ const api = {
     cubic: value => value,
   },
   ReduceMotion: { System: 'system' },
+  FadeInDown: { duration: () => api.FadeInDown, reduceMotion: () => api.FadeInDown },
+  FadeOutUp: { duration: () => api.FadeOutUp, reduceMotion: () => api.FadeOutUp },
   runOnJS: fn => fn,
   interpolate: (value, _input, _output) => value,
   makeMutable,

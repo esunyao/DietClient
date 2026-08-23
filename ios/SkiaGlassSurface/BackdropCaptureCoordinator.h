@@ -3,7 +3,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef CGRect (^SKGCaptureRectProvider)(void);
-typedef void (^SKGSnapshotHandler)(NSData *jpeg, CGSize size, CGPoint sourceOffset, CGFloat contentScale, NSInteger version);
+typedef void (^SKGSnapshotHandler)(NSData * _Nullable jpeg, CGSize size, CGPoint sourceOffset, CGFloat contentScale, NSInteger version);
 
 /** 一次注册的生命周期句柄；由视图持有，注销时交还协调器。 */
 @interface SKGBackdropCaptureRegistration : NSObject
@@ -14,6 +14,7 @@ typedef void (^SKGSnapshotHandler)(NSData *jpeg, CGSize size, CGPoint sourceOffs
 @property (nonatomic, assign, readonly) CGFloat refractionHeight;
 @property (nonatomic, assign, readonly) CGFloat refractionOffset;
 @property (nonatomic, assign, readonly) CGFloat blurRadius;
+@property (nonatomic, assign, readonly) BOOL liquidEnabled;
 @property (nonatomic, copy, readonly) SKGSnapshotHandler handler;
 @property (nonatomic, assign, readonly) NSInteger version;
 @end
@@ -31,6 +32,7 @@ typedef void (^SKGSnapshotHandler)(NSData *jpeg, CGSize size, CGPoint sourceOffs
 
 - (SKGBackdropCaptureRegistration *)registerHost:(UIView *)host
                                captureRectProvider:(SKGCaptureRectProvider)provider
+                                  liquidEnabled:(BOOL)liquidEnabled
                                  refractionHeight:(CGFloat)refractionHeight
                                  refractionOffset:(CGFloat)refractionOffset
                                       blurRadius:(CGFloat)blurRadius

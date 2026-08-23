@@ -117,4 +117,26 @@ describe('SkiaGlassSurface 组件', () => {
     expect(tree!.root.findByType(SkiaGlassSurfaceWrapper)).toBeTruthy();
     act(() => tree!.unmount());
   });
+
+  it('收到无效快照时回退到实体材质（不抛错）', () => {
+    let tree: ReturnType<typeof create>;
+    act(() => {
+      tree = create(
+        <SkiaGlassSurface variant="navigation">
+          <View />
+        </SkiaGlassSurface>,
+      );
+    });
+    const host = tree!.root.findByType(SkiaGlassSurfaceWrapper);
+    expect(() => act(() => host.props.onSnapshot({
+      jpeg: '',
+      width: 0,
+      height: 0,
+      sourceOffsetX: 0,
+      sourceOffsetY: 0,
+      contentScale: 0,
+      version: -1,
+    }))).not.toThrow();
+    act(() => tree!.unmount());
+  });
 });

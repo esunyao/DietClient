@@ -7,35 +7,36 @@ import { Easing, ReduceMotion, type WithSpringConfig, type WithTimingConfig } fr
  * 系统开启"减弱动态效果"时自动直达终值。
  */
 
-/** 动效时长（毫秒）：微交互短促、导航连贯、数据反馈克制。 */
+/** 动效时长按用途分组；页面不再自行散落时长。 */
+export const motion = {
+  micro: {
+    pressIn: 85,
+    touchOut: 140,
+    toastIn: 220,
+    toastOut: 160,
+  },
+  navigation: {
+    screenTransition: 200,
+    sheetIn: 220,
+    sheetOut: 160,
+    tabBarSlide: 220,
+    tabIndicator: 220,
+    headerCollapse: 220,
+  },
+  data: {
+    barGrow: 560,
+    ringSweep: 720,
+    countUp: 400,
+    scanSweep: 1600,
+    breath: 1200,
+  },
+} as const;
+
+/** 兼容既有调用方的扁平别名。 */
 export const durations = {
-  /** 页面进入淡入（Web，挂载时一次） */
-  screenTransition: 200,
-  /** 进度条填充生长 */
-  barGrow: 560,
-  /** 评分环扫入 */
-  ringSweep: 720,
-  /** 数字滚动 */
-  countUp: 400,
-  /** Toast 进入 */
-  toastIn: 220,
-  /** Toast 退出 */
-  toastOut: 160,
-  /** 底部弹层进入/退出 */
-  sheetIn: 220,
-  sheetOut: 160,
-  /** Tab 栏滑出/滑入 */
-  tabBarSlide: 220,
-  /** Tab 选中胶囊。 */
-  tabIndicator: 220,
-  /** 头部折叠 */
-  headerCollapse: 220,
-  /** 按下反馈 */
-  pressIn: 85,
-  /** 识别页扫描线单程时长 */
-  scanSweep: 1600,
-  /** 启动闪屏光球呼吸单程时长 */
-  breath: 1200,
+  ...motion.navigation,
+  ...motion.data,
+  ...motion.micro,
 } as const;
 
 /** 弹簧：轻快，用于选中态与短距离移动。 */
@@ -63,10 +64,15 @@ export const springGentle: WithSpringConfig = {
 };
 
 /** 时间过渡：系统界面使用快速启动、平缓落定的曲线。 */
-export function timing(duration: number): WithTimingConfig {
+export function timing(duration: number, easing = Easing.out(Easing.cubic)): WithTimingConfig {
   return {
     duration,
-    easing: Easing.out(Easing.cubic),
+    easing,
     reduceMotion: ReduceMotion.System,
   };
+}
+
+/** 导航状态变化使用对称的 in-out 曲线，避免岛式标题切换突然加速。 */
+export function navigationTiming(duration: number): WithTimingConfig {
+  return timing(duration, Easing.inOut(Easing.cubic));
 }

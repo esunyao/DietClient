@@ -11,6 +11,7 @@ import {
   buildLiquidUniforms,
   type LiquidUniformInput,
 } from './SkiaGlassSurfaceShader';
+import { normalizeSnapshotFrame } from './SkiaGlassSnapshotFrame';
 
 const baseInput: LiquidUniformInput = {
   width: 360,
@@ -89,5 +90,40 @@ describe('buildLiquidUniforms', () => {
     const uniforms = buildLiquidUniforms(baseInput);
     expect(uniforms.sourceOffset).toEqual([40, 12]);
     expect(uniforms.contentScale).toBe(0.5);
+  });
+});
+
+describe('normalizeSnapshotFrame', () => {
+  it('按 contentScale 将像素快照映射回 canvas 坐标', () => {
+    expect(normalizeSnapshotFrame({
+      width: 300,
+      height: 100,
+      sourceOffsetX: 40,
+      sourceOffsetY: 12,
+      contentScale: 0.5,
+      canvasWidth: 360,
+      canvasHeight: 120,
+    })).toEqual({ x: -40, y: -12, width: 600, height: 200 });
+  });
+
+  it('拒绝完全脱离 canvas 或无效缩放的快照', () => {
+    expect(normalizeSnapshotFrame({
+      width: 80,
+      height: 40,
+      sourceOffsetX: 500,
+      sourceOffsetY: 0,
+      contentScale: 0.5,
+      canvasWidth: 360,
+      canvasHeight: 120,
+    })).toBeNull();
+    expect(normalizeSnapshotFrame({
+      width: 80,
+      height: 40,
+      sourceOffsetX: 0,
+      sourceOffsetY: 0,
+      contentScale: 0,
+      canvasWidth: 360,
+      canvasHeight: 120,
+    })).toBeNull();
   });
 });

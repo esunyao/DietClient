@@ -4,9 +4,6 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-
-import { durations, timing } from '../shared/animation/config';
 
 // 认证相关页面
 import {
@@ -184,19 +181,9 @@ function MainNavigator() {
   );
 }
 
-/** 启动闪屏的光球：reanimated 驱动缩放与透明度呼吸。 */
+/** 启动闪屏的静态光球：避免装饰性循环动画抢占首屏与导航资源。 */
 function BreathingOrb() {
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
-  useEffect(() => {
-    scale.value = withRepeat(withTiming(1.15, timing(durations.breath)), -1, true);
-    opacity.value = withRepeat(withTiming(0.7, timing(durations.breath)), -1, true);
-  }, [scale, opacity]);
-  const style = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
-  return <Animated.View style={[styles.splashOrb, style]} />;
+  return <View style={styles.splashOrb} />;
 }
 
 // 加载等待闪屏

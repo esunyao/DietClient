@@ -167,10 +167,25 @@ class SkiaGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnap
 
   override fun clearRootSnapshot() {
     if (!hasSnapshot) return
+    emitInvalidSnapshot()
     hasSnapshot = false
     snapshotVersion = -1L
     sourceOffsetX = Float.NaN
     sourceOffsetY = Float.NaN
+  }
+
+  /** 通知 JS 清除上一帧，避免捕获失效后继续显示旧背景。 */
+  private fun emitInvalidSnapshot() {
+    val payload = Arguments.createMap().apply {
+      putString("jpeg", "")
+      putDouble("width", 0.0)
+      putDouble("height", 0.0)
+      putDouble("sourceOffsetX", 0.0)
+      putDouble("sourceOffsetY", 0.0)
+      putDouble("contentScale", 0.0)
+      putDouble("version", -1.0)
+    }
+    dispatchEvent(payload)
   }
 
   private fun emitSnapshot(bitmap: Bitmap, offsetX: Float, offsetY: Float) {

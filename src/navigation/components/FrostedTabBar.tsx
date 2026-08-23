@@ -4,14 +4,12 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BarChart3, Camera, FileText, Home, Sparkles, UserRound } from 'lucide-react-native';
 import Animated, {
-  Easing,
-  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 
-import { durations } from '../../shared/animation/config';
+import { durations, navigationTiming } from '../../shared/animation/config';
 import { PressableScale } from '../../shared/animation/PressableScale';
 import { GlassSurface } from '../../shared/components';
 import { PerfRegion } from '../../shared/perf/PerfRegion';
@@ -35,11 +33,7 @@ const INDICATOR_TOP = 4;
 const INDICATOR_BOTTOM = 4;
 
 /** 胶囊滑动过渡：短时间过渡，不用弹簧（避免过冲与额外合成）。 */
-const IndicatorTiming = {
-  duration: durations.tabIndicator,
-  easing: Easing.inOut(Easing.cubic),
-  reduceMotion: ReduceMotion.System,
-};
+const IndicatorTiming = navigationTiming(durations.tabIndicator);
 
 /** 单个 tab 项。memo + 稳定回调让滚动中（父不重渲染）完全跳过重渲染。 */
 const TabItem = memo(function ({ meta, focused, routeName, onPressRoute, onLongPressRoute }: {

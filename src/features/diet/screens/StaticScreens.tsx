@@ -15,7 +15,7 @@ import {
   TrendingUp,
   Utensils,
 } from 'lucide-react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 
 import { durations, springGentle, timing } from '../../../shared/animation/config';
 import type { HomeStackParamList } from '../../../navigation/types';
@@ -336,9 +336,16 @@ export function ScoreDetailScreen({ navigation }: ScoreProps) {
 /** 识别页取景框内的扫描线：reanimated 驱动 translateY 上下往返。 */
 function ScanLine() {
   const y = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
+    cancelAnimation(y);
+    if (reducedMotion) {
+      y.value = 0;
+      return undefined;
+    }
     y.value = withRepeat(withTiming(44, timing(durations.scanSweep)), -1, true);
-  }, [y]);
+    return () => cancelAnimation(y);
+  }, [reducedMotion, y]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
   return <Animated.View style={[styles.scanLine, style]} />;
 }

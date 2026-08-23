@@ -1,15 +1,13 @@
 import React from 'react';
 import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
-  Easing,
-  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
-import { durations, springPress } from './config';
+import { durations, springPress, timing } from './config';
 
 type Props = Omit<PressableProps, 'style'> & {
   /** 静态样式；反馈由 UI 线程完成。 */
@@ -43,11 +41,7 @@ export function PressableScale({
     <AnimatedPressable
       disabled={disabled}
       onPressIn={event => {
-        press.value = withTiming(1, {
-          duration: durations.pressIn,
-          easing: Easing.out(Easing.cubic),
-          reduceMotion: ReduceMotion.System,
-        });
+        press.value = withTiming(1, timing(durations.pressIn));
         onPressIn?.(event);
       }}
       onPressOut={event => {
