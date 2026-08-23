@@ -15,6 +15,7 @@ import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
 import com.facebook.react.views.view.ReactViewGroup
 import java.io.ByteArrayOutputStream
+import kotlin.math.abs
 
 /**
  * Skia 玻璃表面（Android）。
@@ -46,6 +47,9 @@ class SkiaGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnap
   private var snapshotVersion = -1L
   private var sourceOffsetX = Float.NaN
   private var sourceOffsetY = Float.NaN
+  /** 当前已发射快照对应的偏移（发射时记录），用于检测玻璃移动后位图是否已同步重捕获。 */
+  private var emittedOffsetX = Float.NaN
+  private var emittedOffsetY = Float.NaN
   private var exclusionDepth = 0
   private var visibilityBeforeExclusion = View.VISIBLE
 
@@ -169,11 +173,25 @@ class SkiaGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnap
     val nextOffsetX = (location[0] - rootLocation[0] - snapshot.rect.left).toFloat()
     val nextOffsetY = (location[1] - rootLocation[1] - snapshot.rect.top).toFloat()
 
+    // 陈旧帧守卫：同一版本位图被重新投递且偏移已变化，说明玻璃在两次捕获之间
+    // 移动过（translateY 显隐/insets 变化等），继续绘制会把旧位置内容以残影画进
+    // 玻璃内部。此时不发射旧位图，并强制下一次遍历立即重捕获。
+    if (hasSnapshot && snapshot.version == snapshotVersion &&
+      (abs(nextOffsetX - emittedOffsetX) > RootBackdropSnapshotPolicy.snapshotOffsetTolerancePx ||
+        abs(nextOffsetY - emittedOffsetY) > RootBackdropSnapshotPolicy.snapshotOffsetTolerancePx)
+    ) {
+      RootBackdropSnapshotCoordinator.requestImmediateCapture(captureGroup, rootView ?: return)
+      clearRootSnapshot()
+      return
+    }
+
     // 偏移与版本未变（内容像素未变的去重已在协调器完成）时不重复上报。
     if (hasSnapshot && snapshot.version == snapshotVersion && nextOffsetX == sourceOffsetX && nextOffsetY == sourceOffsetY) return
 
     sourceOffsetX = nextOffsetX
     sourceOffsetY = nextOffsetY
+    emittedOffsetX = nextOffsetX
+    emittedOffsetY = nextOffsetY
     snapshotVersion = snapshot.version
     hasSnapshot = true
     emitSnapshot(snapshot.bitmap, nextOffsetX, nextOffsetY)
@@ -186,6 +204,8 @@ class SkiaGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnap
     snapshotVersion = -1L
     sourceOffsetX = Float.NaN
     sourceOffsetY = Float.NaN
+    emittedOffsetX = Float.NaN
+    emittedOffsetY = Float.NaN
   }
 
   /** 通知 JS 清除上一帧，避免捕获失效后继续显示旧背景。 */

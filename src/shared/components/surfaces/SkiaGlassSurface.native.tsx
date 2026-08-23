@@ -221,6 +221,16 @@ export function SkiaGlassSurface({
   const radius = cornerRadius * unitsPerDp;
   const sheenHeight = SHEEN_HEIGHT_DP * unitsPerDp;
   const glowRadius = Math.max(canvasW, canvasH) * 0.55;
+
+  // 陈旧帧守卫：非液态玻璃的捕获区必须与自身区域重合（sourceOffset ≈ 0），
+  // 玻璃移动后若位图未同步重捕获，偏移会超出容差，此时拒绝绘制避免残影；
+  // 液态模式允许捕获区按折射/模糊参数外扩（对齐原生 capturePaddingPx 的保守值）。
+  const maxSnapshotOffset = useMemo(() => {
+    if (!useLiquid) return 1;
+    const paddingDp = Math.max(liquid?.refractionHeight ?? 20, liquid?.refractionOffset ?? 70) + (liquid?.blurRadius ?? 10) * 2 + 4;
+    return paddingDp * unitsPerDp + 1;
+  }, [liquid?.blurRadius, liquid?.refractionHeight, liquid?.refractionOffset, useLiquid]);
+
   const snapshotFrame = useMemo(
     () => snapshot
       ? normalizeSnapshotFrame({
@@ -231,9 +241,9 @@ export function SkiaGlassSurface({
           contentScale: snapshot.contentScale,
           canvasWidth: canvasW,
           canvasHeight: canvasH,
-        })
+        }, maxSnapshotOffset)
       : null,
-    [canvasH, canvasW, snapshot],
+    [canvasH, canvasW, maxSnapshotOffset, snapshot],
   );
 
   // 圆角裁剪矩形：Skia clip 只接受 SkRRect，用 RRectXY 构造。

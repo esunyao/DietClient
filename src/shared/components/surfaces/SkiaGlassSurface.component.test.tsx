@@ -4,6 +4,7 @@ import { act, create } from 'react-test-renderer';
 
 import { SkiaGlassSurface as SkiaGlassSurfaceWrapper } from '../../native/SkiaGlassSurface';
 import { SkiaGlassSurface } from './SkiaGlassSurface.native';
+import * as SnapshotFrameModule from './SkiaGlassSnapshotFrame';
 
 /**
  * 组件级冒烟测试：依赖 moduleNameMapper 的轻量 mock
@@ -117,6 +118,39 @@ describe('SkiaGlassSurface 组件', () => {
     });
     expect(tree!.root.findByType(SkiaGlassSurfaceWrapper)).toBeTruthy();
     act(() => tree!.unmount());
+  });
+
+  it('非液态快照带非零 sourceOffset 时被陈旧帧守卫拒绝（不绘制残影）', () => {
+    const spy = jest.spyOn(SnapshotFrameModule, 'normalizeSnapshotFrame');
+    let tree: ReturnType<typeof create>;
+    act(() => {
+      tree = create(
+        <SkiaGlassSurface variant="navigation">
+          <View />
+        </SkiaGlassSurface>,
+      );
+    });
+    const host = tree!.root.findByType(SkiaGlassSurfaceWrapper);
+    try {
+      act(() => {
+        // 玻璃移动后旧位图以新偏移投递（如 tabbar translateY 显隐）
+        host.props.onSnapshot({
+          jpeg: 'aGVsbG8=',
+          width: 180,
+          height: 60,
+          sourceOffsetX: 66,
+          sourceOffsetY: 66,
+          contentScale: 0.5,
+          version: 3,
+        });
+      });
+      const results = spy.mock.results.filter(result => result.type === 'return');
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[results.length - 1].value).toBeNull();
+    } finally {
+      spy.mockRestore();
+      act(() => tree!.unmount());
+    }
   });
 
   it('收到无效快照时回退到实体材质（不抛错）', () => {

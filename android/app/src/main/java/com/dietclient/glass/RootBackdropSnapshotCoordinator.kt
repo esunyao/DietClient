@@ -48,6 +48,16 @@ object RootBackdropSnapshotCoordinator {
     if (coordinator.isEmpty()) coordinators.remove(root)
   }
 
+  /**
+   * 强制某分组在下一遍历立即重捕获：清除冷却并触发根视图重绘。
+   * 用于玻璃移动后旧位图仍被复用（陈旧帧）时的兜底，保证残影尽快被替换。
+   */
+  fun requestImmediateCapture(group: String, root: View) {
+    checkMainThread()
+    val coordinator = coordinators[root] ?: return
+    coordinator.forceRecapture(group, root)
+  }
+
   fun recordInvalidation(group: String) {
     if (!BuildConfig.DEBUG) return
     val stats = debugStats.getOrPut(group) { DebugStats() }
@@ -87,10 +97,18 @@ object RootBackdropSnapshotCoordinator {
       true
     }
 
+    // 绘制后一致性检查：UI 线程动画（tabbar translateY 显隐、header 折叠、insets 变化）
+    // 期间 pre-draw 时序可能让玻璃移动后的旧位图被连续绘制，这里在每帧绘制完成后
+    // 发现捕获区不匹配即安排立即重捕获（有最小间隔节流，收敛后自动停止）。
+    private val onDrawListener = ViewTreeObserver.OnDrawListener {
+      verifySnapshotConsistency()
+    }
+
     fun add(host: BackdropSnapshotHost) {
       hosts.add(host)
       if (!listenerAdded && root.viewTreeObserver.isAlive) {
         root.viewTreeObserver.addOnPreDrawListener(preDrawListener)
+        root.viewTreeObserver.addOnDrawListener(onDrawListener)
         listenerAdded = true
       }
     }
@@ -106,6 +124,7 @@ object RootBackdropSnapshotCoordinator {
     private fun release() {
       if (listenerAdded && root.viewTreeObserver.isAlive) {
         root.viewTreeObserver.removeOnPreDrawListener(preDrawListener)
+        root.viewTreeObserver.removeOnDrawListener(onDrawListener)
       }
       listenerAdded = false
       groups.clear()
@@ -143,6 +162,30 @@ object RootBackdropSnapshotCoordinator {
         } else {
           groupRequests.forEach { it.host.clearRootSnapshot() }
         }
+      }
+    }
+
+    /** 强制重捕获：仅在不匹配时触发，且受最小间隔节流，避免每帧重绘循环。 */
+    fun forceRecapture(group: String, root: View) {
+      val state = groups[group] ?: return
+      val now = SystemClock.uptimeMillis()
+      if (now - state.lastForcedAtMs < RootBackdropSnapshotPolicy.forceRecaptureMinIntervalMs) return
+      state.lastForcedAtMs = now
+      state.nextCaptureAtMs = 0
+      root.invalidate()
+    }
+
+    /** 绘制完成后核对每个宿主当前捕获区是否仍被快照区包含；不包含则安排重捕获。 */
+    private fun verifySnapshotConsistency() {
+      if (!root.isAttachedToWindow || root.width <= 0 || root.height <= 0) return
+      val rootLocation = IntArray(2)
+      root.getLocationInWindow(rootLocation)
+      val requests = hosts.mapNotNull { it.snapshotRequest(root, rootLocation) }.groupBy { it.group }
+      requests.forEach { (group, groupRequests) ->
+        val state = groups[group] ?: return@forEach
+        val snapshot = state.snapshot ?: return@forEach
+        val mismatch = groupRequests.any { !snapshot.rect.contains(it.captureRect) }
+        if (mismatch) forceRecapture(group, root)
       }
     }
 
@@ -244,6 +287,7 @@ object RootBackdropSnapshotCoordinator {
     var snapshot: RootSnapshot? = null
     var version = 0L
     var nextCaptureAtMs = 0L
+    var lastForcedAtMs = 0L
 
     fun obtainBitmap(width: Int, height: Int): Bitmap {
       if (bitmaps.any { it.width != width || it.height != height }) {

@@ -126,4 +126,51 @@ describe('normalizeSnapshotFrame', () => {
       canvasHeight: 120,
     })).toBeNull();
   });
+
+  it('非液态玻璃拒绝偏移超容差的陈旧快照（防止残影）', () => {
+    const base = {
+      width: 300,
+      height: 100,
+      sourceOffsetX: 0,
+      sourceOffsetY: 0,
+      contentScale: 0.5,
+      canvasWidth: 360,
+      canvasHeight: 120,
+    };
+    // 捕获区与玻璃区域重合：正常绘制
+    expect(normalizeSnapshotFrame(base, 1)).toEqual({ x: 0, y: 0, width: 600, height: 200 });
+    // 玻璃移动后旧位图以新偏移投递（tabbar translateY 显隐等）→ 拒绝绘制残留
+    expect(normalizeSnapshotFrame({ ...base, sourceOffsetX: 66, sourceOffsetY: 66 }, 1)).toBeNull();
+    expect(normalizeSnapshotFrame({ ...base, sourceOffsetX: -30, sourceOffsetY: 12 }, 1)).toBeNull();
+    // 1px 容差内的亚像素抖动仍可接受
+    expect(normalizeSnapshotFrame({ ...base, sourceOffsetX: 0.5, sourceOffsetY: -0.5 }, 1)).not.toBeNull();
+  });
+
+  it('液态模式允许捕获区外扩，但偏移超上限时仍拒绝陈旧帧', () => {
+    const base = {
+      width: 300,
+      height: 100,
+      sourceOffsetX: 40,
+      sourceOffsetY: 12,
+      contentScale: 0.5,
+      canvasWidth: 360,
+      canvasHeight: 120,
+    };
+    // 液态 padding 上限内的偏移合法（折射采样边缘）
+    expect(normalizeSnapshotFrame(base, 50)).toEqual({ x: -40, y: -12, width: 600, height: 200 });
+    // 超出 padding 上限 → 视为陈旧帧
+    expect(normalizeSnapshotFrame({ ...base, sourceOffsetX: 200, sourceOffsetY: 200 }, 50)).toBeNull();
+  });
+
+  it('未指定 maxSourceOffset 时保持原行为（兼容旧调用）', () => {
+    expect(normalizeSnapshotFrame({
+      width: 300,
+      height: 100,
+      sourceOffsetX: 40,
+      sourceOffsetY: 12,
+      contentScale: 0.5,
+      canvasWidth: 360,
+      canvasHeight: 120,
+    })).toEqual({ x: -40, y: -12, width: 600, height: 200 });
+  });
 });

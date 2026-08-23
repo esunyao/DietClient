@@ -235,6 +235,16 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context), BackdropS
       val versionChanged = snapshot.version != snapshotVersion
       val bitmapChanged = snapshot.bitmap !== sampledBitmap || bitmapShader == null
       val offsetChanged = nextOffsetX != sourceOffsetX || nextOffsetY != sourceOffsetY
+      // 陈旧帧守卫：位图未更新（版本/位图未变）但玻璃已移动时，不继续用旧位图 +
+      // 新偏移采样（会产生残影），而是清空快照并强制下一次遍历立即重捕获。
+      if (!versionChanged && !bitmapChanged && offsetChanged &&
+        (abs(nextOffsetX - sourceOffsetX) > RootBackdropSnapshotPolicy.snapshotOffsetTolerancePx ||
+          abs(nextOffsetY - sourceOffsetY) > RootBackdropSnapshotPolicy.snapshotOffsetTolerancePx)
+      ) {
+        RootBackdropSnapshotCoordinator.requestImmediateCapture(liquidCaptureGroup, rootView ?: return)
+        clearRootSnapshot()
+        return
+      }
       val shouldInvalidate = RootBackdropSnapshotPolicy.needsSnapshotInvalidation(
         hasSnapshot = hasRootSnapshot,
         versionChanged = versionChanged,

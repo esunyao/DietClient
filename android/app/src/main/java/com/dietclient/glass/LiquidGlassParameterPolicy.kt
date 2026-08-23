@@ -30,6 +30,15 @@ internal object RootBackdropSnapshotPolicy {
   const val slowCaptureMs = 8L
 
   /**
+   * 陈旧快照偏移容差（px）：玻璃移动后，若同一版本位图被以超出该容差的偏移
+   * 重新投递，视为陈旧帧（旧位置内容会以残影画进玻璃），应清除并强制重捕获。
+   */
+  const val snapshotOffsetTolerancePx = 1f
+
+  /** 强制重捕获的最小间隔（ms）：动画期间避免每帧无条件重捕获导致渲染管线饱和。 */
+  const val forceRecaptureMinIntervalMs = 33L
+
+  /**
    * 捕获降采样比例：快照 Bitmap 按此比例缩小后再交给 GPU 采样。
    * 液态玻璃透出的是模糊背景，0.5x 下视觉无差异，但软件光栅化像素数与
    * 纹理上传带宽均降为 1/4，显著降低主线程与 RenderThread 压力。
