@@ -27,7 +27,7 @@ import java.io.ByteArrayOutputStream
  *
  * 事件名遵循 Fabric 约定：JS 侧 onSnapshot ↔ 原生 topSnapshot。
  */
-class SkiaGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnapshotHost {
+class SkiaGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnapshotHost, BackdropCaptureExcludable {
   private val density = resources.displayMetrics.density
   private val location = IntArray(2)
 
@@ -46,6 +46,8 @@ class SkiaGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnap
   private var snapshotVersion = -1L
   private var sourceOffsetX = Float.NaN
   private var sourceOffsetY = Float.NaN
+  private var exclusionDepth = 0
+  private var visibilityBeforeExclusion = View.VISIBLE
 
   init {
     setWillNotDraw(false)
@@ -128,6 +130,18 @@ class SkiaGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnap
     // 捕获期间跳过自身子树：快照里玻璃区域保持透明，露出真正的背景内容。
     if (BackdropCaptureGate.isActive()) return
     super.draw(canvas)
+  }
+
+  override fun setExcludedFromBackdropCapture(excluded: Boolean) {
+    if (excluded) {
+      if (exclusionDepth++ == 0) {
+        visibilityBeforeExclusion = visibility
+        visibility = View.INVISIBLE
+      }
+      return
+    }
+    if (exclusionDepth == 0) return
+    if (--exclusionDepth == 0) visibility = visibilityBeforeExclusion
   }
 
   override fun snapshotRequest(root: View, rootLocation: IntArray): RootBackdropSnapshotCoordinator.SnapshotRequest? {

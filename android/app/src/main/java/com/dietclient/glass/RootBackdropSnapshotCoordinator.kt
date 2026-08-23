@@ -162,11 +162,12 @@ object RootBackdropSnapshotCoordinator {
             // 先 scale 再 translate：captureRect 的 root 坐标经矩阵映射到整个缩小后的 Bitmap。
             scale(scale, scale)
             translate(-rect.left.toFloat(), -rect.top.toFloat())
-            BackdropCaptureGate.begin()
-            try {
+            // root.draw() 在 Fabric 下可能复用子视图上一帧的硬件显示列表；仅在
+            // draw() 中短路不足以保证跳过玻璃。同步隐藏所有已注册宿主，确保当前
+            // 快照不会包含任一导航层或弹层自身，再由 finally 恢复可见性。
+            val excludedHosts = hosts.filterIsInstance<BackdropCaptureExcludable>()
+            BackdropCaptureGate.withExcludedHosts(excludedHosts) {
               root.draw(this)
-            } finally {
-              BackdropCaptureGate.end()
             }
           } finally {
             restoreToCount(saveCount)

@@ -206,7 +206,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
     <PerfRegion name="ScreenHeader">
       <View style={styles.headerShell}>
         <Animated.View pointerEvents={isCollapsed ? 'none' : 'auto'} style={[styles.headerExpanded, expandedStyle]}>
-          <GlassSurface capture={!isCollapsed} cornerRadius={HEADER_HEIGHT / 2} elevated intensity={38} variant="navigation" style={styles.header}>
+          <GlassSurface capture={!isCollapsed} captureGroup="header" cornerRadius={HEADER_HEIGHT / 2} elevated intensity={38} variant="navigation" style={styles.header}>
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>{title}</Text>
               {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
@@ -220,7 +220,7 @@ export function ScreenHeader({ title, subtitle, onBack, action }: {
           </GlassSurface>
         </Animated.View>
         <Animated.View pointerEvents="none" style={[styles.headerCompact, { width: compactWidth }, compactStyle]}>
-          <GlassSurface capture={isCollapsed} cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={38} variant="navigation" style={styles.compactIsland}>
+          <GlassSurface capture={isCollapsed} captureGroup="header" cornerRadius={COMPACT_HEADER_HEIGHT / 2} elevated intensity={38} variant="navigation" style={styles.compactIsland}>
             <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.compactTitle, { fontSize: compactFontSize }]}>{title}</Text>
           </GlassSurface>
         </Animated.View>

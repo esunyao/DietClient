@@ -80,6 +80,8 @@ export type SkiaGlassSurfaceProps = {
   variant?: GlassVariant;
   /** 临时隐藏的导航层不再捕获背景，避免不可见材质持续占用快照预算。 */
   capture?: boolean;
+  /** 导航快照分组；头部与底栏分开捕获，避免合并成长页面快照。 */
+  captureGroup?: 'header' | 'tab';
   /** 兼容旧签名保留；Skia 模糊质量为 GPU 固定档位，此值仅作 API 兼容。 */
   blurRounds?: number;
   elevated?: boolean;
@@ -104,6 +106,7 @@ export function SkiaGlassSurface({
   intensity = 50,
   variant = 'frosted',
   capture,
+  captureGroup,
   blurRounds: _blurRounds = 2,
   elevated = false,
   cornerRadius = radii.lg,
@@ -112,6 +115,7 @@ export function SkiaGlassSurface({
   const look = GLASS_LOOKS[variant];
   const useLiquid = Boolean(liquid?.enabled) && variant === 'navigation';
   const captureEnabled = capture ?? look.needsCapture;
+  const isIOSSkiaFallback = Platform.OS === 'ios' && variant !== 'soft';
 
   // ---------- 尺寸与快照 ----------
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -128,13 +132,13 @@ export function SkiaGlassSurface({
 
   // iOS Reduce Transparency：对齐旧 BlurView 的 reducedTransparencyFallbackColor 纯色兜底。
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (Platform.OS !== 'ios' || isIOSSkiaFallback) return;
     AccessibilityInfo.isReduceTransparencyEnabled()
       .then(setReduceTransparency)
       .catch(() => {});
     const subscription = AccessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency);
     return () => subscription.remove();
-  }, []);
+  }, [isIOSSkiaFallback]);
 
   const handleSnapshot = useCallback((payload: SnapshotPayload) => {
     if (!payload.jpeg || payload.width <= 0 || payload.height <= 0 || payload.contentScale <= 0) {
@@ -271,6 +275,20 @@ export function SkiaGlassSurface({
   const overlayFill = reduceTransparency ? null : useLiquid ? LIQUID_OVERLAY_FILL : look.overlay;
   const blur = blurRadiusForIntensity(intensity);
 
+  // iOS 的生产入口使用 UIVisualEffectView；直接调用 Skia 组件时也必须拒绝快照，
+  // 避免未来绕过 GlassSurface 再次把宿主自身拍进背景。
+  if (isIOSSkiaFallback) {
+    return (
+      <View
+        pointerEvents="box-none"
+        style={[styles.surface, styles.iosFallbackSurface, { borderRadius: cornerRadius }, style]}
+      >
+        <View pointerEvents="none" style={styles.sheen} />
+        {children}
+      </View>
+    );
+  }
+
   // ---------- 渲染 ----------
   // soft：纯静态层，不挂 Canvas 与捕获，与旧实现完全一致。
   if (variant === 'soft') {
@@ -298,7 +316,7 @@ export function SkiaGlassSurface({
       elevated={elevated}
       live={captureEnabled}
       liquidEnabled={useLiquid}
-      liquidCaptureGroup={liquid?.captureGroup ?? 'tab'}
+      liquidCaptureGroup={captureGroup ?? liquid?.captureGroup ?? 'tab'}
       liquidRefractionHeight={liquid?.refractionHeight ?? 20}
       liquidRefractionOffset={liquid?.refractionOffset ?? 70}
       liquidBlurRadius={liquid?.blurRadius ?? 10}
@@ -385,6 +403,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.78)',
     borderRadius: radii.lg,
     backgroundColor: 'rgba(255, 255, 255, 0.54)',
+  },
+  iosFallbackSurface: {
+    borderWidth: 1,
+    borderColor: GLASS_LOOKS.navigation.border,
+    backgroundColor: OPAQUE_FALLBACK_FILL,
   },
   /** 顶部细内高光：仿 iOS 材质的高光描边，让玻璃轮廓更分明。 */
   sheen: {

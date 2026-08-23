@@ -32,7 +32,7 @@ import kotlin.math.max
  * contentScale 与 content 空间 blurRadius 作为 uniform 传给 AGSL shader，采样坐标
  * 在 shader 内统一换算回 content 空间，视觉与 1x 捕获等价。
  */
-class AndroidGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnapshotHost {
+class AndroidGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnapshotHost, BackdropCaptureExcludable {
   private val density = resources.displayMetrics.density
   private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(42, 255, 255, 255) }
   private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -66,6 +66,8 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context), BackdropS
   private var snapshotVersion = -1L
   private var sourceOffsetX = Float.NaN
   private var sourceOffsetY = Float.NaN
+  private var exclusionDepth = 0
+  private var visibilityBeforeExclusion = View.VISIBLE
   private var generation = 0
   private var touchActive = false
   private var touchX = 0f
@@ -174,6 +176,18 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context), BackdropS
     // 使用软件 Canvas 采样根视图时只跳过液态宿主；静态玻璃卡片仍应进入快照。
     if (BackdropCaptureGate.isActive() && shouldUseLiquid()) return
     super.draw(canvas)
+  }
+
+  override fun setExcludedFromBackdropCapture(excluded: Boolean) {
+    if (excluded) {
+      if (exclusionDepth++ == 0) {
+        visibilityBeforeExclusion = visibility
+        visibility = View.INVISIBLE
+      }
+      return
+    }
+    if (exclusionDepth == 0) return
+    if (--exclusionDepth == 0) visibility = visibilityBeforeExclusion
   }
 
   override fun onDraw(canvas: Canvas) {

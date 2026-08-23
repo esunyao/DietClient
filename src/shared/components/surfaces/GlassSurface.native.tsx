@@ -9,19 +9,25 @@ import {
   SkiaGlassSurface,
   type SkiaGlassSurfaceProps,
 } from './SkiaGlassSurface.native';
+import { resolveGlassImplementation } from './glassImplementation';
 
 /**
  * 玻璃材质的唯一入口（原生端）。
  * - frosted：真 backdrop blur（原生为平台模糊），保持原始高帧率光学质感。
  * - soft：半透明白 + 细描边 + 顶部高光，不开 blur，用于信息密集的字段卡。
  * - navigation：常驻悬浮导航（TabBar/Header）。Android 12+ 用 RenderEffect GPU 模糊，
- *   iOS/其他回退到 QmBlurView（视觉已验证）。
+ *   iOS/其他平台使用系统 BlurView，避免导航层参与窗口快照。
  *
- * 实现切换：GLASS_IMPLEMENTATION === 'skia' 时走 react-native-skia 渲染
- * （背景快照 + GPU 模糊 + 液态 SkSL），否则走下方旧实现；两套路径可一键回退。
+ * 实现策略：Android 默认走 react-native-skia（背景快照 + GPU 模糊 + 液态 SkSL），
+ * iOS 的 navigation/frosted 固定走系统材质；显式 native 配置仍可让全平台回退。
  */
 export function GlassSurface(props: SkiaGlassSurfaceProps) {
-  if (GLASS_IMPLEMENTATION === 'skia') {
+  const implementation = resolveGlassImplementation(
+    Platform.OS as Parameters<typeof resolveGlassImplementation>[0],
+    props.variant ?? 'frosted',
+    GLASS_IMPLEMENTATION,
+  );
+  if (implementation === 'skia') {
     return <SkiaGlassSurface {...props} />;
   }
   return <LegacyGlassSurface {...props} />;

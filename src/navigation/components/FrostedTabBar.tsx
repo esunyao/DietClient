@@ -138,6 +138,7 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
     <PerfRegion name="FrostedTabBar">
       <Animated.View style={[styles.barWrap, { bottom: Math.max(insets.bottom, 6) }, wrapStyle]}>
         <GlassSurface
+          captureGroup="tab"
           cornerRadius={20}
           elevated
           intensity={38}

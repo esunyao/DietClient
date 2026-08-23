@@ -33,7 +33,7 @@ describe('SkiaGlassSurface 组件', () => {
     let tree: ReturnType<typeof create>;
     act(() => {
       tree = create(
-        <SkiaGlassSurface variant="navigation" cornerRadius={20} intensity={50}>
+        <SkiaGlassSurface captureGroup="header" variant="navigation" cornerRadius={20} intensity={50}>
           <View testID="child" />
         </SkiaGlassSurface>,
       );
@@ -42,6 +42,7 @@ describe('SkiaGlassSurface 组件', () => {
     expect(host.props.cornerRadius).toBe(20);
     expect(host.props.live).toBe(true);
     expect(host.props.liquidEnabled).toBe(false);
+    expect(host.props.liquidCaptureGroup).toBe('header');
     expect(tree!.root.findByProps({ testID: 'child' })).toBeTruthy();
     act(() => tree!.unmount());
   });
@@ -138,5 +139,25 @@ describe('SkiaGlassSurface 组件', () => {
       version: -1,
     }))).not.toThrow();
     act(() => tree!.unmount());
+  });
+
+  it('iOS 直接使用 Skia 组件时回退实体材质且不注册捕获', () => {
+    const previousPlatform = Platform.OS;
+    Platform.OS = 'ios';
+    let tree: ReturnType<typeof create> | undefined;
+    try {
+      act(() => {
+        tree = create(
+          <SkiaGlassSurface variant="navigation">
+            <View testID="ios-fallback-child" />
+          </SkiaGlassSurface>,
+        );
+      });
+      expect(() => tree!.root.findByType(SkiaGlassSurfaceWrapper)).toThrow();
+      expect(tree!.root.findByProps({ testID: 'ios-fallback-child' })).toBeTruthy();
+    } finally {
+      act(() => tree?.unmount());
+      Platform.OS = previousPlatform;
+    }
   });
 });
