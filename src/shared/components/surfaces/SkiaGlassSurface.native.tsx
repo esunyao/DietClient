@@ -50,11 +50,14 @@ import {
   buildLiquidUniforms,
   type LiquidUniforms,
 } from './SkiaGlassSurfaceShader';
-import { normalizeSnapshotFrame } from './SkiaGlassSnapshotFrame';
+import {
+  normalizeNativeSnapshotCoordinates,
+  normalizeSnapshotFrame,
+} from './SkiaGlassSnapshotFrame';
 import { durations, timing } from '../../animation/config';
 
-/** canvas 单位换算：Android 为物理 px，iOS 为 points（RN Skia 双端坐标单位不同）。 */
-const unitsPerDp = Platform.OS === 'android' ? PixelRatio.get() : 1;
+/** 原生 Android 快照使用物理 px；React Native 与 Skia 绘制坐标均使用 dp。 */
+const nativePixelRatio = Platform.OS === 'android' ? PixelRatio.get() : 1;
 
 /** 触摸光晕淡出与弹性回弹过渡。 */
 const TouchTiming = timing(durations.touchOut);
@@ -181,8 +184,8 @@ export function SkiaGlassSurface({
 
   const handleTouchStart = useCallback((event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
-    touchX.value = locationX * unitsPerDp;
-    touchY.value = locationY * unitsPerDp;
+    touchX.value = locationX;
+    touchY.value = locationY;
     downX.value = locationX;
     downY.value = locationY;
     touchActive.value = 1;
@@ -191,8 +194,8 @@ export function SkiaGlassSurface({
   const handleTouchMove = useCallback(
     (event: GestureResponderEvent) => {
       const { locationX, locationY } = event.nativeEvent;
-      touchX.value = locationX * unitsPerDp;
-      touchY.value = locationY * unitsPerDp;
+      touchX.value = locationX;
+      touchY.value = locationY;
       if (liquid?.elasticEffect) {
         const { width, height } = sizeRef.current;
         const dx = (locationX - downX.value) / Math.max(width, 1);
@@ -215,11 +218,11 @@ export function SkiaGlassSurface({
   }));
 
   // ---------- 绘制参数 ----------
-  // onLayout 尺寸为 dp；canvas 坐标按平台换算（Android px / iOS points）。
-  const canvasW = canvasSize.width * unitsPerDp;
-  const canvasH = canvasSize.height * unitsPerDp;
-  const radius = cornerRadius * unitsPerDp;
-  const sheenHeight = SHEEN_HEIGHT_DP * unitsPerDp;
+  // onLayout 和 React Native Skia 均使用 dp；不能在 Android 端重复乘像素比。
+  const canvasW = canvasSize.width;
+  const canvasH = canvasSize.height;
+  const radius = cornerRadius;
+  const sheenHeight = SHEEN_HEIGHT_DP;
   const glowRadius = Math.max(canvasW, canvasH) * 0.55;
 
   // 陈旧帧守卫：非液态玻璃的捕获区必须与自身区域重合（sourceOffset ≈ 0），
@@ -228,22 +231,23 @@ export function SkiaGlassSurface({
   const maxSnapshotOffset = useMemo(() => {
     if (!useLiquid) return 1;
     const paddingDp = Math.max(liquid?.refractionHeight ?? 20, liquid?.refractionOffset ?? 70) + (liquid?.blurRadius ?? 10) * 2 + 4;
-    return paddingDp * unitsPerDp + 1;
+    return paddingDp + 1;
   }, [liquid?.blurRadius, liquid?.refractionHeight, liquid?.refractionOffset, useLiquid]);
 
+  const snapshotCoordinates = useMemo(
+    () => snapshot ? normalizeNativeSnapshotCoordinates(snapshot, nativePixelRatio) : null,
+    [snapshot],
+  );
+
   const snapshotFrame = useMemo(
-    () => snapshot
+    () => snapshotCoordinates
       ? normalizeSnapshotFrame({
-          width: snapshot.width,
-          height: snapshot.height,
-          sourceOffsetX: snapshot.sourceOffsetX,
-          sourceOffsetY: snapshot.sourceOffsetY,
-          contentScale: snapshot.contentScale,
+          ...snapshotCoordinates,
           canvasWidth: canvasW,
           canvasHeight: canvasH,
         }, maxSnapshotOffset)
       : null,
-    [canvasH, canvasW, maxSnapshotOffset, snapshot],
+    [canvasH, canvasW, maxSnapshotOffset, snapshotCoordinates],
   );
 
   // 圆角裁剪矩形：Skia clip 只接受 SkRRect，用 RRectXY 构造。
@@ -261,20 +265,21 @@ export function SkiaGlassSurface({
   }, []);
 
   const liquidUniforms: LiquidUniforms | null = useMemo(() => {
-    if (!useLiquid || !snapshot || canvasW <= 0 || canvasH <= 0) return null;
+    if (!useLiquid || !snapshotCoordinates || canvasW <= 0 || canvasH <= 0) return null;
     return buildLiquidUniforms({
       width: canvasW,
       height: canvasH,
       cornerRadius: radius,
-      refractionHeight: (liquid?.refractionHeight ?? 20) * unitsPerDp,
-      refractionOffset: (liquid?.refractionOffset ?? 70) * unitsPerDp,
+      refractionHeight: liquid?.refractionHeight ?? 20,
+      refractionOffset: liquid?.refractionOffset ?? 70,
       dispersion: liquid?.dispersion ?? 0.5,
-      blurRadius: liquid?.blurRadius ?? 10,
-      sourceOffsetX: snapshot.sourceOffsetX,
-      sourceOffsetY: snapshot.sourceOffsetY,
-      contentScale: snapshot.contentScale,
+      // liquidBlurRadius 是原生物理 px，shader 的 geometry 参数使用 dp。
+      blurRadius: (liquid?.blurRadius ?? 10) / nativePixelRatio,
+      sourceOffsetX: snapshotCoordinates.sourceOffsetX,
+      sourceOffsetY: snapshotCoordinates.sourceOffsetY,
+      contentScale: snapshotCoordinates.contentScale,
     });
-  }, [useLiquid, snapshot, canvasW, canvasH, radius, liquid?.refractionHeight, liquid?.refractionOffset, liquid?.dispersion, liquid?.blurRadius]);
+  }, [useLiquid, snapshotCoordinates, canvasW, canvasH, radius, liquid?.refractionHeight, liquid?.refractionOffset, liquid?.dispersion, liquid?.blurRadius]);
 
   const showSnapshot = Boolean(snapshotImage && snapshotFrame) && !reduceTransparency;
   const baseFill = reduceTransparency

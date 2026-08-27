@@ -2,9 +2,9 @@
  * 液态玻璃 SkSL —— 移植自 android/app/src/main/res/raw/liquid_glass_effect.agsl。
  *
  * 采样坐标约定与原生捕获一致：content.eval((coord + sourceOffset) * contentScale)
- * - Android：coord/sourceOffset 为物理 px，contentScale = 0.5；
- * - iOS：coord/sourceOffset 为 points，contentScale = 0.5。
- * 两种平台在各自单位下结果等价，shader 无需区分平台。
+ * - coord/sourceOffset 始终为 Skia 的逻辑坐标（dp/points）；
+ * - contentScale 包含捕获降采样与 Android 物理 px → dp 的换算。
+ * 因此 shader 无需感知平台像素密度。
  */
 export const LIQUID_GLASS_SKSL = `
 uniform shader content;
@@ -99,7 +99,7 @@ half4 main(float2 coord) {
 `;
 
 export interface LiquidUniformInput {
-  /** 画布尺寸（canvas 单位：Android px / iOS points）。 */
+  /** 画布尺寸（canvas 逻辑坐标）。 */
   width: number;
   height: number;
   /** 圆角（canvas 单位）。 */
@@ -115,7 +115,7 @@ export interface LiquidUniformInput {
   /** 玻璃区域相对快照区域左上角的偏移（content 单位）。 */
   sourceOffsetX: number;
   sourceOffsetY: number;
-  /** 快照降采样比例（原生捕获 0.5）。 */
+  /** 快照到 canvas 的有效采样比例（含 Android 的像素密度）。 */
   contentScale: number;
 }
 

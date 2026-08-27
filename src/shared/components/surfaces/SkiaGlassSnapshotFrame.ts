@@ -15,9 +15,43 @@ export type SnapshotDrawFrame = {
   height: number;
 };
 
+/** 原生快照的物理像素坐标，换算为 Skia/RN 的逻辑像素坐标。 */
+export type NativeSnapshotCoordinates = Pick<
+  SnapshotFrameInput,
+  'width' | 'height' | 'sourceOffsetX' | 'sourceOffsetY' | 'contentScale'
+>;
+
+/**
+ * 原生 Android 捕获区和 JPEG 位图都以物理 px 上报，React Native Skia 的绘制坐标
+ * 则与 onLayout 一样使用 dp。contentScale 同时包含捕获降采样和物理 px → dp 的换算；
+ * sourceOffset 只需除以设备像素比即可回到 canvas 坐标。
+ */
+export function normalizeNativeSnapshotCoordinates(
+  input: NativeSnapshotCoordinates,
+  pixelRatio: number,
+): NativeSnapshotCoordinates | null {
+  const values = [
+    input.width,
+    input.height,
+    input.sourceOffsetX,
+    input.sourceOffsetY,
+    input.contentScale,
+    pixelRatio,
+  ];
+  if (values.some(value => !Number.isFinite(value)) || pixelRatio <= 0) return null;
+
+  return {
+    width: input.width,
+    height: input.height,
+    sourceOffsetX: input.sourceOffsetX / pixelRatio,
+    sourceOffsetY: input.sourceOffsetY / pixelRatio,
+    contentScale: input.contentScale * pixelRatio,
+  };
+}
+
 /**
  * 将原生快照像素映射到 Skia canvas 的内容坐标。
- * iOS 使用 points、Android 使用 px，但二者都通过 contentScale 归一化到同一公式。
+ * 调用方必须先将原生快照换算为 canvas 的逻辑坐标；二者再通过 contentScale 归一化。
  * 坐标越界时返回 null，让上层使用实体材质而不是绘制残留快照。
  *
  * maxSourceOffset 用于拒绝"陈旧帧"：非液态玻璃的捕获区与自身区域严格重合

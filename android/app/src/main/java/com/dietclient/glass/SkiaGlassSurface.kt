@@ -3,7 +3,9 @@ package com.dietclient.glass
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Outline
+import android.os.Build
 import android.graphics.Rect
 import android.util.Base64
 import android.view.View
@@ -73,8 +75,16 @@ class SkiaGlassSurface(context: Context) : ReactViewGroup(context), BackdropSnap
   }
 
   fun setElevated(value: Boolean) {
-    elevation = if (value) dp(1.0) else 0f
-    translationZ = elevation
+    val dp1 = if (value) dp(1.0) else 0f
+    elevation = dp1
+    translationZ = dp1
+    // Skia Canvas 负责绘制玻璃视觉（白底 + 模糊 + 描边），View 本身背景为 transparent。
+    // Android elevation 阴影在圆角裁剪区域外弧处会穿透透明背景，产生灰色三角伪影。
+    // 将阴影颜色设为透明消除此问题；层级由 elevation/translationZ 和 RN zIndex 控制。
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      outlineSpotShadowColor = Color.TRANSPARENT
+      outlineAmbientShadowColor = Color.TRANSPARENT
+    }
   }
 
   fun setLive(value: Boolean) {

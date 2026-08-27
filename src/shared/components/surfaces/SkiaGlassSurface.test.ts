@@ -11,7 +11,10 @@ import {
   buildLiquidUniforms,
   type LiquidUniformInput,
 } from './SkiaGlassSurfaceShader';
-import { normalizeSnapshotFrame } from './SkiaGlassSnapshotFrame';
+import {
+  normalizeNativeSnapshotCoordinates,
+  normalizeSnapshotFrame,
+} from './SkiaGlassSnapshotFrame';
 
 const baseInput: LiquidUniformInput = {
   width: 360,
@@ -91,9 +94,73 @@ describe('buildLiquidUniforms', () => {
     expect(uniforms.sourceOffset).toEqual([40, 12]);
     expect(uniforms.contentScale).toBe(0.5);
   });
+
+  it('高密度 Android 快照以 dp 几何和物理像素采样率共同驱动 shader', () => {
+    const snapshot = normalizeNativeSnapshotCoordinates({
+      width: 588,
+      height: 91,
+      sourceOffsetX: 35,
+      sourceOffsetY: 17.5,
+      contentScale: 0.5,
+    }, 3.5);
+    expect(snapshot).not.toBeNull();
+
+    const uniforms = buildLiquidUniforms({
+      width: 336,
+      height: 52,
+      cornerRadius: 20,
+      refractionHeight: 20,
+      refractionOffset: 70,
+      dispersion: 0.5,
+      // 原生 10px 模糊半径先换算为 10 / 3.5 dp。
+      blurRadius: 10 / 3.5,
+      sourceOffsetX: snapshot!.sourceOffsetX,
+      sourceOffsetY: snapshot!.sourceOffsetY,
+      contentScale: snapshot!.contentScale,
+    });
+
+    expect(uniforms.size).toEqual([336, 52]);
+    expect(uniforms.cornerRadii).toEqual([20, 20]);
+    expect(uniforms.sourceOffset).toEqual([10, 5]);
+    expect(uniforms.contentScale).toBe(1.75);
+    // (10 / 3.5)dp × (0.5 × 3.5) = 5px，保持原有物理模糊范围。
+    expect(uniforms.blurRadius).toBe(5);
+  });
 });
 
 describe('normalizeSnapshotFrame', () => {
+  it('将 3.5x Android 物理快照还原为 dp canvas 坐标', () => {
+    const coordinates = normalizeNativeSnapshotCoordinates({
+      width: 588,
+      height: 91,
+      sourceOffsetX: 35,
+      sourceOffsetY: 17.5,
+      contentScale: 0.5,
+    }, 3.5);
+    expect(coordinates).toEqual({
+      width: 588,
+      height: 91,
+      sourceOffsetX: 10,
+      sourceOffsetY: 5,
+      contentScale: 1.75,
+    });
+    expect(normalizeSnapshotFrame({
+      ...coordinates!,
+      canvasWidth: 336,
+      canvasHeight: 52,
+    })).toEqual({ x: -10, y: -5, width: 336, height: 52 });
+  });
+
+  it('拒绝无效设备像素比，避免将异常原生快照画进 canvas', () => {
+    expect(normalizeNativeSnapshotCoordinates({
+      width: 300,
+      height: 100,
+      sourceOffsetX: 0,
+      sourceOffsetY: 0,
+      contentScale: 0.5,
+    }, 0)).toBeNull();
+  });
+
   it('按 contentScale 将像素快照映射回 canvas 坐标', () => {
     expect(normalizeSnapshotFrame({
       width: 300,

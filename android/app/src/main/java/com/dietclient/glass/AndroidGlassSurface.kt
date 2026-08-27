@@ -332,6 +332,11 @@ class AndroidGlassSurface(context: Context) : ReactViewGroup(context), BackdropS
     applyCornerRadius()
     elevation = if (elevated) dp(1.0) else 0f
     translationZ = elevation
+    // 阴影颜色设为透明，避免圆角裁剪区域外弧处灰色三角伪影。
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      outlineSpotShadowColor = Color.TRANSPARENT
+      outlineAmbientShadowColor = Color.TRANSPARENT
+    }
     if (shouldUseLiquid()) {
       setLayerType(LAYER_TYPE_HARDWARE, null)
       updateLiquidState()

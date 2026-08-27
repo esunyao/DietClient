@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
  * 组件只引用 token，避免页面各自调出不同的“白卡 + 蓝绿光晕”。
  */
 export const colors = {
-  canvas: '#F2F2F7',
+  canvas: '#000000',
   surface: '#FFFFFF',
   surfaceMuted: '#F7F7F8',
   ink: '#1D1D1F',
