@@ -3,11 +3,7 @@ import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BarChart3, Camera, FileText, Home, Sparkles, UserRound } from 'lucide-react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { durations, navigationTiming } from '../../shared/animation/config';
 import { PressableScale } from '../../shared/animation/PressableScale';
@@ -15,7 +11,7 @@ import { GlassSurface } from '../../shared/components';
 import { PerfRegion } from '../../shared/perf/PerfRegion';
 import { useScrollChrome } from '../../shared/scrollChrome/ScrollChromeProvider';
 import { colors, fonts } from '../../shared/theme/tokens';
-import { useSessionStore } from '../../features/auth/store/sessionStore';
+import { useSessionStore } from '../../app/session/sessionStore';
 import { isBottomTabVisibleForDietRoute } from '../pageRegistry';
 
 const tabMeta = {
@@ -36,7 +32,13 @@ const INDICATOR_BOTTOM = 4;
 const IndicatorTiming = navigationTiming(durations.tabIndicator);
 
 /** 单个 tab 项。memo + 稳定回调让滚动中（父不重渲染）完全跳过重渲染。 */
-const TabItem = memo(function ({ meta, focused, routeName, onPressRoute, onLongPressRoute }: {
+const TabItem = memo(function ({
+  meta,
+  focused,
+  routeName,
+  onPressRoute,
+  onLongPressRoute,
+}: {
   meta: (typeof tabMeta)[keyof typeof tabMeta];
   focused: boolean;
   routeName: string;
@@ -57,7 +59,11 @@ const TabItem = memo(function ({ meta, focused, routeName, onPressRoute, onLongP
       scaleTo={0.98}
       style={styles.item}
     >
-      <Icon color={focused ? colors.blue : colors.muted} size={18} strokeWidth={focused ? 2.45 : 2.1} />
+      <Icon
+        color={focused ? colors.blue : colors.muted}
+        size={18}
+        strokeWidth={focused ? 2.45 : 2.1}
+      />
       <Text style={[styles.label, focused && styles.labelFocused]}>{meta.label}</Text>
     </PressableScale>
   );
@@ -77,15 +83,25 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
   const profileOnboardingRequired = useSessionStore(session => session.profileOnboardingRequired);
 
   const activeRoute = state.routes[activeIndex];
-  const nestedState = activeRoute?.state as { index?: number; routes?: Array<{ name: string }> } | undefined;
+  const nestedState = activeRoute?.state as
+    | { index?: number; routes?: Array<{ name: string }> }
+    | undefined;
   const nestedRoute = nestedState?.routes?.[nestedState.index ?? 0]?.name;
-  const tabRootRoute: Partial<Record<string, string>> = { HomeTab: 'HomeMain', ProfileTab: 'ProfileMain' };
+  const tabRootRoute: Partial<Record<string, string>> = {
+    HomeTab: 'HomeMain',
+    ProfileTab: 'ProfileMain',
+  };
   // 嵌套 Stack 只在其根页渲染全局底栏，所有详情/编辑页不保留悬浮 Tab。
-  const hideForDietChildScreen = activeRoute?.name === 'RecognitionTab' && !isBottomTabVisibleForDietRoute(nestedRoute);
-  const hideForChildScreen = activeRoute?.name === 'RecognitionTab' ? hideForDietChildScreen : Boolean(nestedRoute && tabRootRoute[activeRoute?.name ?? ''] !== nestedRoute);
+  const hideForDietChildScreen =
+    activeRoute?.name === 'RecognitionTab' && !isBottomTabVisibleForDietRoute(nestedRoute);
+  const hideForChildScreen =
+    activeRoute?.name === 'RecognitionTab'
+      ? hideForDietChildScreen
+      : Boolean(nestedRoute && tabRootRoute[activeRoute?.name ?? ''] !== nestedRoute);
   // 新注册账号首次进入时 Profile Stack 直接以 EditProfile 为初始页，首帧尚未生成
   // nestedState。此处只看首次引导状态，绝不能用档案完整度推断。
-  const hideForProfileOnboarding = activeRoute?.name === 'ProfileTab' && !nestedRoute && profileOnboardingRequired;
+  const hideForProfileOnboarding =
+    activeRoute?.name === 'ProfileTab' && !nestedRoute && profileOnboardingRequired;
 
   // 选中胶囊：像素级 left/width（UI 线程，一次性过渡）。
   const barWidth = useSharedValue(0);
@@ -110,7 +126,10 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
   useEffect(() => {
     chrome.resetTabBar();
     if (barWidth.value > 0) {
-      indicatorLeft.value = withTiming(activeIndex * (barWidth.value / state.routes.length), IndicatorTiming);
+      indicatorLeft.value = withTiming(
+        activeIndex * (barWidth.value / state.routes.length),
+        IndicatorTiming,
+      );
     }
     // activeIndex 变化即代表切换成功。
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,19 +137,29 @@ export function FrostedTabBar({ state, navigation }: BottomTabBarProps) {
 
   // 稳定回调：不再依赖 activeIndex（focused 判断已移入 TabItem 内部），
   // 因此切 tab / 栈导航时引用保持不变，TabItem 的 memo 真正生效（只有 focused 变化的项重渲染）。
-  const onPressRoute = useCallback((routeName: string) => {
-    const route = state.routes.find(r => r.name === routeName);
-    if (!route) return;
-    const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-    if (!event.defaultPrevented) {
-      navigation.navigate(route.name);
-    }
-  }, [navigation, state.routes]);
+  const onPressRoute = useCallback(
+    (routeName: string) => {
+      const route = state.routes.find(r => r.name === routeName);
+      if (!route) return;
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: route.key,
+        canPreventDefault: true,
+      });
+      if (!event.defaultPrevented) {
+        navigation.navigate(route.name);
+      }
+    },
+    [navigation, state.routes],
+  );
 
-  const onLongPressRoute = useCallback((routeName: string) => {
-    const route = state.routes.find(r => r.name === routeName);
-    if (route) navigation.emit({ type: 'tabLongPress', target: route.key });
-  }, [navigation, state.routes]);
+  const onLongPressRoute = useCallback(
+    (routeName: string) => {
+      const route = state.routes.find(r => r.name === routeName);
+      if (route) navigation.emit({ type: 'tabLongPress', target: route.key });
+    },
+    [navigation, state.routes],
+  );
 
   if (hideForChildScreen || hideForProfileOnboarding) return null;
 
@@ -181,7 +210,14 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 14, marginVertical: 4 },
+  item: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+    borderRadius: 14,
+    marginVertical: 4,
+  },
   label: { color: colors.muted, fontFamily: fonts.body, fontSize: 8.5, fontWeight: '700' },
   labelFocused: { color: colors.blue },
 });

@@ -1,6 +1,6 @@
 import * as Keychain from 'react-native-keychain';
 
-import type { OidcTokenSet } from '../types/api';
+import type { OidcTokenSet } from '../../../features/auth/api/authTypes';
 import { parsePersistedTokens, serializeTokens } from './tokenStorageCodec';
 
 const SERVICE = 'com.dietclient.auth.tokens';

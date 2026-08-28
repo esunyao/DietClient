@@ -36,7 +36,9 @@ function createWebStorage() {
 describe('token storage adapters', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (globalThis as typeof globalThis & { localStorage?: ReturnType<typeof createWebStorage> }).localStorage = createWebStorage();
+    (
+      globalThis as typeof globalThis & { localStorage?: ReturnType<typeof createWebStorage> }
+    ).localStorage = createWebStorage();
     mockKeychain.getGenericPassword.mockResolvedValue(false);
     mockKeychain.setGenericPassword.mockResolvedValue({ service: 'com.dietclient.auth.tokens' });
     mockKeychain.resetGenericPassword.mockResolvedValue(true);
@@ -63,16 +65,30 @@ describe('token storage adapters', () => {
 
   it('persists and hydrates native credentials through Keychain/Keystore', async () => {
     await nativeTokenStorage.save(tokens);
-    expect(mockKeychain.setGenericPassword).toHaveBeenCalledWith('diet-client', JSON.stringify(tokens), { service: 'com.dietclient.auth.tokens' });
-    mockKeychain.getGenericPassword.mockResolvedValue({ username: 'diet-client', password: JSON.stringify(tokens) });
+    expect(mockKeychain.setGenericPassword).toHaveBeenCalledWith(
+      'diet-client',
+      JSON.stringify(tokens),
+      { service: 'com.dietclient.auth.tokens' },
+    );
+    mockKeychain.getGenericPassword.mockResolvedValue({
+      username: 'diet-client',
+      password: JSON.stringify(tokens),
+    });
     expect(await nativeTokenStorage.hydrate()).toEqual(tokens);
     await nativeTokenStorage.clear();
-    expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({ service: 'com.dietclient.auth.tokens' });
+    expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
+      service: 'com.dietclient.auth.tokens',
+    });
   });
 
   it('clears malformed native credentials before returning signed out', async () => {
-    mockKeychain.getGenericPassword.mockResolvedValue({ username: 'diet-client', password: '{"accessToken":"bad"}' });
+    mockKeychain.getGenericPassword.mockResolvedValue({
+      username: 'diet-client',
+      password: '{"accessToken":"bad"}',
+    });
     expect(await nativeTokenStorage.hydrate()).toBeNull();
-    expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({ service: 'com.dietclient.auth.tokens' });
+    expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
+      service: 'com.dietclient.auth.tokens',
+    });
   });
 });

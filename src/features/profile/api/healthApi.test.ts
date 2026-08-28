@@ -47,9 +47,7 @@ describe('healthApi record paths', () => {
 
     await healthApi.medicalConditions.remove(snowflakeId);
 
-    expect(deleteMock).toHaveBeenCalledWith(
-      `v1/users/self/medical-conditions/${snowflakeId}`,
-    );
+    expect(deleteMock).toHaveBeenCalledWith(`v1/users/self/medical-conditions/${snowflakeId}`);
     expect(assertMock).toHaveBeenCalled();
   });
 });

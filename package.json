@@ -4,12 +4,17 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "format": "prettier --write \"App.tsx\" \"src/**/*.{ts,tsx}\" \"docs/**/*.md\" \"*.{js,json,md}\" \"web/**/*.{js,html}\"",
+    "format:check": "prettier --check \"App.tsx\" \"src/**/*.{ts,tsx}\" \"docs/**/*.md\" \"*.{js,json,md}\" \"web/**/*.{js,html}\"",
     "ios": "react-native run-ios",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "start": "react-native start",
     "start:web": "webpack serve --config web/webpack.config.js --mode development",
     "build:web": "webpack --config web/webpack.config.js --mode production",
-    "test": "jest"
+    "test": "jest",
+    "test:android": "cd android && gradlew.bat testDebugUnitTest testDebugOptimizedUnitTest",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm test -- --runInBand && npm run build:web"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.14",

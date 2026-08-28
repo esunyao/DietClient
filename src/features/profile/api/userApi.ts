@@ -1,13 +1,13 @@
 import { apiClient, unwrapApiResponse } from '../../../shared/api/client';
 import type {
-  ApiEnvelope,
   AvatarConfirmResult,
   AvatarPresignPayload,
   AvatarPresignResult,
   UserProfileUpdatePayload,
   User,
   UserProfile,
-} from '../../../shared/types/api';
+} from './profileTypes';
+import type { ApiEnvelope } from '../../../shared/api/types';
 
 export const userApi = {
   getSelf: async (): Promise<User> => {
@@ -25,7 +25,10 @@ export const userApi = {
   },
 
   updateProfile: async (payload: UserProfileUpdatePayload): Promise<UserProfile> => {
-    const response = await apiClient.patch<ApiEnvelope<UserProfile>>('v1/users/self/profile', payload);
+    const response = await apiClient.patch<ApiEnvelope<UserProfile>>(
+      'v1/users/self/profile',
+      payload,
+    );
     return unwrapApiResponse(response);
   },
 
@@ -35,7 +38,10 @@ export const userApi = {
   },
 
   createAvatarUpload: async (payload: AvatarPresignPayload): Promise<AvatarPresignResult> => {
-    const response = await apiClient.post<ApiEnvelope<AvatarPresignResult>>('v1/files/avatar/presign', payload);
+    const response = await apiClient.post<ApiEnvelope<AvatarPresignResult>>(
+      'v1/files/avatar/presign',
+      payload,
+    );
     return unwrapApiResponse(response);
   },
 

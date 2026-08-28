@@ -1,7 +1,10 @@
 import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-export function AndroidGlassSurface({ children, style }: {
+export function AndroidGlassSurface({
+  children,
+  style,
+}: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   variant: 'soft' | 'navigation';

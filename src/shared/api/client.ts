@@ -1,10 +1,13 @@
-import axios, { AxiosError, AxiosHeaders, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import axios, {
+  AxiosError,
+  AxiosHeaders,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+} from 'axios';
 
-import { refreshAccessToken } from '../../features/auth/api/authApi';
 import { API_BASE_URL } from '../config/appConfig';
-import type { ApiEnvelope, OidcTokenSet } from '../types/api';
-import { tokenStorage } from './tokenStorage';
 import { parseApiJson } from './losslessJson';
+import type { ApiEnvelope } from './types';
 
 type RetriableRequest = AxiosRequestConfig & { _hasRetried?: boolean };
 
@@ -22,7 +25,11 @@ export class ApiError extends Error {
 export function unwrapApiResponse<T>(response: AxiosResponse<ApiEnvelope<T>>): T {
   const envelope = response.data;
   if (envelope.code < 200 || envelope.code >= 300 || envelope.data === null) {
-    throw new ApiError(envelope.message || '请求未完成，请稍后重试', envelope.code, envelope.traceId);
+    throw new ApiError(
+      envelope.message || '请求未完成，请稍后重试',
+      envelope.code,
+      envelope.traceId,
+    );
   }
   return envelope.data;
 }
@@ -30,7 +37,11 @@ export function unwrapApiResponse<T>(response: AxiosResponse<ApiEnvelope<T>>): T
 export function assertApiSuccess(response: AxiosResponse<ApiEnvelope<unknown>>): void {
   const envelope = response.data;
   if (envelope.code < 200 || envelope.code >= 300) {
-    throw new ApiError(envelope.message || '请求未完成，请稍后重试', envelope.code, envelope.traceId);
+    throw new ApiError(
+      envelope.message || '请求未完成，请稍后重试',
+      envelope.code,
+      envelope.traceId,
+    );
   }
 }
 
@@ -41,7 +52,11 @@ export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const body = error.response?.data as Record<string, unknown> | undefined;
     const message = body?.message || body?.detail || body?.error_description;
-    return (typeof message === 'string' ? message : undefined) || error.message || '网络连接失败，请检查服务是否已启动';
+    return (
+      (typeof message === 'string' ? message : undefined) ||
+      error.message ||
+      '网络连接失败，请检查服务是否已启动'
+    );
   }
   if (error instanceof Error && error.message) {
     return error.message;
@@ -63,9 +78,15 @@ export const apiClient = axios.create({
   transformResponse: [parseApiJson],
 });
 
-let refreshInFlight: Promise<OidcTokenSet> | null = null;
-let onSessionInvalid: (() => void) | null = null;
-let onTokensRefreshed: ((tokens: OidcTokenSet) => void) | null = null;
+interface ApiSessionAdapter {
+  getAccessToken: () => string | null;
+  canRefreshAccessToken: () => boolean;
+  refreshAccessToken: () => Promise<string>;
+  invalidateSession: () => Promise<void>;
+}
+
+let refreshInFlight: Promise<string> | null = null;
+let sessionAdapter: ApiSessionAdapter | null = null;
 let activeAccessToken: string | null = null;
 
 export function buildAuthorizationHeader(accessToken?: string): Record<string, string> {
@@ -75,7 +96,7 @@ export function buildAuthorizationHeader(accessToken?: string): Record<string, s
 /**
  * 认证成功或刷新成功后同步 Axios 实例的默认请求头。
  *
- * tokenStorage 仍是唯一的凭证存储；该值只是避免 React Native 热更新/请求调度边界
+ * 会话层仍是唯一的凭证存储；该值只是避免 React Native 热更新/请求调度边界
  * 让首个业务请求错过拦截器注入。
  */
 export function setApiAccessToken(accessToken: string | null): void {
@@ -87,38 +108,35 @@ export function setApiAccessToken(accessToken: string | null): void {
   delete apiClient.defaults.headers.common.Authorization;
 }
 
-export function shouldRefreshAfterUnauthorized(status?: number, request?: RetriableRequest): boolean {
+export function shouldRefreshAfterUnauthorized(
+  status?: number,
+  request?: RetriableRequest,
+): boolean {
   return status === 401 && Boolean(request) && !request?._hasRetried;
 }
 
-export function setSessionInvalidHandler(handler: () => void): void {
-  onSessionInvalid = handler;
-}
-
-export function setTokensRefreshedHandler(handler: (tokens: OidcTokenSet) => void): void {
-  onTokensRefreshed = handler;
-}
-
-async function refreshTokens(): Promise<OidcTokenSet> {
-  const nextTokens = await refreshAccessToken();
-  await tokenStorage.save(nextTokens);
-  setApiAccessToken(nextTokens.accessToken);
-  onTokensRefreshed?.(nextTokens);
-  return nextTokens;
+/**
+ * 由 app/session 注入会话能力。shared API 只处理 HTTP 重试，不知道任何认证实现或存储细节。
+ */
+export function configureApiSession(adapter: ApiSessionAdapter): void {
+  sessionAdapter = adapter;
 }
 
 /** Reused by scheduled refreshes and 401 recovery so a session only refreshes once. */
-export async function refreshApiTokens(): Promise<OidcTokenSet> {
-  refreshInFlight ??= refreshTokens();
+export async function refreshApiAccessToken(): Promise<string> {
+  if (!sessionAdapter) throw new Error('API session adapter is not configured.');
+  refreshInFlight ??= sessionAdapter.refreshAccessToken();
   try {
-    return await refreshInFlight;
+    const accessToken = await refreshInFlight;
+    setApiAccessToken(accessToken);
+    return accessToken;
   } finally {
     refreshInFlight = null;
   }
 }
 
 apiClient.interceptors.request.use(config => {
-  const accessToken = activeAccessToken || tokenStorage.get()?.accessToken;
+  const accessToken = activeAccessToken || sessionAdapter?.getAccessToken();
   if (accessToken) {
     config.headers = config.headers || new AxiosHeaders();
     config.headers.set('Authorization', buildAuthorizationHeader(accessToken).Authorization);
@@ -130,31 +148,34 @@ apiClient.interceptors.response.use(
   response => response,
   async (error: AxiosError<ApiEnvelope<unknown>>) => {
     const request = error.config as RetriableRequest | undefined;
-    // 没有可用 refresh token 时保留 Gateway 的原始 401，不能伪装成“登录已失效”。
-    if (!request || !shouldRefreshAfterUnauthorized(error.response?.status, request) || !tokenStorage.get()?.refreshToken) {
+    // 没有 refresh token 时保留 Gateway 的原始 401，不伪装成“登录已失效”。
+    if (
+      !request ||
+      !shouldRefreshAfterUnauthorized(error.response?.status, request) ||
+      !sessionAdapter?.canRefreshAccessToken()
+    ) {
       return Promise.reject(error);
     }
 
     request._hasRetried = true;
     try {
-      const tokens = await refreshApiTokens();
+      const accessToken = await refreshApiAccessToken();
       const headers = new AxiosHeaders();
       if (request.headers) {
         Object.entries(request.headers as Record<string, unknown>).forEach(([name, value]) => {
           if (value !== undefined) headers.set(name, String(value));
         });
       }
-      headers.set('Authorization', `Bearer ${tokens.accessToken}`);
+      headers.set('Authorization', `Bearer ${accessToken}`);
       request.headers = headers;
       return apiClient(request);
     } catch {
       try {
-        await tokenStorage.clear();
+        await sessionAdapter.invalidateSession();
       } catch {
         // 会话状态仍需立即失效；下次启动会再次尝试清理安全存储。
       } finally {
         setApiAccessToken(null);
-        onSessionInvalid?.();
       }
       // 当前请求的真实失败原因是 Gateway 的 401；刷新失败仅代表无法恢复该会话。
       return Promise.reject(error);

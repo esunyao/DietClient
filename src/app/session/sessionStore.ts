@@ -1,13 +1,24 @@
 import axios from 'axios';
 import { create } from 'zustand';
-import { AppState } from 'react-native';
 
-import { ApiError, getErrorMessage, refreshApiTokens, setApiAccessToken, setSessionInvalidHandler, setTokensRefreshedHandler } from '../../../shared/api/client';
-import { tokenStorage } from '../../../shared/api/tokenStorage';
-import type { OidcTokenSet, User, UserProfile } from '../../../shared/types/api';
-import { userApi } from '../../profile/api/userApi';
-import { authApi, type LoginPayload, type RegisterPayload, type RegistrationResult } from '../api/authApi';
-import { profileOnboardingStorage } from '../services/profileOnboardingStorage';
+import {
+  ApiError,
+  configureApiSession,
+  getErrorMessage,
+  setApiAccessToken,
+} from '../../shared/api/client';
+import { tokenStorage } from './tokenStorage/tokenStorage';
+import type { OidcTokenSet } from '../../features/auth/api/authTypes';
+import {
+  authApi,
+  configureAuthTokenProvider,
+  type LoginPayload,
+  type RegisterPayload,
+  type RegistrationResult,
+} from '../../features/auth/api/authApi';
+import { profileOnboardingStorage } from '../../features/auth/services/profileOnboardingStorage';
+import { userApi } from '../../features/profile/api/userApi';
+import type { User, UserProfile } from '../../features/profile/api/profileTypes';
 
 type SessionStatus = 'restoring' | 'signedOut' | 'signedIn';
 
@@ -35,6 +46,7 @@ interface SessionState {
 }
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let sessionRefreshInFlight: Promise<OidcTokenSet> | null = null;
 
 function clearRefreshTimer(): void {
   if (refreshTimer) clearTimeout(refreshTimer);
@@ -46,7 +58,7 @@ function scheduleRefresh(set: (state: Partial<SessionState>) => void, tokens: Oi
   if (!tokens.refreshToken) return;
   const delay = Math.max(1_000, tokens.obtainedAt + tokens.expiresIn * 1_000 - Date.now() - 60_000);
   refreshTimer = setTimeout(() => {
-    refreshApiTokens()
+    refreshSessionTokens()
       .then(next => {
         set({ tokens: next });
         scheduleRefresh(set, next);
@@ -55,9 +67,26 @@ function scheduleRefresh(set: (state: Partial<SessionState>) => void, tokens: Oi
   }, delay);
 }
 
+/** 统一处理定时刷新、前台刷新和 HTTP 401 恢复，避免并发交换同一 refresh token。 */
+export async function refreshSessionTokens(): Promise<OidcTokenSet> {
+  sessionRefreshInFlight ??= authApi.refresh();
+  try {
+    const tokens = await sessionRefreshInFlight;
+    await tokenStorage.save(tokens);
+    setApiAccessToken(tokens.accessToken);
+    useSessionStore.setState({ tokens });
+    scheduleRefresh(useSessionStore.setState, tokens);
+    return tokens;
+  } finally {
+    sessionRefreshInFlight = null;
+  }
+}
+
 function isProfileNotFound(error: unknown): boolean {
-  return (error instanceof ApiError && error.code === 404) ||
-    (axios.isAxiosError(error) && error.response?.status === 404);
+  return (
+    (error instanceof ApiError && error.code === 404) ||
+    (axios.isAxiosError(error) && error.response?.status === 404)
+  );
 }
 
 async function loadUserData(previous?: Pick<SessionState, 'user' | 'avatarPreviewUrl'>): Promise<{
@@ -87,18 +116,23 @@ async function loadUserData(previous?: Pick<SessionState, 'user' | 'avatarPrevie
     return { user, ...profileResult, avatarPreviewUrl: previous.avatarPreviewUrl };
   }
   try {
-    const avatarPreviewUrl = /^https?:\/\//.test(user.avatarUrl) ? user.avatarUrl : await userApi.getAvatarUrl();
+    const avatarPreviewUrl = /^https?:\/\//.test(user.avatarUrl)
+      ? user.avatarUrl
+      : await userApi.getAvatarUrl();
     return { user, ...profileResult, avatarPreviewUrl };
   } catch {
     return { user, ...profileResult, avatarPreviewUrl: null };
   }
 }
 
-async function loadOnboardingState(user: User): Promise<Pick<SessionState, 'onboardingResolved' | 'profileOnboardingRequired'>> {
+async function loadOnboardingState(
+  user: User,
+): Promise<Pick<SessionState, 'onboardingResolved' | 'profileOnboardingRequired'>> {
   // “首次注册”与“档案字段是否填齐”是两件事。只有本机刚完成注册的
   // 账号会进入一次引导；profileCompletedAt 只用于页面上的完整度提示。
   const alreadyCompleted = await profileOnboardingStorage.hasCompleted(user.userId);
-  const profileOnboardingRequired = !alreadyCompleted && await profileOnboardingStorage.consumePendingFor(user);
+  const profileOnboardingRequired =
+    !alreadyCompleted && (await profileOnboardingStorage.consumePendingFor(user));
   return { onboardingResolved: true, profileOnboardingRequired };
 }
 
@@ -141,7 +175,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     scheduleRefresh(set, tokens);
     try {
       const data = await loadUserData();
-      set({ status: 'signedIn', tokens, ...data, ...(await loadOnboardingState(data.user)), error: null });
+      set({
+        status: 'signedIn',
+        tokens,
+        ...data,
+        ...(await loadOnboardingState(data.user)),
+        error: null,
+      });
     } catch (error) {
       await tokenStorage.clear();
       setApiAccessToken(null);
@@ -165,10 +205,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ ...data });
   },
 
-  setUser: user => set(state => ({
-    user,
-    avatarPreviewUrl: state.user?.avatarUrl === user.avatarUrl ? state.avatarPreviewUrl : null,
-  })),
+  setUser: user =>
+    set(state => ({
+      user,
+      avatarPreviewUrl: state.user?.avatarUrl === user.avatarUrl ? state.avatarPreviewUrl : null,
+    })),
   setProfile: profile => set({ profile, profileMissing: false }),
   completeProfileOnboarding: async () => {
     const userId = get().user?.userId;
@@ -203,19 +244,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 }));
 
-setSessionInvalidHandler(() => {
-  useSessionStore.getState().clearLocalSession().catch(() => undefined);
-});
-
-setTokensRefreshedHandler(tokens => {
-  useSessionStore.setState({ tokens });
-  scheduleRefresh(useSessionStore.setState, tokens);
-});
-
-AppState.addEventListener('change', state => {
-  if (state !== 'active') return;
-  const tokens = useSessionStore.getState().tokens;
-  if (tokens?.refreshToken && tokens.obtainedAt + tokens.expiresIn * 1_000 - Date.now() <= 60_000) {
-    refreshApiTokens().catch(() => undefined);
-  }
+configureAuthTokenProvider(tokenStorage.get);
+configureApiSession({
+  getAccessToken: () => tokenStorage.get()?.accessToken ?? null,
+  canRefreshAccessToken: () => Boolean(tokenStorage.get()?.refreshToken),
+  refreshAccessToken: async () => (await refreshSessionTokens()).accessToken,
+  invalidateSession: () => useSessionStore.getState().clearLocalSession(),
 });

@@ -34,7 +34,12 @@ describe('SkiaGlassSurface 组件', () => {
     let tree: ReturnType<typeof create>;
     act(() => {
       tree = create(
-        <SkiaGlassSurface captureGroup="header" variant="navigation" cornerRadius={20} intensity={50}>
+        <SkiaGlassSurface
+          captureGroup="header"
+          variant="navigation"
+          cornerRadius={20}
+          intensity={50}
+        >
           <View testID="child" />
         </SkiaGlassSurface>,
       );
@@ -163,15 +168,19 @@ describe('SkiaGlassSurface 组件', () => {
       );
     });
     const host = tree!.root.findByType(SkiaGlassSurfaceWrapper);
-    expect(() => act(() => host.props.onSnapshot({
-      jpeg: '',
-      width: 0,
-      height: 0,
-      sourceOffsetX: 0,
-      sourceOffsetY: 0,
-      contentScale: 0,
-      version: -1,
-    }))).not.toThrow();
+    expect(() =>
+      act(() =>
+        host.props.onSnapshot({
+          jpeg: '',
+          width: 0,
+          height: 0,
+          sourceOffsetX: 0,
+          sourceOffsetY: 0,
+          contentScale: 0,
+          version: -1,
+        }),
+      ),
+    ).not.toThrow();
     act(() => tree!.unmount());
   });
 

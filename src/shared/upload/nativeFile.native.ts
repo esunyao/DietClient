@@ -6,7 +6,10 @@ export async function resolveLocalPath(uri: string, extension: string): Promise<
     return uri.slice('file://'.length);
   }
 
-  const response = await ReactNativeBlobUtil.config({ fileCache: true, appendExt: extension }).fetch('GET', uri);
+  const response = await ReactNativeBlobUtil.config({
+    fileCache: true,
+    appendExt: extension,
+  }).fetch('GET', uri);
   const path = response.path();
   return path.startsWith('file://') ? path.slice('file://'.length) : path;
 }

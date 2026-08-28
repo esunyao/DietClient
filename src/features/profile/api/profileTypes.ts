@@ -1,22 +1,4 @@
-/** Orion 统一响应包装。 */
-export interface ApiEnvelope<T> {
-  code: number;
-  message: string;
-  data: T | null;
-  traceId?: string | null;
-  timestamp?: number | string;
-}
-
-/** Authentik OIDC Token Endpoint 返回值；由平台凭证存储负责持久化。 */
-export interface OidcTokenSet {
-  accessToken: string;
-  refreshToken: string | null;
-  tokenType: string;
-  expiresIn: number;
-  idToken?: string;
-  obtainedAt: number;
-}
-
+/** Orion 用户与健康档案领域模型。 */
 export interface User {
   userId: string;
   username: string;

@@ -139,7 +139,10 @@ export function SkiaGlassSurface({
     AccessibilityInfo.isReduceTransparencyEnabled()
       .then(setReduceTransparency)
       .catch(() => {});
-    const subscription = AccessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency);
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceTransparencyChanged',
+      setReduceTransparency,
+    );
     return () => subscription.remove();
   }, [isIOSSkiaFallback]);
 
@@ -182,14 +185,17 @@ export function SkiaGlassSurface({
   const scaleX = useSharedValue(1);
   const scaleY = useSharedValue(1);
 
-  const handleTouchStart = useCallback((event: GestureResponderEvent) => {
-    const { locationX, locationY } = event.nativeEvent;
-    touchX.value = locationX;
-    touchY.value = locationY;
-    downX.value = locationX;
-    downY.value = locationY;
-    touchActive.value = 1;
-  }, [downX, downY, touchActive, touchX, touchY]);
+  const handleTouchStart = useCallback(
+    (event: GestureResponderEvent) => {
+      const { locationX, locationY } = event.nativeEvent;
+      touchX.value = locationX;
+      touchY.value = locationY;
+      downX.value = locationX;
+      downY.value = locationY;
+      touchActive.value = 1;
+    },
+    [downX, downY, touchActive, touchX, touchY],
+  );
 
   const handleTouchMove = useCallback(
     (event: GestureResponderEvent) => {
@@ -200,8 +206,14 @@ export function SkiaGlassSurface({
         const { width, height } = sizeRef.current;
         const dx = (locationX - downX.value) / Math.max(width, 1);
         const dy = (locationY - downY.value) / Math.max(height, 1);
-        scaleX.value = Math.min(1.05, Math.max(0.96, 1 + Math.abs(dx) * 0.08 - Math.abs(dy) * 0.035));
-        scaleY.value = Math.min(1.05, Math.max(0.96, 1 + Math.abs(dy) * 0.08 - Math.abs(dx) * 0.035));
+        scaleX.value = Math.min(
+          1.05,
+          Math.max(0.96, 1 + Math.abs(dx) * 0.08 - Math.abs(dy) * 0.035),
+        );
+        scaleY.value = Math.min(
+          1.05,
+          Math.max(0.96, 1 + Math.abs(dy) * 0.08 - Math.abs(dx) * 0.035),
+        );
       }
     },
     [downX, downY, liquid?.elasticEffect, scaleX, scaleY, touchX, touchY],
@@ -230,23 +242,30 @@ export function SkiaGlassSurface({
   // 液态模式允许捕获区按折射/模糊参数外扩（对齐原生 capturePaddingPx 的保守值）。
   const maxSnapshotOffset = useMemo(() => {
     if (!useLiquid) return 1;
-    const paddingDp = Math.max(liquid?.refractionHeight ?? 20, liquid?.refractionOffset ?? 70) + (liquid?.blurRadius ?? 10) * 2 + 4;
+    const paddingDp =
+      Math.max(liquid?.refractionHeight ?? 20, liquid?.refractionOffset ?? 70) +
+      (liquid?.blurRadius ?? 10) * 2 +
+      4;
     return paddingDp + 1;
   }, [liquid?.blurRadius, liquid?.refractionHeight, liquid?.refractionOffset, useLiquid]);
 
   const snapshotCoordinates = useMemo(
-    () => snapshot ? normalizeNativeSnapshotCoordinates(snapshot, nativePixelRatio) : null,
+    () => (snapshot ? normalizeNativeSnapshotCoordinates(snapshot, nativePixelRatio) : null),
     [snapshot],
   );
 
   const snapshotFrame = useMemo(
-    () => snapshotCoordinates
-      ? normalizeSnapshotFrame({
-          ...snapshotCoordinates,
-          canvasWidth: canvasW,
-          canvasHeight: canvasH,
-        }, maxSnapshotOffset)
-      : null,
+    () =>
+      snapshotCoordinates
+        ? normalizeSnapshotFrame(
+            {
+              ...snapshotCoordinates,
+              canvasWidth: canvasW,
+              canvasHeight: canvasH,
+            },
+            maxSnapshotOffset,
+          )
+        : null,
     [canvasH, canvasW, maxSnapshotOffset, snapshotCoordinates],
   );
 
@@ -279,14 +298,24 @@ export function SkiaGlassSurface({
       sourceOffsetY: snapshotCoordinates.sourceOffsetY,
       contentScale: snapshotCoordinates.contentScale,
     });
-  }, [useLiquid, snapshotCoordinates, canvasW, canvasH, radius, liquid?.refractionHeight, liquid?.refractionOffset, liquid?.dispersion, liquid?.blurRadius]);
+  }, [
+    useLiquid,
+    snapshotCoordinates,
+    canvasW,
+    canvasH,
+    radius,
+    liquid?.refractionHeight,
+    liquid?.refractionOffset,
+    liquid?.dispersion,
+    liquid?.blurRadius,
+  ]);
 
   const showSnapshot = Boolean(snapshotImage && snapshotFrame) && !reduceTransparency;
   const baseFill = reduceTransparency
     ? OPAQUE_FALLBACK_FILL
     : useLiquid
-      ? LIQUID_BASE_FILL
-      : look.baseFill;
+    ? LIQUID_BASE_FILL
+    : look.baseFill;
   const overlayFill = reduceTransparency ? null : useLiquid ? LIQUID_OVERLAY_FILL : look.overlay;
   const blur = blurRadiusForIntensity(intensity);
 
@@ -391,7 +420,13 @@ export function SkiaGlassSurface({
           </Rect>
           {/* 液态触摸光晕。 */}
           {useLiquid && liquid?.touchEffect ? (
-            <Circle cx={touchX} cy={touchY} r={glowRadius} color="rgba(255, 255, 255, 0.55)" opacity={glowOpacity} />
+            <Circle
+              cx={touchX}
+              cy={touchY}
+              r={glowRadius}
+              color="rgba(255, 255, 255, 0.55)"
+              opacity={glowOpacity}
+            />
           ) : null}
         </Group>
       </Canvas>

@@ -10,9 +10,14 @@ export async function uploadFileBinary(
   onProgress: UploadProgress,
   failureLabel: UploadFailureLabel,
 ): Promise<void> {
-  const response = await ReactNativeBlobUtil
-    .fetch('PUT', uploadUrl, { ...headers, 'Content-Type': headers['Content-Type'] }, ReactNativeBlobUtil.wrap(localPath))
-    .uploadProgress({ interval: 120 }, (sent, total) => onProgress(total > 0 ? Math.round((sent / total) * 100) : 0));
+  const response = await ReactNativeBlobUtil.fetch(
+    'PUT',
+    uploadUrl,
+    { ...headers, 'Content-Type': headers['Content-Type'] },
+    ReactNativeBlobUtil.wrap(localPath),
+  ).uploadProgress({ interval: 120 }, (sent, total) =>
+    onProgress(total > 0 ? Math.round((sent / total) * 100) : 0),
+  );
 
   const status = response.info().status;
   if (status < 200 || status >= 300) {

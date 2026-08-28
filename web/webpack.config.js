@@ -23,16 +23,7 @@ module.exports = {
   },
   resolve: {
     // web 专属扩展名优先（react-native-safe-area-context 的 .web.tsx 依赖此解析）
-    extensions: [
-      '.web.js',
-      '.web.ts',
-      '.web.tsx',
-      '.js',
-      '.jsx',
-      '.ts',
-      '.tsx',
-      '.json',
-    ],
+    extensions: ['.web.js', '.web.ts', '.web.tsx', '.js', '.jsx', '.ts', '.tsx', '.json'],
     alias: {
       // 把 react-native 精确替换为 react-native-web
       'react-native$': 'react-native-web',
@@ -43,7 +34,10 @@ module.exports = {
         'node_modules/@react-native-async-storage/async-storage/lib/module/index.js',
       ),
       // reanimated 的 Web 运行时通过该别名读取包版本信息。
-      'react-native-reanimated/package.json$': path.resolve(appDirectory, 'node_modules/react-native-reanimated/package.json'),
+      'react-native-reanimated/package.json$': path.resolve(
+        appDirectory,
+        'node_modules/react-native-reanimated/package.json',
+      ),
     },
   },
   module: {

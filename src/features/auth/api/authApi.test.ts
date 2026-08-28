@@ -82,14 +82,19 @@ describe('authApi.login', () => {
         if (requests.filter(request => request.url.includes('/flows/executor/')).length === 2) {
           return jsonResponse({ component: 'ak-stage-password' });
         }
-        return jsonResponse({ component: 'xak-flow-redirect', to: '/application/o/authorize/?client_id=test' });
+        return jsonResponse({
+          component: 'xak-flow-redirect',
+          to: '/application/o/authorize/?client_id=test',
+        });
       }
 
       if (url.includes('/application/o/authorize/')) {
         return {
           ok: false,
           status: 302,
-          headers: new Headers({ location: `diethealth://oauth/callback/?code=authorization-code&state=${state}` }),
+          headers: new Headers({
+            location: `diethealth://oauth/callback/?code=authorization-code&state=${state}`,
+          }),
           text: async () => '',
           json: async () => ({}),
         } as Response;
@@ -116,7 +121,9 @@ describe('authApi.login', () => {
     expect(firstFlowHeaders.Origin).toBe('https://auth.lovedage.com:8093');
     expect(secondFlowHeaders.Origin).toBe('https://auth.lovedage.com:8093');
     expect(firstFlowHeaders.Referer).toBe(
-      `https://auth.lovedage.com:8093/if/flow/default-authentication-flow/?query=${encodeURIComponent(flowQuery)}`,
+      `https://auth.lovedage.com:8093/if/flow/default-authentication-flow/?query=${encodeURIComponent(
+        flowQuery,
+      )}`,
     );
     expect(secondFlowHeaders.Referer).toBe(firstFlowHeaders.Referer);
     expect((requests[3].init as RequestInit & { redirect?: string }).redirect).toBe('manual');
@@ -142,21 +149,28 @@ describe('authApi.register', () => {
       const url = String(input);
       requests.push({ url, init });
       if (requests.length === 1) {
-        return jsonResponse({
-          component: 'ak-stage-prompt',
-          fields: [
-            { field_key: 'username' },
-            { field_key: 'nickname' },
-            { field_key: 'email' },
-            { field_key: 'password' },
-            { field_key: 'password-repeat' },
-          ],
-        }, { 'x-authentik-id': 'registration-flow-id' });
+        return jsonResponse(
+          {
+            component: 'ak-stage-prompt',
+            fields: [
+              { field_key: 'username' },
+              { field_key: 'nickname' },
+              { field_key: 'email' },
+              { field_key: 'password' },
+              { field_key: 'password-repeat' },
+            ],
+          },
+          { 'x-authentik-id': 'registration-flow-id' },
+        );
       }
       return jsonResponse({ component: 'ak-stage-email' });
     }) as typeof fetch;
 
-    await authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' });
+    await authApi.register({
+      username: 'new-user',
+      email: 'new@example.com',
+      password: 'secret123',
+    });
 
     const body = JSON.parse(String(requests[1].init?.body));
     expect(body).toMatchObject({
@@ -172,8 +186,12 @@ describe('authApi.register', () => {
     const postFlowHeaders = requests[1].init?.headers as Record<string, string>;
     expect(getFlowHeaders.Origin).toBe('https://auth.lovedage.com:8093');
     expect(postFlowHeaders.Origin).toBe('https://auth.lovedage.com:8093');
-    expect(requests[0].url).toBe('https://auth.lovedage.com:8093/api/v3/flows/executor/email-registration/');
-    expect(getFlowHeaders.Referer).toBe('https://auth.lovedage.com:8093/if/flow/email-registration/?query=');
+    expect(requests[0].url).toBe(
+      'https://auth.lovedage.com:8093/api/v3/flows/executor/email-registration/',
+    );
+    expect(getFlowHeaders.Referer).toBe(
+      'https://auth.lovedage.com:8093/if/flow/email-registration/?query=',
+    );
     expect(postFlowHeaders.Referer).toBe(getFlowHeaders.Referer);
     expect(getFlowHeaders.Accept).toBe('application/json');
     expect(postFlowHeaders.Accept).toBe('application/json');
@@ -267,7 +285,9 @@ describe('authApi.register', () => {
       return jsonResponse({ component: 'ak-stage-email' });
     }) as typeof fetch;
 
-    await expect(authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' })).resolves.toEqual({
+    await expect(
+      authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' }),
+    ).resolves.toEqual({
       status: 'verification_required',
       username: 'new-user',
       email: 'new@example.com',
@@ -288,8 +308,9 @@ describe('authApi.register', () => {
       });
     }) as typeof fetch;
 
-    await expect(authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' }))
-      .resolves.toMatchObject({ status: 'verification_required' });
+    await expect(
+      authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' }),
+    ).resolves.toMatchObject({ status: 'verification_required' });
     expect(requests).toHaveLength(2);
   });
 
@@ -297,15 +318,19 @@ describe('authApi.register', () => {
     let step = 0;
     globalThis.fetch = jest.fn(async () => {
       step += 1;
-      if (step === 1) return jsonResponse({ component: 'ak-stage-prompt', fields: [{ field_key: 'username' }] });
+      if (step === 1)
+        return jsonResponse({ component: 'ak-stage-prompt', fields: [{ field_key: 'username' }] });
       return jsonResponse({
         component: 'ak-stage-email',
-        response_errors: { non_field_errors: [{ string: 'Email delivery failed.', code: 'delivery-failed' }] },
+        response_errors: {
+          non_field_errors: [{ string: 'Email delivery failed.', code: 'delivery-failed' }],
+        },
       });
     }) as typeof fetch;
 
-    await expect(authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' }))
-      .rejects.toThrow('Email delivery failed.');
+    await expect(
+      authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' }),
+    ).rejects.toThrow('Email delivery failed.');
     expect(step).toBe(2);
   });
 
@@ -317,11 +342,21 @@ describe('authApi.register', () => {
       if (requests.length === 1) {
         return jsonResponse({ component: 'ak-stage-prompt', fields: [{ field_key: 'username' }] });
       }
-      return new Promise<Response>(resolve => { finishPost = resolve; });
+      return new Promise<Response>(resolve => {
+        finishPost = resolve;
+      });
     }) as typeof fetch;
 
-    const first = authApi.register({ username: ' New-User ', email: 'NEW@example.com', password: 'secret123' });
-    const second = authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' });
+    const first = authApi.register({
+      username: ' New-User ',
+      email: 'NEW@example.com',
+      password: 'secret123',
+    });
+    const second = authApi.register({
+      username: 'new-user',
+      email: 'new@example.com',
+      password: 'secret123',
+    });
     while (!finishPost) await Promise.resolve();
     finishPost(jsonResponse({ component: 'ak-stage-email' }));
 
@@ -338,7 +373,12 @@ describe('authApi.register', () => {
         return jsonResponse(
           {
             component: 'ak-stage-prompt',
-            fields: [{ field_key: 'username' }, { field_key: 'email' }, { field_key: 'password' }, { field_key: 'password-repeat' }],
+            fields: [
+              { field_key: 'username' },
+              { field_key: 'email' },
+              { field_key: 'password' },
+              { field_key: 'password-repeat' },
+            ],
           },
           { 'x-authentik-id': 'flow-session-abc' },
         );
@@ -346,7 +386,11 @@ describe('authApi.register', () => {
       return jsonResponse({ component: 'ak-stage-email' });
     }) as typeof fetch;
 
-    await authApi.register({ username: 'new-user', email: 'new@example.com', password: 'secret123' });
+    await authApi.register({
+      username: 'new-user',
+      email: 'new@example.com',
+      password: 'secret123',
+    });
 
     const postInit = requests[1].init as { headers?: Record<string, string> };
     expect(postInit?.headers?.['x-authentik-id']).toBe('flow-session-abc');
@@ -392,8 +436,9 @@ describe('authApi.register', () => {
       });
     }) as typeof fetch;
 
-    await expect(authApi.register({ username: 'taken', email: 'taken@example.com', password: 'secret123' }))
-      .rejects.toThrow('用户名已被占用');
+    await expect(
+      authApi.register({ username: 'taken', email: 'taken@example.com', password: 'secret123' }),
+    ).rejects.toThrow('用户名已被占用');
     expect(requests).toHaveLength(2);
   });
 
@@ -434,7 +479,9 @@ describe('authApi.resendVerificationEmail', () => {
     const getHeaders = requests[0].init?.headers as Record<string, string>;
     const postHeaders = requests[1].init?.headers as Record<string, string>;
     expect(getHeaders.Origin).toBe('https://auth.lovedage.com:8093');
-    expect(getHeaders.Referer).toBe('https://auth.lovedage.com:8093/if/flow/email-verification-resend/?query=');
+    expect(getHeaders.Referer).toBe(
+      'https://auth.lovedage.com:8093/if/flow/email-verification-resend/?query=',
+    );
     expect(postHeaders.Referer).toBe(getHeaders.Referer);
   });
 });

@@ -3,6 +3,15 @@ module.exports = {
   testEnvironment: 'node',
   setupFiles: ['<rootDir>/jest/setup.js'],
   transform: { '^.+[.](js|ts|tsx)$': 'babel-jest' },
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.test.{ts,tsx}',
+    '!src/**/index.ts',
+    '!src/**/*Types.ts',
+    '!src/**/*.types.ts',
+    '!src/shared/config/**',
+    '!src/shared/native/*NativeComponent.ts',
+  ],
   moduleNameMapper: {
     '^react-native-get-random-values$': '<rootDir>/jest/rngMock.js',
     '^@shopify/react-native-skia$': '<rootDir>/jest/skiaMock.js',

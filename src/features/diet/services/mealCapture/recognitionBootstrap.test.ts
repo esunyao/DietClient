@@ -1,11 +1,26 @@
-import { loadRecognitionBootstrap, RECENT_MEAL_WINDOW_DAYS, recentMealQuery } from './recognitionBootstrap';
+import {
+  loadRecognitionBootstrap,
+  RECENT_MEAL_WINDOW_DAYS,
+  recentMealQuery,
+} from './recognitionBootstrap';
 import type { CapturePolicy } from '../../api/nutriTypes';
 
-const policy: CapturePolicy = { maxImageCount: 10, maxFileSizeBytes: 10 * 1024 * 1024, allowedContentTypes: ['image/jpeg'], sessionExpiresInSeconds: 86_400, maxDraftSessionCount: 5, draftExpiresInSeconds: 86_400 };
+const policy: CapturePolicy = {
+  maxImageCount: 10,
+  maxFileSizeBytes: 10 * 1024 * 1024,
+  allowedContentTypes: ['image/jpeg'],
+  sessionExpiresInSeconds: 86_400,
+  maxDraftSessionCount: 5,
+  draftExpiresInSeconds: 86_400,
+};
 
 describe('recognition bootstrap', () => {
   it('queries at most the recent thirty-day window', () => {
-    expect(recentMealQuery(new Date(2026, 7, 18))).toEqual({ dateFrom: '2026-07-19', dateTo: '2026-08-18', pageSize: 6 });
+    expect(recentMealQuery(new Date(2026, 7, 18))).toEqual({
+      dateFrom: '2026-07-19',
+      dateTo: '2026-08-18',
+      pageSize: 6,
+    });
     expect(RECENT_MEAL_WINDOW_DAYS).toBe(30);
   });
 

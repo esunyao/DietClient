@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ShieldAlert, Trash2 } from 'lucide-react-native';
@@ -79,18 +73,38 @@ export function DestructiveConfirmSheet({
         <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
           <Pressable accessibilityLabel="关闭删除确认" onPress={onCancel} style={styles.backdrop} />
         </Animated.View>
-        <Animated.View style={[styles.cardWrap, { paddingBottom: Math.max(insets.bottom, spacing.md) }, cardStyle]}>
+        <Animated.View
+          style={[
+            styles.cardWrap,
+            { paddingBottom: Math.max(insets.bottom, spacing.md) },
+            cardStyle,
+          ]}
+        >
           <GlassSurface elevated variant="navigation" cornerRadius={radii.lg} style={styles.card}>
             <View style={styles.handle} />
-            <View style={styles.iconWrap}><ShieldAlert color={colors.red} size={22} strokeWidth={2.2} /></View>
+            <View style={styles.iconWrap}>
+              <ShieldAlert color={colors.red} size={22} strokeWidth={2.2} />
+            </View>
             <Text style={styles.title}>{title}</Text>
-            <Text numberOfLines={2} style={styles.summary}>{summary}</Text>
+            <Text numberOfLines={2} style={styles.summary}>
+              {summary}
+            </Text>
             <Text style={styles.detail}>{detail}</Text>
             <View style={styles.actions}>
-              <Pressable accessibilityRole="button" disabled={confirming} onPress={onCancel} style={[styles.action, styles.keepAction, confirming && styles.disabled]}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={confirming}
+                onPress={onCancel}
+                style={[styles.action, styles.keepAction, confirming && styles.disabled]}
+              >
                 <Text style={styles.keepText}>保留记录</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" disabled={confirming} onPress={confirm} style={[styles.action, styles.deleteAction, confirming && styles.disabled]}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={confirming}
+                onPress={confirm}
+                style={[styles.action, styles.deleteAction, confirming && styles.disabled]}
+              >
                 <Trash2 color={colors.inverse} size={16} />
                 <Text style={styles.deleteText}>{confirming ? '正在删除…' : '删除记录'}</Text>
               </Pressable>
@@ -107,13 +121,57 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: colors.scrim },
   cardWrap: { paddingHorizontal: spacing.md },
   card: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg },
-  handle: { alignSelf: 'center', width: 34, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: spacing.md },
-  iconWrap: { alignSelf: 'center', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.redSoft, marginBottom: spacing.sm },
-  title: { color: colors.ink, fontFamily: fonts.display, fontSize: 19, fontWeight: '800', textAlign: 'center' },
-  summary: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '700', textAlign: 'center', marginTop: spacing.sm },
-  detail: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: spacing.xs },
+  handle: {
+    alignSelf: 'center',
+    width: 34,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.line,
+    marginBottom: spacing.md,
+  },
+  iconWrap: {
+    alignSelf: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.redSoft,
+    marginBottom: spacing.sm,
+  },
+  title: {
+    color: colors.ink,
+    fontFamily: fonts.display,
+    fontSize: 19,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  summary: {
+    color: colors.ink,
+    fontFamily: fonts.body,
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  detail: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
-  action: { flex: 1, minHeight: 46, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
+  action: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
   keepAction: { backgroundColor: colors.blueSoft, borderWidth: 1, borderColor: colors.line },
   deleteAction: { backgroundColor: colors.red },
   keepText: { color: colors.blue, fontFamily: fonts.body, fontSize: 14, fontWeight: '800' },

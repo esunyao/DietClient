@@ -1,121 +1,70 @@
 # DietClient
 
-Diet 健康管理客户端（React Native 0.86 + React 19 + TypeScript）。
+饮食健康管理客户端，基于 React Native 0.86、React 19 和 TypeScript，同时支持 Android、iOS 与 Web 调试壳。
 
-## 项目结构
+## Requirements
 
-```
+- Node.js `>=22.11.0`
+- npm（使用 `npm ci` 安装锁定依赖）
+- Android Studio / Android SDK（Android）
+- macOS、Xcode 与 CocoaPods（iOS）
+
+本机配置从 `src/shared/config/appConfig.ts.template` 复制；真实 `appConfig.ts` 已忽略，不能提交。
+
+## Structure
+
+```text
 src/
-├── features/            # 业务功能模块（按域拆分）
-│   ├── auth/            # 认证：api / screens / services / store
-│   ├── diet/            # 饮食：api / screens / services
-│   │   └── services/
-│   │       ├── mealDraft/    # 餐次草稿校验与格式化（每服务一文件夹）
-│   │       └── mealImage/    # 餐食图片上传（含 native/web 平台变体）
-│   └── profile/         # 健康档案：api / screens / services
-│       └── services/
-│           ├── avatar/        # 头像上传
-│           └── healthRecords/ # 健康记录缓存与删除摘要
-├── navigation/          # 导航栈与类型
-└── shared/              # 跨功能公共代码
-    ├── api/             # HTTP 客户端 / token 存储 / 无损 JSON
-    ├── components/      # 组件桶：fields（输入）/ overlays（浮层）/ surfaces（玻璃）+ ui 基础件
-    ├── upload/          # 公有上传管理类（native 文件流 + web Blob 统一封装）
-    ├── theme/ types/ validation/ perf/ scrollChrome/ animation/ native/ config/
+├── app/session/                 # token、用户、档案与会话生命周期
+├── features/
+│   ├── auth/                    # Authentik/OIDC、登录注册页面
+│   ├── diet/                    # 餐食识别、历史、详情、修正与统计页面
+│   └── profile/                 # 档案、头像和五类健康记录
+├── navigation/                  # 路由组合、参数类型、页面元数据
+└── shared/                      # HTTP、layout/primitives、主题、上传、动画和原生表面
 ```
 
-# Getting Started
+完整依赖规则、数据流和“应该修改哪里”索引见 [架构说明](docs/architecture.md)。
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
-
-## Step 1: Start Metro
-
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
+## Development
 
 ```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+npm ci
+npm start                 # Metro
+npm run android           # Android
+npm run ios               # iOS（macOS）
+npm run start:web         # http://localhost:8080
 ```
 
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+iOS 首次安装或原生依赖变化后运行：
 
 ```sh
 bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
 bundle exec pod install
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## Verification
 
 ```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+npm run format:check
+npm run lint
+npm run typecheck
+npm test -- --runInBand
+npm run build:web
+npm run verify             # 顺序执行以上全部检查
+npm run test:android       # 需要有效的本机 Android SDK
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Web notes
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+- `web/index.html` 的 `#root` 必须保持 flex 有界高度，否则 React Native Web 的滚动容器无法正确计算。
+- 页面外壳通过 CSS 变量 `--phone-w` / `--phone-h` 控制；全局 Web CSS 不与 React Native `StyleSheet` 混用。
+- `web/webpack.config.js` 的 Windows 路径排除规则需同时兼容 `/` 和 `\\`。
+- 头像 Web 上传使用对象存储预签名 PUT；存储桶必须允许本机开发 origin 的 CORS 预检。
 
-## Step 3: Modify your app
+## Troubleshooting
 
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- Android JVM 测试找不到 SDK：修正本机 `android/local.properties` 的 `sdk.dir`，不要提交该文件。
+- Web 上传被拦截：检查对象存储 CORS，而不是把预签名地址改成应用 API 地址。
+- iOS 原生依赖错误：在 macOS 重新执行 `bundle exec pod install`。
+- 结构审查中已知但未改变行为的问题见 [代码审查记录](docs/code-review-findings.md)。
