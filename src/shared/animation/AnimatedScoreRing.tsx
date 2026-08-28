@@ -13,7 +13,11 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
  * 页面打开时播放一次 SVG 扫入动画（UI 线程，一次性、不逐帧占用）；
  * 中心数字保持静态文本，避免 rAF + setState 在滚动中阻塞 JS 线程。
  */
-export function AnimatedScoreRing({ score, size = 104, caption = '综合评分' }: {
+export function AnimatedScoreRing({
+  score,
+  size = 104,
+  caption = '综合评分',
+}: {
   score: number;
   size?: number;
   caption?: string;
@@ -72,6 +76,12 @@ export function AnimatedScoreRing({ score, size = 104, caption = '综合评分' 
 const styles = StyleSheet.create({
   ringSvg: { position: 'absolute' },
   ringCenter: { alignItems: 'center', justifyContent: 'center' },
-  ringNumber: { color: colors.ink, fontFamily: fonts.display, fontSize: 27, fontWeight: '800', letterSpacing: -1 },
+  ringNumber: {
+    color: colors.ink,
+    fontFamily: fonts.display,
+    fontSize: 27,
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
   ringCaption: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, marginTop: -2 },
 });

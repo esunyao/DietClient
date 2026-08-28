@@ -1,4 +1,11 @@
-import type { Meal, MealCorrectionItem, MealCorrectionRequest, MealMetadataPatchRequest, MealType, NutrientValue } from '../../api/nutriTypes';
+import type {
+  Meal,
+  MealCorrectionItem,
+  MealCorrectionRequest,
+  MealMetadataPatchRequest,
+  MealType,
+  NutrientValue,
+} from '../../api/nutriTypes';
 
 export const mealTypeLabels: Record<MealType, string> = {
   breakfast: '早餐',
@@ -33,7 +40,13 @@ export function mealToCorrectionDraft(meal: Meal): MealCorrectionDraft {
     mealType: meal.mealType,
     timezone: meal.timezone,
     notes: meal.notes ?? '',
-    items: meal.items.map(item => ({ itemId: item.itemId, displayName: item.displayName, estimatedWeightG: item.estimatedWeightG, notes: item.notes, nutrients: cloneNutrients(item.nutrients) })),
+    items: meal.items.map(item => ({
+      itemId: item.itemId,
+      displayName: item.displayName,
+      estimatedWeightG: item.estimatedWeightG,
+      notes: item.notes,
+      nutrients: cloneNutrients(item.nutrients),
+    })),
   };
 }
 
@@ -56,10 +69,15 @@ export function serializeMealCorrection(draft: MealCorrectionDraft): MealCorrect
       displayName: item.displayName.trim() || '未命名菜品',
       estimatedWeightG: item.estimatedWeightG === null ? null : Number(item.estimatedWeightG),
       nutrients: item.nutrients.map(value => ({ ...value, amount: Number(value.amount) || 0 })),
-  })),
+    })),
   };
 }
 
 export function serializeMealMetadata(draft: MealCorrectionDraft): MealMetadataPatchRequest {
-  return { mealType: draft.mealType, consumedAt: draft.consumedAt, timezone: draft.timezone, notes: draft.notes.trim() || null };
+  return {
+    mealType: draft.mealType,
+    consumedAt: draft.consumedAt,
+    timezone: draft.timezone,
+    notes: draft.notes.trim() || null,
+  };
 }

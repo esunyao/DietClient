@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
  * 组件只引用 token，避免页面各自调出不同的“白卡 + 蓝绿光晕”。
  */
 export const colors = {
-  canvas: '#000000',
+  canvas: '#F2F2F7',
   surface: '#FFFFFF',
   surfaceMuted: '#F7F7F8',
   ink: '#1D1D1F',
@@ -67,7 +67,19 @@ export const spacing = {
 
 /** Web 用 Inter，原生端平稳回退到各平台系统字体。 */
 export const fonts = {
-  display: Platform.select({ web: 'Inter, system-ui, sans-serif', ios: 'System', android: 'sans-serif' }),
-  body: Platform.select({ web: 'Inter, system-ui, sans-serif', ios: 'System', android: 'sans-serif' }),
-  mono: Platform.select({ web: 'ui-monospace, SFMono-Regular, monospace', ios: 'Menlo', android: 'monospace' }),
+  display: Platform.select({
+    web: 'Inter, system-ui, sans-serif',
+    ios: 'System',
+    android: 'sans-serif',
+  }),
+  body: Platform.select({
+    web: 'Inter, system-ui, sans-serif',
+    ios: 'System',
+    android: 'sans-serif',
+  }),
+  mono: Platform.select({
+    web: 'ui-monospace, SFMono-Regular, monospace',
+    ios: 'Menlo',
+    android: 'monospace',
+  }),
 };

@@ -10,7 +10,8 @@ const healthRecordIdKeys = new Set([
   'itemId',
 ]);
 
-const unsafeIntegerPattern = /"(measurementId|goalId|allergyId|conditionId|restrictionId|foodId|mealId|imageId|itemId)"\s*:\s*(-?\d{16,})/g;
+const unsafeIntegerPattern =
+  /"(measurementId|goalId|allergyId|conditionId|restrictionId|foodId|mealId|imageId|itemId)"\s*:\s*(-?\d{16,})/g;
 
 /**
  * Orion 的健康记录主键是 64 位雪花 ID。JSON.parse 会把它变成 number 并丢失低位，

@@ -17,7 +17,11 @@ function asWeight(value: string): number | null {
   return /^\d{1,3}(?:\.\d)?$/.test(value) && number >= 10 && number <= 500 ? number : null;
 }
 
-export function WeightWheelField({ label, value, onChange }: {
+export function WeightWheelField({
+  label,
+  value,
+  onChange,
+}: {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -39,10 +43,18 @@ export function WeightWheelField({ label, value, onChange }: {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable accessibilityLabel={`选择${label}`} accessibilityRole="button" disabled={opening} onPress={open} style={[styles.control, opening && styles.controlDisabled]}>
+      <Pressable
+        accessibilityLabel={`选择${label}`}
+        accessibilityRole="button"
+        disabled={opening}
+        onPress={open}
+        style={[styles.control, opening && styles.controlDisabled]}
+      >
         <View style={styles.valueGroup}>
           <Scale color={colors.blue} size={18} />
-          <Text style={[styles.value, selected == null && styles.placeholder]}>{selected == null ? '请选择目标体重' : `${selected.toFixed(1)} kg`}</Text>
+          <Text style={[styles.value, selected == null && styles.placeholder]}>
+            {selected == null ? '请选择目标体重' : `${selected.toFixed(1)} kg`}
+          </Text>
         </View>
         <ChevronDown color={colors.muted} size={18} />
       </Pressable>
@@ -53,7 +65,17 @@ export function WeightWheelField({ label, value, onChange }: {
 const styles = StyleSheet.create({
   field: { gap: 7 },
   label: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },
-  control: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: colors.surface, paddingHorizontal: spacing.md },
+  control: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+  },
   controlDisabled: { opacity: 0.55 },
   valueGroup: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   value: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '700' },

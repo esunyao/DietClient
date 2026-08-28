@@ -19,7 +19,12 @@ type PercentageSliderFieldProps = {
   allowClear: boolean;
 };
 
-export function PercentageSliderField({ label, value, onChange, allowClear }: PercentageSliderFieldProps) {
+export function PercentageSliderField({
+  label,
+  value,
+  onChange,
+  allowClear,
+}: PercentageSliderFieldProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState<string | null>(null);
@@ -121,9 +126,18 @@ export function PercentageSliderField({ label, value, onChange, allowClear }: Pe
             />
             <Text style={styles.suffix}>%</Text>
           </View>
-          <Text style={[styles.hint, error && styles.error]}>{error ?? '可拖动滑块，或输入 0–100 的精确数值'}</Text>
+          <Text style={[styles.hint, error && styles.error]}>
+            {error ?? '可拖动滑块，或输入 0–100 的精确数值'}
+          </Text>
           {allowClear ? (
-            <Pressable accessibilityRole="button" onPress={() => { setDraft(''); setError(null); }} style={styles.clear}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setDraft('');
+                setError(null);
+              }}
+              style={styles.clear}
+            >
               <Text style={styles.clearText}>暂不设置体脂率</Text>
             </Pressable>
           ) : null}
@@ -136,16 +150,54 @@ export function PercentageSliderField({ label, value, onChange, allowClear }: Pe
 const styles = StyleSheet.create({
   field: { gap: 7 },
   label: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },
-  valueCard: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#DCE7F1', borderRadius: radii.md, backgroundColor: 'rgba(255,255,255,0.78)', paddingHorizontal: spacing.md },
+  valueCard: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#DCE7F1',
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    paddingHorizontal: spacing.md,
+  },
   value: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '800' },
   placeholder: { color: '#94A3B8', fontWeight: '500' },
   sheetContent: { gap: spacing.md, paddingVertical: spacing.sm },
-  metric: { color: colors.blue, fontFamily: fonts.display, fontSize: 28, fontWeight: '800', textAlign: 'center' },
-  inputShell: { minHeight: 54, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#DCE7F1', borderRadius: radii.md, backgroundColor: 'rgba(255,255,255,0.88)', paddingHorizontal: spacing.md },
+  metric: {
+    color: colors.blue,
+    fontFamily: fonts.display,
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  inputShell: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DCE7F1',
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    paddingHorizontal: spacing.md,
+  },
   inputShellError: { borderColor: colors.red, backgroundColor: colors.redSoft },
-  input: { flex: 1, color: colors.ink, fontFamily: fonts.body, fontSize: 18, fontWeight: '800', paddingVertical: 0 },
+  input: {
+    flex: 1,
+    color: colors.ink,
+    fontFamily: fonts.body,
+    fontSize: 18,
+    fontWeight: '800',
+    paddingVertical: 0,
+  },
   suffix: { color: colors.muted, fontFamily: fonts.body, fontSize: 16, fontWeight: '800' },
-  hint: { minHeight: 17, color: colors.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 },
+  hint: {
+    minHeight: 17,
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    lineHeight: 16,
+  },
   error: { color: colors.red },
   clear: { alignSelf: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   clearText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },

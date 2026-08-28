@@ -1,0 +1,34 @@
+* text=auto eol=lf
+
+# 跨平台源码统一使用 LF，避免 Windows 编辑器制造整库伪 diff。
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.kt text eol=lf
+*.kts text eol=lf
+*.gradle text eol=lf
+*.xml text eol=lf
+*.agsl text eol=lf
+*.h text eol=lf
+*.m text eol=lf
+*.mm text eol=lf
+*.rb text eol=lf
+*.podspec text eol=lf
+*.pbxproj text eol=lf
+
+# Windows 脚本保留原生行尾。
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制资源不得参与文本规范化。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.keystore binary

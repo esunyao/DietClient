@@ -23,7 +23,9 @@ function toPickerDate(value: string): Date {
 function formatDisplay(value: string, mode: DateWheelMode): string {
   const date = toPickerDate(value);
   const datePart = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-  return mode === 'datetime' ? `${datePart} ${pad(date.getHours())}:${pad(date.getMinutes())}` : datePart;
+  return mode === 'datetime'
+    ? `${datePart} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+    : datePart;
 }
 
 function serialize(date: Date, mode: DateWheelMode): string {
@@ -31,7 +33,15 @@ function serialize(date: Date, mode: DateWheelMode): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-export function DateWheelField({ label, value, onChange, optional = false, mode = 'date', minimumDate, maximumDate }: {
+export function DateWheelField({
+  label,
+  value,
+  onChange,
+  optional = false,
+  mode = 'date',
+  minimumDate,
+  maximumDate,
+}: {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -43,18 +53,31 @@ export function DateWheelField({ label, value, onChange, optional = false, mode 
   const [open, setOpen] = useState(false);
   const selectedDate = useMemo(() => toPickerDate(value), [value]);
   const [draft, setDraft] = useState(selectedDate);
-  useEffect(() => { if (open) setDraft(selectedDate); }, [open, selectedDate]);
+  useEffect(() => {
+    if (open) setDraft(selectedDate);
+  }, [open, selectedDate]);
 
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.controlRow}>
-        <Pressable accessibilityLabel={`选择${label}`} onPress={() => setOpen(true)} style={styles.control}>
-          <Text numberOfLines={1} style={[styles.value, !value && styles.placeholder]}>{value ? formatDisplay(value, mode) : '请选择日期'}</Text>
+        <Pressable
+          accessibilityLabel={`选择${label}`}
+          onPress={() => setOpen(true)}
+          style={styles.control}
+        >
+          <Text numberOfLines={1} style={[styles.value, !value && styles.placeholder]}>
+            {value ? formatDisplay(value, mode) : '请选择日期'}
+          </Text>
           <CalendarDays color={colors.blue} size={18} />
         </Pressable>
         {optional && value ? (
-          <Pressable accessibilityLabel={`清除${label}`} hitSlop={8} onPress={() => onChange('')} style={styles.clear}>
+          <Pressable
+            accessibilityLabel={`清除${label}`}
+            hitSlop={8}
+            onPress={() => onChange('')}
+            style={styles.clear}
+          >
             <X color={colors.muted} size={16} />
             <Text style={styles.clearText}>清除</Text>
           </Pressable>
@@ -62,12 +85,26 @@ export function DateWheelField({ label, value, onChange, optional = false, mode 
       </View>
       <HealthPickerSheet
         onCancel={() => setOpen(false)}
-        onConfirm={() => { onChange(serialize(draft, mode)); setOpen(false); }}
+        onConfirm={() => {
+          onChange(serialize(draft, mode));
+          setOpen(false);
+        }}
         title={label}
         value={value}
         visible={open}
       >
-        <View style={styles.pickerWrap}><DatePicker date={draft} is24hourSource="locale" locale="zh-CN" maximumDate={maximumDate} minimumDate={minimumDate} mode={mode} onDateChange={setDraft} theme="light" /></View>
+        <View style={styles.pickerWrap}>
+          <DatePicker
+            date={draft}
+            is24hourSource="locale"
+            locale="zh-CN"
+            maximumDate={maximumDate}
+            minimumDate={minimumDate}
+            mode={mode}
+            onDateChange={setDraft}
+            theme="light"
+          />
+        </View>
       </HealthPickerSheet>
     </View>
   );
@@ -77,7 +114,19 @@ const styles = StyleSheet.create({
   field: { flex: 1, minWidth: 0, gap: 7 },
   label: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },
   controlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  control: { minHeight: 50, minWidth: 0, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: colors.surface, paddingHorizontal: spacing.md },
+  control: {
+    minHeight: 50,
+    minWidth: 0,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+  },
   value: { flexShrink: 1, color: colors.ink, fontFamily: fonts.body, fontSize: 15 },
   placeholder: { color: colors.placeholder },
   clear: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: spacing.sm },

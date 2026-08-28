@@ -1,10 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo } from 'react';
-import {
-  makeMutable,
-  useSharedValue,
-  withTiming,
-  type SharedValue,
-} from 'react-native-reanimated';
+import { makeMutable, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 
 import { durations, navigationTiming } from '../animation/config';
 

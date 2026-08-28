@@ -47,11 +47,7 @@ export function GlassSurface({
       blurType="systemUltraThinMaterialLight"
       overlayColor={variant === 'navigation' ? materials.chromeOverlay : materials.frostedOverlay}
       reducedTransparencyFallbackColor={colors.surface}
-      style={[
-        styles.surface,
-        variant === 'navigation' && styles.navigationSurface,
-        style,
-      ]}
+      style={[styles.surface, variant === 'navigation' && styles.navigationSurface, style]}
     >
       {sheen}
       {children}

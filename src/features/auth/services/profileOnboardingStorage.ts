@@ -1,7 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { User } from '../../../shared/types/api';
-
 const completedKeyFor = (userId: string) => `diet-client:profile-onboarding:completed:${userId}`;
 const pendingRegistrationKey = 'diet-client:profile-onboarding:pending-registration';
 
@@ -9,6 +7,12 @@ type PendingRegistration = {
   username: string;
   email: string;
 };
+
+interface OnboardingIdentity {
+  userId: string;
+  username: string;
+  email?: string | null;
+}
 
 function normalize(value: string | null | undefined): string {
   return value?.trim().toLocaleLowerCase() ?? '';
@@ -18,20 +22,24 @@ function normalize(value: string | null | undefined): string {
 export const profileOnboardingStorage = {
   markRegistrationPending: async (username: string, email: string): Promise<void> => {
     try {
-      await AsyncStorage.setItem(pendingRegistrationKey, JSON.stringify({
-        username: normalize(username),
-        email: normalize(email),
-      } satisfies PendingRegistration));
+      await AsyncStorage.setItem(
+        pendingRegistrationKey,
+        JSON.stringify({
+          username: normalize(username),
+          email: normalize(email),
+        } satisfies PendingRegistration),
+      );
     } catch {
       // Registration can still continue if the non-essential local marker is unavailable.
     }
   },
-  consumePendingFor: async (user: User): Promise<boolean> => {
+  consumePendingFor: async (user: OnboardingIdentity): Promise<boolean> => {
     try {
       const raw = await AsyncStorage.getItem(pendingRegistrationKey);
       if (!raw) return false;
       const pending = JSON.parse(raw) as PendingRegistration;
-      const matches = pending.username === normalize(user.username) ||
+      const matches =
+        pending.username === normalize(user.username) ||
         (Boolean(user.email) && pending.email === normalize(user.email));
       if (matches) await AsyncStorage.removeItem(pendingRegistrationKey);
       return matches;

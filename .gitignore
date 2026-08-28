@@ -95,3 +95,9 @@ src/shared/config/appConfig.ts
 
 # 猫娘DOC
 **/docs/
+
+# 项目架构与审查文档需要纳入版本控制。
+!/docs/
+/docs/*
+!/docs/architecture.md
+!/docs/code-review-findings.md

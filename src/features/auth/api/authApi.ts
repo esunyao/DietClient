@@ -18,56 +18,29 @@ import {
   AUTHENTIK_REDIRECT_URI,
   AUTHENTIK_SCOPES,
 } from '../../../shared/config/appConfig';
-import { tokenStorage } from '../../../shared/api/tokenStorage';
-import type { OidcTokenSet } from '../../../shared/types/api';
+import {
+  AuthentikFlowError,
+  type FlowChallenge,
+  type FlowChallengeResponder,
+  type LoginPayload,
+  type OidcTokenSet,
+  type RegisterPayload,
+  type RegistrationFieldErrors,
+  type RegistrationFieldName,
+  type RegistrationResult,
+} from './authTypes';
 
-export interface FlowChallenge {
-  component: string;
-  type?: string;
-  to?: string;
-  request_id?: string;
-  error_message?: string;
-  response_errors?: Record<string, Array<{ string?: string; code?: string }>>;
-  [key: string]: unknown;
-}
-
-export type FlowChallengeResponder = (
-  challenge: FlowChallenge,
-) => Promise<Record<string, unknown>>;
-
-export interface LoginPayload {
-  username: string;
-  password: string;
-  onChallenge?: FlowChallengeResponder;
-}
-
-export interface RegisterPayload {
-  username: string;
-  email: string;
-  password: string;
-  displayName?: string;
-  onChallenge?: FlowChallengeResponder;
-}
-
-export type RegistrationResult = {
-  status: 'verification_required';
-  username: string;
-  email: string;
-};
-
-export type RegistrationFieldName = 'username' | 'displayName' | 'email' | 'password' | 'confirmPassword';
-export type RegistrationFieldErrors = Partial<Record<RegistrationFieldName, string>>;
-
-export class AuthentikFlowError extends Error {
-  constructor(
-    message: string,
-    public readonly component?: string,
-    public readonly responseErrors?: FlowChallenge['response_errors'],
-  ) {
-    super(message);
-    this.name = 'AuthentikFlowError';
-  }
-}
+export {
+  AuthentikFlowError,
+  type FlowChallenge,
+  type FlowChallengeResponder,
+  type LoginPayload,
+  type OidcTokenSet,
+  type RegisterPayload,
+  type RegistrationFieldErrors,
+  type RegistrationFieldName,
+  type RegistrationResult,
+} from './authTypes';
 
 async function requestFlowExecutor(
   sessionId: string | null,
@@ -87,7 +60,9 @@ async function requestFlowExecutor(
     typeof options.body === 'string' ? options.body : undefined,
   );
   const responseHeaders = Object.fromEntries(
-    Object.entries(nativeResponse.headers).filter((entry): entry is [string, string] => entry[1] !== null),
+    Object.entries(nativeResponse.headers).filter(
+      (entry): entry is [string, string] => entry[1] !== null,
+    ),
   );
   return {
     ok: nativeResponse.status >= 200 && nativeResponse.status < 300,
@@ -120,12 +95,17 @@ function base64UrlEncode(bytes: Uint8Array): string {
     output += index + 2 < bytes.length ? alphabet[value & 63] : '=';
   }
   /* eslint-enable no-bitwise */
-  return output.replace(/\+/g, '-').replace(new RegExp('/', 'g'), '_').replace(new RegExp('=+$', 'g'), '');
+  return output
+    .replace(/\+/g, '-')
+    .replace(new RegExp('/', 'g'), '_')
+    .replace(new RegExp('=+$', 'g'), '');
 }
 
 function randomUrlValue(byteLength = 32): string {
   const bytes = new Uint8Array(byteLength);
-  const cryptoApi = (globalThis as unknown as { crypto?: { getRandomValues: (value: Uint8Array) => Uint8Array } }).crypto;
+  const cryptoApi = (
+    globalThis as unknown as { crypto?: { getRandomValues: (value: Uint8Array) => Uint8Array } }
+  ).crypto;
   if (!cryptoApi?.getRandomValues) {
     throw new AuthentikFlowError('当前设备不支持安全随机数，无法启动登录。');
   }
@@ -135,7 +115,9 @@ function randomUrlValue(byteLength = 32): string {
 
 export function createPkcePair(): { verifier: string; challenge: string } {
   const verifier = randomUrlValue(32);
-  const challenge = base64UrlEncode(sha256(new Uint8Array(Array.from(verifier, char => char.charCodeAt(0)))));
+  const challenge = base64UrlEncode(
+    sha256(new Uint8Array(Array.from(verifier, char => char.charCodeAt(0)))),
+  );
   return { verifier, challenge };
 }
 
@@ -168,7 +150,9 @@ class FlowExecutorSession {
     const headers: Record<string, string> = {
       Accept: 'application/json',
       Origin: AUTHENTIK_BASE_URL,
-      Referer: `${AUTHENTIK_BASE_URL}/if/flow/${this.flowSlug}/?query=${encodeURIComponent(this.query)}`,
+      Referer: `${AUTHENTIK_BASE_URL}/if/flow/${this.flowSlug}/?query=${encodeURIComponent(
+        this.query,
+      )}`,
     };
     if (this.flowId) {
       headers['x-authentik-id'] = this.flowId;
@@ -201,9 +185,14 @@ class FlowExecutorSession {
     const method = body ? 'POST' : 'GET';
     debugFlow(
       `#${this.diagnosticId} request=${this.requestCount} method=${method} ` +
-      `flow=${this.flowSlug} transport=${this.transport}`,
+        `flow=${this.flowSlug} transport=${this.transport}`,
     );
-    const response = await requestFlowExecutor(nativeSessionId, requestUrl, requestOptions, this.transport);
+    const response = await requestFlowExecutor(
+      nativeSessionId,
+      requestUrl,
+      requestOptions,
+      this.transport,
+    );
     // 记录首个 x-authentik-id 作为本次流程的会话标识（authentik 用它关联同一次流程的多轮请求）。
     const flowId = response.headers.get('x-authentik-id');
     if (flowId) {
@@ -226,7 +215,7 @@ class FlowExecutorSession {
         isSameExecutorPath && (isTrustedRelativeLocation || isTrustedAbsoluteLocation);
       debugFlow(
         `#${this.diagnosticId} redirect-check relative=${isTrustedRelativeLocation} ` +
-        `sameOrigin=${isTrustedAbsoluteLocation} samePath=${isSameExecutorPath}`,
+          `sameOrigin=${isTrustedAbsoluteLocation} samePath=${isSameExecutorPath}`,
       );
       // Authentik 2026.5 在一个阶段通过后使用同 Executor 的 302 推进流程。
       // 这里只跟随为 GET，绝不重发原表单 POST；响应中的新 x-authentik-id 已在
@@ -238,7 +227,7 @@ class FlowExecutorSession {
         const followUrl = `${AUTHENTIK_BASE_URL}${locationWithoutOrigin}`;
         debugFlow(
           `#${this.diagnosticId} response=${response.status} follow=GET ` +
-          `location=${locationPath} redirect=${executorRedirectCount + 1}`,
+            `location=${locationPath} redirect=${executorRedirectCount + 1}`,
         );
         return this.request(undefined, followUrl, executorRedirectCount + 1);
       }
@@ -254,7 +243,9 @@ class FlowExecutorSession {
       } catch {
         // 仅用于开发期诊断，无法解析时保留原始相对路径。
       }
-      debugFlow(`#${this.diagnosticId} response=${response.status} component=${redirect.component} location=${redirectPath}`);
+      debugFlow(
+        `#${this.diagnosticId} response=${response.status} component=${redirect.component} location=${redirectPath}`,
+      );
       return redirect;
     }
 
@@ -271,7 +262,9 @@ class FlowExecutorSession {
     if (!response.ok) {
       const errorPayload = payload as { error?: string; detail?: string };
       throw new AuthentikFlowError(
-        errorPayload.detail || errorPayload.error || `Authentik 流程请求失败（HTTP ${response.status}）。`,
+        errorPayload.detail ||
+          errorPayload.error ||
+          `Authentik 流程请求失败（HTTP ${response.status}）。`,
       );
     }
 
@@ -346,7 +339,9 @@ class FlowExecutorSession {
     if (!response.ok) {
       throw new AuthentikFlowError(`Authentik 授权请求失败（HTTP ${response.status}）。`);
     }
-    throw new AuthentikFlowError(text ? 'Authentik 没有返回授权回调地址。' : 'Authentik 授权请求没有返回回调地址。');
+    throw new AuthentikFlowError(
+      text ? 'Authentik 没有返回授权回调地址。' : 'Authentik 授权请求没有返回回调地址。',
+    );
   }
 }
 
@@ -433,12 +428,15 @@ export function getRegistrationFieldErrors(error: unknown): RegistrationFieldErr
     password: 'password',
     'password-repeat': 'confirmPassword',
   };
-  return Object.entries(error.responseErrors).reduce<RegistrationFieldErrors>((result, [field, errors]) => {
-    const formField = fieldMap[field];
-    const message = errors.map(item => item.string).find(Boolean);
-    if (formField && message) result[formField] = registrationErrorMessage(field, message);
-    return result;
-  }, {});
+  return Object.entries(error.responseErrors).reduce<RegistrationFieldErrors>(
+    (result, [field, errors]) => {
+      const formField = fieldMap[field];
+      const message = errors.map(item => item.string).find(Boolean);
+      if (formField && message) result[formField] = registrationErrorMessage(field, message);
+      return result;
+    },
+    {},
+  );
 }
 
 /**
@@ -474,7 +472,8 @@ function promptResponse(
     if (normalized.includes('email')) response[name] = values.email;
     else if (normalized.includes('user') || normalized === 'uid') response[name] = values.username;
     else if (normalized.includes('pass')) response[name] = values.password;
-    else if (normalized.includes('display') || normalized === 'name' || normalized === 'nickname') response[name] = values.displayName || values.username;
+    else if (normalized.includes('display') || normalized === 'name' || normalized === 'nickname')
+      response[name] = values.displayName || values.username;
   });
   return Object.keys(response).length > 1 ? response : null;
 }
@@ -483,12 +482,15 @@ export function resolveRegistrationNickname(username: string, displayName?: stri
   return displayName?.trim() || username.trim();
 }
 
-async function exchangeAuthorizationCode(to: string, verifier: string, expectedState: string): Promise<OidcTokenSet> {
+async function exchangeAuthorizationCode(
+  to: string,
+  verifier: string,
+  expectedState: string,
+): Promise<OidcTokenSet> {
   const queryStart = to.indexOf('?');
   const fragmentStart = to.indexOf('#', queryStart + 1);
-  const rawQuery = queryStart >= 0
-    ? to.slice(queryStart + 1, fragmentStart >= 0 ? fragmentStart : undefined)
-    : '';
+  const rawQuery =
+    queryStart >= 0 ? to.slice(queryStart + 1, fragmentStart >= 0 ? fragmentStart : undefined) : '';
   const callback = new URLSearchParams(rawQuery);
   const code = callback.get('code');
   const state = callback.get('state');
@@ -520,7 +522,9 @@ async function exchangeAuthorizationCode(to: string, verifier: string, expectedS
     error_description?: string;
   };
   if (!response.ok || !payload.access_token) {
-    throw new AuthentikFlowError(payload.error_description || `Token 交换失败（HTTP ${response.status}）。`);
+    throw new AuthentikFlowError(
+      payload.error_description || `Token 交换失败（HTTP ${response.status}）。`,
+    );
   }
   return {
     accessToken: payload.access_token,
@@ -548,27 +552,43 @@ async function completeFlow(
     if (stopAtComponents.has(challenge.component)) {
       if (isEmailStageSuccess(challenge)) return challenge;
       if (challenge.response_errors) {
-        throw new AuthentikFlowError(challengeError(challenge), challenge.component, challenge.response_errors);
+        throw new AuthentikFlowError(
+          challengeError(challenge),
+          challenge.component,
+          challenge.response_errors,
+        );
       }
       return challenge;
     }
-    if (challenge.component === 'ak-stage-access-denied' || challenge.component === 'ak-stage-flow-error') {
+    if (
+      challenge.component === 'ak-stage-access-denied' ||
+      challenge.component === 'ak-stage-flow-error'
+    ) {
       const message = String(
         challenge.error_message ||
           'Authentik 拒绝了本次请求。认证会话或 CSRF 校验未通过，请重试；若持续出现请联系管理员并提供请求编号。',
       );
-      const requestId = typeof challenge.request_id === 'string' ? `（请求编号：${challenge.request_id}）` : '';
+      const requestId =
+        typeof challenge.request_id === 'string' ? `（请求编号：${challenge.request_id}）` : '';
       throw new AuthentikFlowError(`${message}${requestId}`, challenge.component);
     }
     if (challenge.response_errors) {
-      throw new AuthentikFlowError(challengeError(challenge), challenge.component, challenge.response_errors);
+      throw new AuthentikFlowError(
+        challengeError(challenge),
+        challenge.component,
+        challenge.response_errors,
+      );
     }
 
     // 无进展检测：若返回与上一轮相同的 challenge（同组件、同字段）且无错误，
     // 说明 flow 卡住未推进。此时盲目重发相同数据只会得到误导性错误
     //（例如注册流程中用户已创建却弹回表单，重发即报“用户名已占用”）。
     const signature = challengeSignature(challenge);
-    if (previousSignature !== null && signature === previousSignature && !challenge.response_errors) {
+    if (
+      previousSignature !== null &&
+      signature === previousSignature &&
+      !challenge.response_errors
+    ) {
       throw new AuthentikFlowError(
         '认证流程未正常推进（请求可能已提交成功）。若为注册，请检查邮箱是否收到验证邮件，或稍后重试。',
         challenge.component,
@@ -579,7 +599,10 @@ async function completeFlow(
     let response: Record<string, unknown> | null = null;
     switch (challenge.component) {
       case 'ak-stage-identification':
-        response = { component: challenge.component, uid_field: (values.username || values.email || '').trim() };
+        response = {
+          component: challenge.component,
+          uid_field: (values.username || values.email || '').trim(),
+        };
         break;
       case 'ak-stage-password':
         response = { component: challenge.component, password: values.password };
@@ -598,15 +621,25 @@ async function completeFlow(
     }
 
     if (!response) {
-      throw new AuthentikFlowError(`客户端暂不支持认证组件：${challenge.component}。请更新客户端。`, challenge.component);
+      throw new AuthentikFlowError(
+        `客户端暂不支持认证组件：${challenge.component}。请更新客户端。`,
+        challenge.component,
+      );
     }
     challenge = await flow.submit(response);
   }
   throw new AuthentikFlowError('认证流程步骤过多，已停止本次请求。');
 }
 
+let getCurrentTokens: (() => OidcTokenSet | null) | null = null;
+
+/** app/session 注入凭证读取器，使 auth feature 不反向依赖应用层。 */
+export function configureAuthTokenProvider(provider: () => OidcTokenSet | null): void {
+  getCurrentTokens = provider;
+}
+
 export async function refreshAccessToken(): Promise<OidcTokenSet> {
-  const current = tokenStorage.get();
+  const current = getCurrentTokens?.();
   if (!current?.refreshToken) {
     throw new AuthentikFlowError('登录已失效，请重新登录。');
   }
@@ -657,16 +690,26 @@ async function performRegistration({
   const flow = new FlowExecutorSession(AUTHENTIK_ENROLLMENT_FLOW_SLUG, '', 'native');
   try {
     const first = await flow.start();
-    const result = await completeFlow(flow, first, {
-      username: normalizedUsername,
-      email: normalizedEmail,
-      password,
-      displayName: resolveRegistrationNickname(normalizedUsername, displayName),
-    }, onChallenge, new Set(['ak-stage-email']));
+    const result = await completeFlow(
+      flow,
+      first,
+      {
+        username: normalizedUsername,
+        email: normalizedEmail,
+        password,
+        displayName: resolveRegistrationNickname(normalizedUsername, displayName),
+      },
+      onChallenge,
+      new Set(['ak-stage-email']),
+    );
     if (result.component !== 'ak-stage-email') {
       throw new AuthentikFlowError('注册流程没有进入邮箱验证步骤。', result.component);
     }
-    return { status: 'verification_required', username: normalizedUsername, email: normalizedEmail };
+    return {
+      status: 'verification_required',
+      username: normalizedUsername,
+      email: normalizedEmail,
+    };
   } catch (error) {
     if (error instanceof AuthentikFlowError) throw error;
     throw new AuthentikFlowError('未能确认注册结果，请先检查验证邮件，不要重复提交相同账号。');
@@ -676,7 +719,9 @@ async function performRegistration({
 }
 
 function register(payload: RegisterPayload): Promise<RegistrationResult> {
-  const key = `${payload.username.trim().toLocaleLowerCase()}\n${payload.email.trim().toLocaleLowerCase()}`;
+  const key = `${payload.username.trim().toLocaleLowerCase()}\n${payload.email
+    .trim()
+    .toLocaleLowerCase()}`;
   const existing = registrationsInFlight.get(key);
   if (existing) return existing;
   const request = performRegistration(payload).finally(() => {
@@ -690,10 +735,18 @@ export const authApi = {
   login: async ({ username, password, onChallenge }: LoginPayload): Promise<OidcTokenSet> => {
     const pkce = createPkcePair();
     const authorization = createAuthorizationQuery(pkce);
-    const flow = new FlowExecutorSession(AUTHENTIK_AUTHENTICATION_FLOW_SLUG, authorization.flowQuery);
+    const flow = new FlowExecutorSession(
+      AUTHENTIK_AUTHENTICATION_FLOW_SLUG,
+      authorization.flowQuery,
+    );
     try {
       const first = await flow.start();
-      const result = await completeFlow(flow, first, { username: username.trim(), password }, onChallenge);
+      const result = await completeFlow(
+        flow,
+        first,
+        { username: username.trim(), password },
+        onChallenge,
+      );
       const flowRedirect = redirectResult(result);
       const callback = await flow.followRedirect(flowRedirect.to);
       return await exchangeAuthorizationCode(callback, pkce.verifier, authorization.state);
@@ -705,7 +758,11 @@ export const authApi = {
   register,
 
   resendVerificationEmail: async (email: string): Promise<void> => {
-    const flow = new FlowExecutorSession(AUTHENTIK_EMAIL_VERIFICATION_RESEND_FLOW_SLUG, '', 'native');
+    const flow = new FlowExecutorSession(
+      AUTHENTIK_EMAIL_VERIFICATION_RESEND_FLOW_SLUG,
+      '',
+      'native',
+    );
     try {
       const first = await flow.start();
       const result = await completeFlow(

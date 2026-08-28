@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -6,32 +6,28 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // 认证相关页面
-import {
-  EmailVerifiedScreen,
-  LoginScreen,
-  RegisterScreen,
-  VerifyEmailScreen,
-} from '../features/auth/screens/AuthScreens';
+import { EmailVerifiedScreen } from '../features/auth/screens/EmailVerifiedScreen';
+import { LoginScreen } from '../features/auth/screens/LoginScreen';
+import { RegisterScreen } from '../features/auth/screens/RegisterScreen';
+import { VerifyEmailScreen } from '../features/auth/screens/VerifyEmailScreen';
 // 会话/登录状态 Store
-import { useSessionStore } from '../features/auth/store/sessionStore';
+import { useSessionStore } from '../app/session/sessionStore';
+import { useSessionLifecycle } from '../app/session/useSessionLifecycle';
 // 饮食/主功能相关页面
-import {
-  MealPlanScreen,
-  ReportsScreen,
-  ScoreDetailScreen,
-  TrendsScreen,
-} from '../features/diet/screens/StaticScreens';
-import { HomeScreen } from '../features/diet/screens/StaticScreens';
+import { HomeScreen } from '../features/diet/screens/HomeScreen';
+import { MealPlanScreen } from '../features/diet/screens/MealPlanScreen';
+import { ReportsScreen } from '../features/diet/screens/ReportsScreen';
+import { ScoreDetailScreen } from '../features/diet/screens/ScoreDetailScreen';
+import { TrendsScreen } from '../features/diet/screens/TrendsScreen';
 import { RecognitionScreen } from '../features/diet/screens/RecognitionScreen';
 import { MealHistoryScreen } from '../features/diet/screens/MealHistoryScreen';
 import { MealDetailScreen } from '../features/diet/screens/MealDetailScreen';
 import { MealCorrectionScreen } from '../features/diet/screens/MealCorrectionScreen';
 // 个人中心相关页面
-import {
-  EditProfileScreen,
-  ProfileScreen,
-} from '../features/profile/screens/ProfileScreens';
-import { HealthRecordFormScreen, HealthRecordsScreen } from '../features/profile/screens/HealthRecords';
+import { EditProfileScreen } from '../features/profile/screens/EditProfileScreen';
+import { ProfileScreen } from '../features/profile/screens/ProfileScreen';
+import { HealthRecordFormScreen } from '../features/profile/screens/HealthRecordFormScreen';
+import { HealthRecordsScreen } from '../features/profile/screens/HealthRecordsScreen';
 // 主题 Token
 import { colors, fonts } from '../shared/theme/tokens';
 // 自定义毛玻璃 TabBar
@@ -76,9 +72,7 @@ const navigationTheme = {
 // 认证模块 Stack
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator
-      screenOptions={{ headerShown: false, animation: stackAnimation }}
-    >
+    <AuthStack.Navigator screenOptions={{ headerShown: false, animation: stackAnimation }}>
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
       <AuthStack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
@@ -90,9 +84,7 @@ function AuthNavigator() {
 // 首页模块 Stack
 function HomeNavigator() {
   return (
-    <HomeStack.Navigator
-      screenOptions={{ headerShown: false, animation: stackAnimation }}
-    >
+    <HomeStack.Navigator screenOptions={{ headerShown: false, animation: stackAnimation }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="ScoreDetail" component={ScoreDetailScreen} />
     </HomeStack.Navigator>
@@ -125,7 +117,11 @@ function ProfileNavigator() {
       screenOptions={{ headerShown: false, animation: 'fade' }}
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
-      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} initialParams={{ onboarding: profileOnboardingRequired }} />
+      <ProfileStack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        initialParams={{ onboarding: profileOnboardingRequired }}
+      />
       <ProfileStack.Screen name="HealthRecords" component={HealthRecordsScreen} />
       <ProfileStack.Screen name="HealthRecordForm" component={HealthRecordFormScreen} />
     </ProfileStack.Navigator>
@@ -147,36 +143,12 @@ function MainNavigator() {
         lazy: true,
       }}
     >
-      <Tab.Screen
-        name="HomeTab"
-        component={HomeNavigator}
-        options={{ title: '首页' }}
-      />
-        <Tab.Screen
-          name="RecognitionTab"
-          component={DietNavigator}
-          options={{ title: '记录' }}
-      />
-      <Tab.Screen
-        name="MealTab"
-        component={MealPlanScreen}
-        options={{ title: '配餐' }}
-      />
-      <Tab.Screen
-        name="TrendsTab"
-        component={TrendsScreen}
-        options={{ title: '趋势' }}
-      />
-      <Tab.Screen
-        name="ReportsTab"
-        component={ReportsScreen}
-        options={{ title: '报告' }}
-      />
-      <Tab.Screen
-        name="ProfileTab"
-        component={ProfileNavigator}
-        options={{ title: '我的' }}
-      />
+      <Tab.Screen name="HomeTab" component={HomeNavigator} options={{ title: '首页' }} />
+      <Tab.Screen name="RecognitionTab" component={DietNavigator} options={{ title: '记录' }} />
+      <Tab.Screen name="MealTab" component={MealPlanScreen} options={{ title: '配餐' }} />
+      <Tab.Screen name="TrendsTab" component={TrendsScreen} options={{ title: '趋势' }} />
+      <Tab.Screen name="ReportsTab" component={ReportsScreen} options={{ title: '报告' }} />
+      <Tab.Screen name="ProfileTab" component={ProfileNavigator} options={{ title: '我的' }} />
     </Tab.Navigator>
   );
 }
@@ -208,13 +180,9 @@ const linking = {
 };
 
 export function AppNavigator() {
+  useSessionLifecycle();
   const status = useSessionStore(state => state.status);
   const onboardingResolved = useSessionStore(state => state.onboardingResolved);
-  const hydrate = useSessionStore(state => state.hydrate);
-
-  useEffect(() => {
-    hydrate().catch(() => undefined);
-  }, [hydrate]);
 
   if (status === 'restoring' || (status === 'signedIn' && !onboardingResolved)) {
     return <SessionSplash />;

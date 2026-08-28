@@ -7,16 +7,284 @@ import { HealthPickerSheet } from '../overlays/HealthPickerSheet';
 
 export type DateWheelMode = 'date' | 'datetime';
 const pad = (value: number) => String(value).padStart(2, '0');
-function parse(value: string): Date { if (/^\d{4}-\d{2}-\d{2}$/.test(value)) { const [year, month, day] = value.split('-').map(Number); return new Date(year, month - 1, day); } const date = new Date(value); return Number.isNaN(date.getTime()) ? new Date() : date; }
-function serialize(date: Date, mode: DateWheelMode): string { return mode === 'datetime' ? date.toISOString() : `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
-function display(value: string, mode: DateWheelMode): string { const date = parse(value); const datePart = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; return mode === 'datetime' ? `${datePart} ${pad(date.getHours())}:${pad(date.getMinutes())}` : datePart; }
+function parse(value: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+function serialize(date: Date, mode: DateWheelMode): string {
+  return mode === 'datetime'
+    ? date.toISOString()
+    : `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+function display(value: string, mode: DateWheelMode): string {
+  const date = parse(value);
+  const datePart = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return mode === 'datetime'
+    ? `${datePart} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+    : datePart;
+}
 
 /** Web 使用日历/时间面板，日期绝不允许以文本方式手输。 */
-export function DateWheelField({ label, value, onChange, optional = false, mode = 'date' }: { label: string; value: string; onChange: (value: string) => void; optional?: boolean; mode?: DateWheelMode; minimumDate?: Date; maximumDate?: Date }) {
-  const [open, setOpen] = useState(false); const selected = useMemo(() => parse(value), [value]); const [draft, setDraft] = useState(selected); const [month, setMonth] = useState(new Date(selected.getFullYear(), selected.getMonth(), 1));
-  useEffect(() => { if (open) { setDraft(selected); setMonth(new Date(selected.getFullYear(), selected.getMonth(), 1)); } }, [open, selected]);
-  const start = new Date(month.getFullYear(), month.getMonth(), 1).getDay(); const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  return <View style={styles.field}><Text style={styles.label}>{label}</Text><View style={styles.controlRow}><Pressable accessibilityRole="button" accessibilityLabel={`选择${label}`} onPress={() => setOpen(true)} style={styles.control}><Text numberOfLines={1} style={[styles.value, !value && styles.placeholder]}>{value ? display(value, mode) : '请选择日期'}</Text><CalendarDays color={colors.blue} size={18} /></Pressable>{optional && value ? <Pressable accessibilityLabel={`清除${label}`} onPress={() => onChange('')} style={styles.clear}><X color={colors.muted} size={16} /><Text style={styles.clearText}>清除</Text></Pressable> : null}</View><HealthPickerSheet visible={open} title={label} value={value} onCancel={() => setOpen(false)} onConfirm={() => { onChange(serialize(draft, mode)); setOpen(false); }}><View style={styles.calendar}><View style={styles.monthHead}><Pressable accessibilityLabel="上个月" onPress={() => setMonth(current => new Date(current.getFullYear(), current.getMonth() - 1, 1))}><ChevronLeft color={colors.blue} size={20} /></Pressable><Text style={styles.monthTitle}>{month.getFullYear()} 年 {month.getMonth() + 1} 月</Text><Pressable accessibilityLabel="下个月" onPress={() => setMonth(current => new Date(current.getFullYear(), current.getMonth() + 1, 1))}><ChevronRight color={colors.blue} size={20} /></Pressable></View><View style={styles.week}>{['日', '一', '二', '三', '四', '五', '六'].map(day => <Text key={day} style={styles.weekText}>{day}</Text>)}</View><View style={styles.days}>{Array.from({ length: start }).map((_, index) => <View key={`empty-${index}`} style={styles.day} />)}{Array.from({ length: days }, (_, index) => index + 1).map(day => { const active = draft.getFullYear() === month.getFullYear() && draft.getMonth() === month.getMonth() && draft.getDate() === day; return <Pressable key={day} accessibilityRole="button" onPress={() => setDraft(current => new Date(month.getFullYear(), month.getMonth(), day, current.getHours(), current.getMinutes()))} style={[styles.day, active && styles.dayActive]}><Text style={[styles.dayText, active && styles.dayTextActive]}>{day}</Text></Pressable>; })}</View>{mode === 'datetime' ? <View style={styles.timeRow}><TimeColumn label="时" values={Array.from({ length: 24 }, (_, index) => index)} value={draft.getHours()} onChange={hour => setDraft(current => new Date(current.getFullYear(), current.getMonth(), current.getDate(), hour, current.getMinutes()))} /><TimeColumn label="分" values={[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]} value={draft.getMinutes()} onChange={minute => setDraft(current => new Date(current.getFullYear(), current.getMonth(), current.getDate(), current.getHours(), minute))} /></View> : null}</View></HealthPickerSheet></View>;
+export function DateWheelField({
+  label,
+  value,
+  onChange,
+  optional = false,
+  mode = 'date',
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  optional?: boolean;
+  mode?: DateWheelMode;
+  minimumDate?: Date;
+  maximumDate?: Date;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = useMemo(() => parse(value), [value]);
+  const [draft, setDraft] = useState(selected);
+  const [month, setMonth] = useState(new Date(selected.getFullYear(), selected.getMonth(), 1));
+  useEffect(() => {
+    if (open) {
+      setDraft(selected);
+      setMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+    }
+  }, [open, selected]);
+  const start = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
+  const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.controlRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`选择${label}`}
+          onPress={() => setOpen(true)}
+          style={styles.control}
+        >
+          <Text numberOfLines={1} style={[styles.value, !value && styles.placeholder]}>
+            {value ? display(value, mode) : '请选择日期'}
+          </Text>
+          <CalendarDays color={colors.blue} size={18} />
+        </Pressable>
+        {optional && value ? (
+          <Pressable
+            accessibilityLabel={`清除${label}`}
+            onPress={() => onChange('')}
+            style={styles.clear}
+          >
+            <X color={colors.muted} size={16} />
+            <Text style={styles.clearText}>清除</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <HealthPickerSheet
+        visible={open}
+        title={label}
+        value={value}
+        onCancel={() => setOpen(false)}
+        onConfirm={() => {
+          onChange(serialize(draft, mode));
+          setOpen(false);
+        }}
+      >
+        <View style={styles.calendar}>
+          <View style={styles.monthHead}>
+            <Pressable
+              accessibilityLabel="上个月"
+              onPress={() =>
+                setMonth(current => new Date(current.getFullYear(), current.getMonth() - 1, 1))
+              }
+            >
+              <ChevronLeft color={colors.blue} size={20} />
+            </Pressable>
+            <Text style={styles.monthTitle}>
+              {month.getFullYear()} 年 {month.getMonth() + 1} 月
+            </Text>
+            <Pressable
+              accessibilityLabel="下个月"
+              onPress={() =>
+                setMonth(current => new Date(current.getFullYear(), current.getMonth() + 1, 1))
+              }
+            >
+              <ChevronRight color={colors.blue} size={20} />
+            </Pressable>
+          </View>
+          <View style={styles.week}>
+            {['日', '一', '二', '三', '四', '五', '六'].map(day => (
+              <Text key={day} style={styles.weekText}>
+                {day}
+              </Text>
+            ))}
+          </View>
+          <View style={styles.days}>
+            {Array.from({ length: start }).map((_, index) => (
+              <View key={`empty-${index}`} style={styles.day} />
+            ))}
+            {Array.from({ length: days }, (_, index) => index + 1).map(day => {
+              const active =
+                draft.getFullYear() === month.getFullYear() &&
+                draft.getMonth() === month.getMonth() &&
+                draft.getDate() === day;
+              return (
+                <Pressable
+                  key={day}
+                  accessibilityRole="button"
+                  onPress={() =>
+                    setDraft(
+                      current =>
+                        new Date(
+                          month.getFullYear(),
+                          month.getMonth(),
+                          day,
+                          current.getHours(),
+                          current.getMinutes(),
+                        ),
+                    )
+                  }
+                  style={[styles.day, active && styles.dayActive]}
+                >
+                  <Text style={[styles.dayText, active && styles.dayTextActive]}>{day}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {mode === 'datetime' ? (
+            <View style={styles.timeRow}>
+              <TimeColumn
+                label="时"
+                values={Array.from({ length: 24 }, (_, index) => index)}
+                value={draft.getHours()}
+                onChange={hour =>
+                  setDraft(
+                    current =>
+                      new Date(
+                        current.getFullYear(),
+                        current.getMonth(),
+                        current.getDate(),
+                        hour,
+                        current.getMinutes(),
+                      ),
+                  )
+                }
+              />
+              <TimeColumn
+                label="分"
+                values={[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]}
+                value={draft.getMinutes()}
+                onChange={minute =>
+                  setDraft(
+                    current =>
+                      new Date(
+                        current.getFullYear(),
+                        current.getMonth(),
+                        current.getDate(),
+                        current.getHours(),
+                        minute,
+                      ),
+                  )
+                }
+              />
+            </View>
+          ) : null}
+        </View>
+      </HealthPickerSheet>
+    </View>
+  );
 }
-function TimeColumn({ label, values, value, onChange }: { label: string; values: number[]; value: number; onChange: (value: number) => void }) { return <View style={styles.timeColumn}><Text style={styles.timeLabel}>{label}</Text><View style={styles.timeValues}>{values.map(item => <Pressable key={item} onPress={() => onChange(item)} style={[styles.timeValue, item === value && styles.timeValueActive]}><Text style={[styles.timeText, item === value && styles.timeTextActive]}>{pad(item)}</Text></Pressable>)}</View></View>; }
-const styles = StyleSheet.create({ field: { flex: 1, gap: 7 }, label: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }, controlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, control: { minHeight: 50, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: '#FFF', paddingHorizontal: spacing.md }, value: { color: colors.ink, fontFamily: fonts.body, fontSize: 13 }, placeholder: { color: '#94A3B8' }, clear: { flexDirection: 'row', alignItems: 'center', gap: 3 }, clearText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }, calendar: { gap: 9 }, monthHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, monthTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '800' }, week: { flexDirection: 'row' }, weekText: { flex: 1, color: colors.muted, textAlign: 'center', fontFamily: fonts.body, fontSize: 11 }, days: { flexDirection: 'row', flexWrap: 'wrap' }, day: { width: '14.285%', height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 17 }, dayActive: { backgroundColor: colors.blue }, dayText: { color: colors.ink, fontFamily: fonts.body, fontSize: 13 }, dayTextActive: { color: '#FFF', fontWeight: '800' }, timeRow: { flexDirection: 'row', gap: 11, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 9 }, timeColumn: { flex: 1, gap: 5 }, timeLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, fontWeight: '800' }, timeValues: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 }, timeValue: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8, backgroundColor: '#F1F5F9' }, timeValueActive: { backgroundColor: 'rgba(0,113,227,0.14)' }, timeText: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 }, timeTextActive: { color: colors.blue, fontWeight: '800' } });
+function TimeColumn({
+  label,
+  values,
+  value,
+  onChange,
+}: {
+  label: string;
+  values: number[];
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <View style={styles.timeColumn}>
+      <Text style={styles.timeLabel}>{label}</Text>
+      <View style={styles.timeValues}>
+        {values.map(item => (
+          <Pressable
+            key={item}
+            onPress={() => onChange(item)}
+            style={[styles.timeValue, item === value && styles.timeValueActive]}
+          >
+            <Text style={[styles.timeText, item === value && styles.timeTextActive]}>
+              {pad(item)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+const styles = StyleSheet.create({
+  field: { flex: 1, gap: 7 },
+  label: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' },
+  controlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  control: {
+    minHeight: 50,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: '#FFF',
+    paddingHorizontal: spacing.md,
+  },
+  value: { color: colors.ink, fontFamily: fonts.body, fontSize: 13 },
+  placeholder: { color: '#94A3B8' },
+  clear: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  clearText: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' },
+  calendar: { gap: 9 },
+  monthHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  monthTitle: { color: colors.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: '800' },
+  week: { flexDirection: 'row' },
+  weekText: {
+    flex: 1,
+    color: colors.muted,
+    textAlign: 'center',
+    fontFamily: fonts.body,
+    fontSize: 11,
+  },
+  days: { flexDirection: 'row', flexWrap: 'wrap' },
+  day: {
+    width: '14.285%',
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 17,
+  },
+  dayActive: { backgroundColor: colors.blue },
+  dayText: { color: colors.ink, fontFamily: fonts.body, fontSize: 13 },
+  dayTextActive: { color: '#FFF', fontWeight: '800' },
+  timeRow: {
+    flexDirection: 'row',
+    gap: 11,
+    borderTopColor: colors.line,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 9,
+  },
+  timeColumn: { flex: 1, gap: 5 },
+  timeLabel: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, fontWeight: '800' },
+  timeValues: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  timeValue: {
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  timeValueActive: { backgroundColor: 'rgba(0,113,227,0.14)' },
+  timeText: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
+  timeTextActive: { color: colors.blue, fontWeight: '800' },
+});

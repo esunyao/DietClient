@@ -21,7 +21,9 @@ export async function uploadBlob(
   await new Promise<void>((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open('PUT', uploadUrl);
-    Object.entries({ ...headers, 'Content-Type': headers['Content-Type'] }).forEach(([name, value]) => request.setRequestHeader(name, value));
+    Object.entries({ ...headers, 'Content-Type': headers['Content-Type'] }).forEach(
+      ([name, value]) => request.setRequestHeader(name, value),
+    );
     request.upload.onprogress = event => {
       if (event.lengthComputable) {
         onProgress(Math.round((event.loaded / event.total) * 100));

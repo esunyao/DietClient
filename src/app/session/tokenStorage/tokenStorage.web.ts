@@ -1,4 +1,4 @@
-import type { OidcTokenSet } from '../types/api';
+import type { OidcTokenSet } from '../../../features/auth/api/authTypes';
 import { parsePersistedTokens, serializeTokens } from './tokenStorageCodec';
 
 const STORAGE_KEY = 'diet.auth.tokens.v1';

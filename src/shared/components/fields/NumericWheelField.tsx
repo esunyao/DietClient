@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { inputStyle } from '../ui';
+import { inputStyle } from '../primitives';
 import { colors, fonts } from '../../theme/tokens';
 
 export type NumericWheelFieldProps = {
@@ -20,7 +20,15 @@ export function NumericWheelField({ label, value, onChange, placeholder }: Numer
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput accessibilityLabel={label} keyboardType="decimal-pad" onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#94A3B8" style={inputStyle} value={value} />
+      <TextInput
+        accessibilityLabel={label}
+        keyboardType="decimal-pad"
+        onChangeText={onChange}
+        placeholder={placeholder}
+        placeholderTextColor="#94A3B8"
+        style={inputStyle}
+        value={value}
+      />
     </View>
   );
 }

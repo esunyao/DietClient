@@ -23,11 +23,13 @@ export type RecognitionBootstrapLoaders = {
 };
 
 /** 三项首屏数据互不依赖；任一失败不得遮蔽其余成功结果。 */
-export async function loadRecognitionBootstrap(loaders: RecognitionBootstrapLoaders = {
-  policy: nutriApi.getCapturePolicy,
-  drafts: nutriApi.listCaptureDrafts,
-  history: () => nutriApi.listMeals(recentMealQuery()),
-}): Promise<RecognitionBootstrap> {
+export async function loadRecognitionBootstrap(
+  loaders: RecognitionBootstrapLoaders = {
+    policy: nutriApi.getCapturePolicy,
+    drafts: nutriApi.listCaptureDrafts,
+    history: () => nutriApi.listMeals(recentMealQuery()),
+  },
+): Promise<RecognitionBootstrap> {
   const [policy, drafts, history] = await Promise.allSettled([
     loaders.policy(),
     loaders.drafts(),

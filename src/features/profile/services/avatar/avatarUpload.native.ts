@@ -1,6 +1,12 @@
 import type { Asset } from 'react-native-image-picker';
 
-import { assertAvatarSize, makeAvatarFileName, resolveAvatarMimeType, type AvatarFile, type AvatarUploadProgress } from './avatarUpload.types';
+import {
+  assertAvatarSize,
+  makeAvatarFileName,
+  resolveAvatarMimeType,
+  type AvatarFile,
+  type AvatarUploadProgress,
+} from './avatarUpload.types';
 import { resolveLocalPath, readFileSize } from '../../../../shared/upload/nativeFile';
 import { uploadFileBinary } from '../../../../shared/upload/uploadFile';
 
@@ -13,7 +19,8 @@ export async function prepareAvatarFile(asset: Asset): Promise<AvatarFile> {
   }
 
   const contentType = resolveAvatarMimeType(asset);
-  const extension = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+  const extension =
+    contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
   const localPath = await resolveLocalPath(asset.uri, extension);
   const byteSize = await readFileSize(localPath);
 
@@ -29,6 +36,16 @@ export async function prepareAvatarFile(asset: Asset): Promise<AvatarFile> {
   };
 }
 
-export async function uploadAvatarBinary(file: AvatarFile, uploadUrl: string, onProgress: AvatarUploadProgress): Promise<void> {
-  await uploadFileBinary(file.uri, uploadUrl, { 'Content-Type': file.contentType }, onProgress, FAILURE_LABEL);
+export async function uploadAvatarBinary(
+  file: AvatarFile,
+  uploadUrl: string,
+  onProgress: AvatarUploadProgress,
+): Promise<void> {
+  await uploadFileBinary(
+    file.uri,
+    uploadUrl,
+    { 'Content-Type': file.contentType },
+    onProgress,
+    FAILURE_LABEL,
+  );
 }

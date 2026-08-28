@@ -1,53 +1,82 @@
-    # AGENT.md
+# DietClient Repository Guide
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Shell, encoding, and line endings
 
-## 项目概览
+- 默认使用 Git Bash 执行命令。
+- PowerShell 必须先设置 UTF-8：`chcp 65001; [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = [System.Text.UTF8Encoding]::new($false)`。
+- 不得仅凭终端乱码判断文件损坏。改写含非 ASCII 文本前先严格按 UTF-8 解码验证，并尽量保留原编码。
+- 源码使用 UTF-8 无 BOM 和 LF；`.bat/.cmd` 使用 CRLF。Windows PowerShell 5.1 的非 ASCII `.ps1` 可使用 UTF-8 BOM 与 CRLF。
+- 遵守 `.editorconfig`、`.gitattributes`、Prettier 和 ESLint，不提交编辑器意外造成的全库行尾变更。
 
-**DietClient** — 饮食健康记录 App。**bare React Native 0.86.0 CLI 项目（非 Expo）**，TypeScript，npm，React 19.2.3，Node ≥ 22.11。
+## Architecture and dependency boundaries
 
-代码注释统一用**中文**（项目惯例）。
+DietClient 是 React Native 0.86、React 19、TypeScript 和 npm 项目。根组件为 `App.tsx`，原生和 Web 入口分别为 `index.js` 与 `index.web.js`。
 
-## 常用命令
-
-```sh
-npm start            # Metro（原生开发）
-npm run android      # 构建并运行 Android
-npm run ios          # 构建并运行 iOS
-npm run start:web    # ⭐ Web 调试：webpack dev server，浏览器打开 http://localhost:8080
-npm run build:web    # Web 生产构建 → dist/web/
-npm run lint         # ESLint
-npm test             # Jest（@react-native/jest-preset）
-npx tsc --noEmit     # TypeScript 类型检查
+```text
+App / navigation
+       ↓
+app/session（会话编排，可组合 auth 与 profile）
+       ↓
+features/{auth,diet,profile}
+       ↓
+shared
 ```
 
-> 没有真机/模拟器时用 `npm run start:web` 在浏览器调试，页面以 390×844 手机画框居中显示；开 DevTools 设备模式（Ctrl+Shift+M）则全屏并获得真实手机尺寸的 `Dimensions`。
+- `src/app/` 只放跨 feature 的应用级编排；会话恢复、token 生命周期和登录态位于 `src/app/session/`。
+- `src/features/<domain>/` 拥有本领域的 API 类型、页面、组件和服务。feature 之间不得直接导入；页面可以消费 app session。
+- `src/shared/` 不得导入 `app`、`navigation` 或任何 feature，只放无业务归属的基础能力。
+- `src/navigation/` 只组合路由和维护参数类型，不承载业务流程。
+- 不新增路径别名；保持 Metro、Webpack、Jest 和 TypeScript 使用一致的相对路径解析。
 
-## 架构与入口
+## Files and abstractions
 
-- **双入口**：`index.js`（原生，Metro 用）+ `index.web.js`（Web，react-native-web 用）。二者都注册 `App.tsx` 并渲染同一个根组件。
-- **`App.tsx`**：根组件 = `SafeAreaProvider` + `HomeScreen`。目前尚未挂载 NavigationContainer 和全局状态 Provider（代码注释标注为待实现）。
-- **目录约定**：按 feature 组织，`src/features/<功能>/screens/`。目前只有 `src/features/diet/screens/HomeScreen.tsx`（单文件 500+ 行，含私有子组件）。
-- **已安装未使用**：`@react-navigation/*`（路由）、`zustand`（状态）、`axios`（网络）、`react-hook-form`（表单）——后续集成时用，别重复引入新库。
+- 一个 React Navigation 路由页面对应一个同名 `*Screen.tsx` 文件，便于按路由名定位。
+- 页面私有小组件、私有函数和 `StyleSheet.create` 默认与页面共置；不要批量创建 `.styles.ts`。
+- 仅当代码复用至少两处、包含独立状态流程、存在平台变体或可独立测试时才抽离。
+- service 有多个实现、测试或平台变体时使用独立目录和公共 `index.ts`；单文件内部实现不机械创建 barrel。
+- 保留 `.native/.web/.android/.ios` 平台后缀和 Native Codegen 文件名。不得更改 Native Module 名、Fabric component 名、JS prop、资源 ID 或 component provider。
+- 公共组件统一从 `src/shared/components` barrel 导入；barrel 只导出稳定公共 API，不导出私有实现。
 
-## Web 调试（react-native-web）关键注意事项
+## TypeScript, naming, and comments
 
-这是本项目最容易踩坑的部分，以下问题已实际解决过，改动时不要回退：
+- 遵循 ESLint/Prettier：两空格、单引号、尾逗号；组件和页面用 PascalCase，变量和函数用 camelCase。
+- 采用 Google TypeScript Style Guide 中适用于外部 React Native 项目的规则：限制导出面、优先简单显式类型、纯类型依赖使用 `import type`、避免不安全动态索引和复杂条件类型。
+- `App.tsx`、React Native 注册入口及 Codegen 声明可按框架要求使用默认导出；业务模块使用命名导出。
+- 注释使用中文，解释模块边界、原因、协议约束、状态机、并发或失败模式及平台差异；不逐行复述 JSX 或自解释类型。
+- 公共 API、非直观约束和跨平台行为使用简短 JSDoc。HTTP 字段、URL、导航参数和原生属性按外部协议原样命名。
 
-1. **babel-loader 的 `exclude` 正则必须用 `[\\/]`**（`web/webpack.config.js`）。Windows 下路径是反斜杠，若写成 `/node_modules\/` 会导致 `webpack-dev-server` 等 `"type": "module"` 的包被 babel 转成 CommonJS、而 webpack 仍按 ESM 解析 → 报 `Uncaught ReferenceError: require is not defined`。
-2. **`#root` 必须是 flex 容器**（`web/index.html` 的 CSS `display: flex; flex-direction: column`）。否则 App 内 `SafeAreaView`/`ScrollView` 的 `flex: 1` 无法沿有界高度解析，ScrollView 高度=内容高度 → **无法滚动**（内容被 `overflow: hidden` 裁掉）。
-3. **`html, body` 需 `overflow: hidden` + `box-sizing: border-box`**。否则滚轮在画框内滚到底后会**链式传导**带动深色背景和整个画框上下滑动（滚动链）。
-4. **`react-dom` 版本必须与 `react` 完全一致（当前 19.2.3）**。react-dom 更高版本（如 19.2.8）的 peer 要求 `react@^19.2.8`，会与项目的 `react@19.2.3` 冲突导致 npm 装不上。
-5. 画框尺寸在 `web/index.html` 的 CSS 变量 `--phone-w` / `--phone-h`，改安卓可设 412px / 915px。
+## Commands and verification
 
-## 其他约定
+Use Node `>=22.11.0` and install with `npm ci`.
 
-- `babel.config.js` 只用 `module:@react-native/babel-preset`（原生与 web 共用，web 的 `babel-plugin-react-native-web` 仅在 webpack 配置里追加，勿加进根 babel 配置，会破坏原生构建）。
-- `metro.config.js` 为默认配置；**勿在 Metro 侧做 web 支持**（RN 0.86 的 Metro 无 web 别名/HTML 壳，官方文档也标注 web 支持为 "undocumented"，web 走 webpack 即可）。
-- 构建产物 `dist/` 已加入 `.gitignore`。
+```sh
+npm start
+npm run android
+npm run ios
+npm run start:web
+npm run build:web
+npm run format
+npm run format:check
+npm run lint
+npm run typecheck
+npm test -- --runInBand
+npm run test:android
+npm run verify
+```
 
-## 头像上传（对象存储 CORS）
+- 行为变化须新增或更新共置的 `*.test.ts(x)`，覆盖正常、边界和错误路径；API 解析、校验、存储和服务逻辑优先测试。
+- 每个可回滚阶段结束至少运行 format check、lint、typecheck 和相关 Jest；最终运行 `npm run verify` 与 `git diff --check`。
+- 修改原生依赖后在 macOS 运行 `bundle exec pod install`。Windows Android 测试依赖本机有效的 `android/local.properties`，该路径不得提交。
+- iOS 构建只能在 macOS 宣称通过；Windows 上必须明确记录未验证。
 
-- 头像上传链路：`POST /v1/files/avatar/presign` → `PUT {uploadUrl}`（MinIO）→ `POST /v1/files/avatar/confirm`。
-- **Web 端跨域**：上传目标是 MinIO 预签名地址（如 `http://192.168.3.101:9000/...`），与 `localhost:8080` 跨源。浏览器 PUT 会被 CORS 预检拦截，需在 MinIO 控制台为存储桶配置允许本机 origin 的 CORS 规则，否则前端会提示"被浏览器跨域策略或网络拦截"。
-- 原生端：`avatarUpload.native.ts` 已处理 `content://` / `ph://` 协议（先经 RNFetchBlob 落盘到缓存再上传），并在取不到 `fileSize` 时跳过 5MB 校验，避免误报。
+## Security and configuration
+
+- 从 `src/shared/config/appConfig.ts.template` 创建本机配置。真实 `appConfig.ts` 被忽略，禁止读取后复制、格式化或提交。
+- 禁止提交 token、密钥、机器路径、预签名 URL、`dist/`、build、Pods 或 coverage。
+- API endpoint、请求/响应结构、token 存储键、上传协议、route name、deep link 和导航参数均视为兼容性接口；结构重构不得顺手改变行为。
+
+## Commits and reviews
+
+- Commit subject 使用简短祈使英文：`Add ...`、`Fix ...`、`Drop ...` 或 `Optimize ...`，每个提交聚焦一个阶段。
+- PR 说明用户可见影响、平台差异、验证命令和必要截图；无法在当前平台完成的验证必须明确列出。
+- 架构与调试索引见 `docs/architecture.md`；未在行为保持型重构中处理的问题见 `docs/code-review-findings.md`。

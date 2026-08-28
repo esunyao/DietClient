@@ -1,4 +1,9 @@
-import { Easing, ReduceMotion, type WithSpringConfig, type WithTimingConfig } from 'react-native-reanimated';
+import {
+  Easing,
+  ReduceMotion,
+  type WithSpringConfig,
+  type WithTimingConfig,
+} from 'react-native-reanimated';
 
 /**
  * 全局动画参数的唯一来源。

@@ -1,522 +1,648 @@
-import React from 'react';
+import React, { memo, useCallback, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-
-/**
- * -----------------------------------------------------------------------------
- * 🎓 React Native 样板代码：首页 Dashboard (HomeScreen)
- * -----------------------------------------------------------------------------
- * 参考原型: 01-home.html
- * 重点学习概念：
- * 1. Flexbox 布局：React Native 默认 flex-direction 为 column (垂直排列)
- * 2. 基础组件：View (类似 div), Text (类似 span/p), ScrollView (可滚动区域), TouchableOpacity (按钮/可点击区域)
- * 3. 样式管理：StyleSheet.create (类似 CSS 类定义，推荐性能优化)
- * -----------------------------------------------------------------------------
- */
-
-export function HomeScreen() {
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f7" />
-
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ================= 1. 顶部 Header / 问候语 ================= */}
-        <View style={styles.header}>
-          <Text style={styles.dateText}>2026年7月25日 · 下午好</Text>
-          <Text style={styles.greetingTitle}>今天吃得怎么样？</Text>
-        </View>
-
-        {/* ================= 2. 健康评分卡片 (Score Card) ================= */}
-        <View style={styles.scoreCard}>
-          {/* 左侧分数圆环模拟区域 */}
-          <View style={styles.scoreRing}>
-            <Text style={styles.scoreValue}>78</Text>
-            <Text style={styles.scoreLabel}>健康评分</Text>
-          </View>
-
-          {/* 右侧健康分析提示 */}
-          <View style={styles.scoreInfo}>
-            <Text style={styles.scoreTitle}>状态良好 👍</Text>
-            <Text style={styles.scoreDesc}>
-              今日热量摄入适中，蛋白质偏低。建议晚餐增加优质蛋白，如鸡胸肉或豆腐。
-            </Text>
-
-            {/* 标签列表 */}
-            <View style={styles.badgeList}>
-              <View style={[styles.badge, styles.badgeGreen]}>
-                <Text style={styles.badgeGreenText}>✓ 热量适配 85</Text>
-              </View>
-              <View style={[styles.badge, styles.badgeOrange]}>
-                <Text style={styles.badgeOrangeText}>! 营养均衡 72</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* ================= 3. 预警提示条 (Risk Bar) ================= */}
-        <View style={styles.riskBar}>
-          <Text style={styles.riskText}>
-            ⚠️ 您今日钠摄入已达目标的 82%，晚餐请注意控盐
-          </Text>
-          <TouchableOpacity style={styles.riskButton} activeOpacity={0.8}>
-            <Text style={styles.riskButtonText}>查看建议</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ================= 4. 快捷操作入口 (Quick Actions) ================= */}
-        <View style={styles.actionsGrid}>
-          {/* 主动作：拍照识别 */}
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.actionPrimary]}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.actionIconPrimary}>📷</Text>
-            <Text style={styles.actionTitlePrimary}>拍照识别</Text>
-            <Text style={styles.actionDescPrimary}>拍摄菜品获取分析</Text>
-          </TouchableOpacity>
-
-          {/* 手动记录 */}
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>✍️</Text>
-            <Text style={styles.actionTitle}>手动记录</Text>
-            <Text style={styles.actionDesc}>输入菜品名称</Text>
-          </TouchableOpacity>
-
-          {/* 营养处方 */}
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>🥗</Text>
-            <Text style={styles.actionTitle}>营养处方</Text>
-            <Text style={styles.actionDesc}>推荐食谱配餐</Text>
-          </TouchableOpacity>
-
-          {/* 今日目标 */}
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>🎯</Text>
-            <Text style={styles.actionTitle}>今日目标</Text>
-            <Text style={styles.actionDesc}>调整营养目标</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ================= 5. 今日营养数据 (Nutrition Stats) ================= */}
-        <Text style={styles.sectionTitle}>今日营养摄入</Text>
-        <View style={styles.nutritionGrid}>
-          <NutritionCard label="热量" value="1,280" unit="kcal" color="#ff9500" progress={0.65} />
-          <NutritionCard label="蛋白质" value="38" unit="g" color="#34c759" progress={0.45} />
-          <NutritionCard label="碳水化合物" value="186" unit="g" color="#5856d6" progress={0.80} />
-          <NutritionCard label="脂肪" value="42" unit="g" color="#ff3b30" progress={0.55} />
-        </View>
-
-        {/* ================= 6. 今日饮食记录 (Meal List) ================= */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>今日饮食记录</Text>
-          <TouchableOpacity>
-            <Text style={styles.moreText}>全部 ＞</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.mealList}>
-          <MealItem
-            icon="🥗"
-            name="鸡胸肉沙拉 + 全麦面包"
-            meta="午餐 · 12:30 · 570 kcal"
-            score="85分"
-            scoreType="good"
-          />
-          <MealItem
-            icon="🥣"
-            name="燕麦粥 + 水煮蛋 + 蓝莓"
-            meta="早餐 · 08:15 · 380 kcal"
-            score="92分"
-            scoreType="good"
-          />
-          <MealItem
-            icon="☕"
-            name="黑咖啡 + 坚果"
-            meta="加餐 · 10:00 · 180 kcal"
-            score="78分"
-            scoreType="warn"
-          />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-// -----------------------------------------------------------------------------
-// 🧩 子组件：营养度量小卡片
-// -----------------------------------------------------------------------------
-function NutritionCard({
+  ArrowRight,
+  Camera,
+  CircleAlert,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Utensils,
+} from 'lucide-react-native';
+import type { HomeStackParamList } from '../../../navigation/types';
+import { AppScreen, GlassCard, ScoreRing, SectionTitle, Tag } from '../../../shared/components';
+import { colors, fonts, radii, spacing } from '../../../shared/theme/tokens';
+import { nutriApi } from '../api/nutriApi';
+import type { MealHistoryItem, NutrientValue } from '../api/nutriTypes';
+import { localDateFromDate } from '../services/mealCapture';
+type HomeProps = NativeStackScreenProps<HomeStackParamList, 'HomeMain'>;
+const MiniNutrition = memo(function ({
   label,
   value,
   unit,
-  color,
-  progress,
 }: {
   label: string;
   value: string;
   unit: string;
-  color: string;
-  progress: number;
+}) {
+  const fillStyle =
+    label === '蛋白质'
+      ? styles.microFillProtein
+      : label === '碳水'
+      ? styles.microFillCarbs
+      : label === '脂肪'
+      ? styles.microFillFat
+      : styles.microFillCalories;
+  return (
+    <GlassCard style={styles.nutritionCard}>
+      <Text style={styles.nutritionLabel}>{label}</Text>
+      <Text style={styles.nutritionValue}>
+        {value}
+        <Text style={styles.nutritionUnit}> {unit}</Text>
+      </Text>
+      <View style={styles.microTrack}>
+        <View style={[styles.microFill, fillStyle]} />
+      </View>
+    </GlassCard>
+  );
+});
+const RecordRow = memo(function ({
+  emoji,
+  name,
+  detail,
+  tag,
+  tone = 'green',
+  onPress,
+}: {
+  emoji: string;
+  name: string;
+  detail: string;
+  tag: string;
+  tone?: 'green' | 'amber';
+  onPress?: () => void;
 }) {
   return (
-    <View style={styles.nutriCard}>
-      <Text style={styles.nutriLabel}>{label}</Text>
-      <Text style={styles.nutriValue}>
-        {value} <Text style={styles.nutriUnit}>{unit}</Text>
-      </Text>
-      {/* 进度条背景 */}
-      <View style={styles.progressBarBackground}>
-        {/* 动态进度 fill */}
-        <View
-          style={[
-            styles.progressBarFill,
-            { backgroundColor: color, width: `${progress * 100}%` },
-          ]}
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      onPress={onPress}
+      style={styles.recordRow}
+    >
+      <View style={styles.recordEmoji}>
+        <Text>{emoji}</Text>
+      </View>
+      <View style={styles.recordInfo}>
+        <Text style={styles.recordName}>{name}</Text>
+        <Text style={styles.recordDetail}>{detail}</Text>
+      </View>
+      <Tag label={tag} tone={tone} />
+    </Pressable>
+  );
+});
+function nutrientValue(nutrients: NutrientValue[], code: string): number {
+  return nutrients.find(item => item.nutrientCode === code)?.amount ?? 0;
+}
+function formatNutrient(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
+}
+function recordEmoji(meal: MealHistoryItem): string {
+  return {
+    breakfast: '🥣',
+    lunch: '🥗',
+    dinner: '🍲',
+    snack: '🍎',
+    other: '🍽️',
+  }[meal.mealType];
+}
+export function HomeScreen({ navigation }: HomeProps) {
+  const [todayMeals, setTodayMeals] = useState<MealHistoryItem[]>([]);
+  const [todayNutrients, setTodayNutrients] = useState<NutrientValue[]>([]);
+  const [loadingMeals, setLoadingMeals] = useState(true);
+  const today = localDateFromDate();
+  const openDiet = useCallback(
+    (
+      screen?: 'Recognition' | 'MealHistory' | 'MealDetail',
+      params?: {
+        mealId: string;
+      },
+    ) => {
+      const tabNavigation = navigation.getParent() as unknown as
+        | {
+            navigate: (name: string, params?: unknown) => void;
+          }
+        | undefined;
+      if (!screen || screen === 'Recognition') {
+        tabNavigation?.navigate('RecognitionTab');
+        return;
+      }
+      tabNavigation?.navigate('RecognitionTab', {
+        screen,
+        params,
+      });
+    },
+    [navigation],
+  );
+  const loadToday = useCallback(async () => {
+    setLoadingMeals(true);
+    try {
+      const [summary, mealPage] = await Promise.all([
+        nutriApi.getDailySummary(today),
+        nutriApi.listMeals({
+          dateFrom: today,
+          dateTo: today,
+          pageSize: 20,
+        }),
+      ]);
+      setTodayNutrients(summary.nutrients);
+      setTodayMeals(mealPage.items);
+    } catch {
+      // 首页不弹出网络错误，空态保留可继续记录的主操作。
+      setTodayNutrients([]);
+      setTodayMeals([]);
+    } finally {
+      setLoadingMeals(false);
+    }
+  }, [today]);
+  useFocusEffect(
+    useCallback(() => {
+      loadToday();
+    }, [loadToday]),
+  );
+  return (
+    <AppScreen>
+      <View style={styles.homeHeader}>
+        <View>
+          <Text style={styles.greetingSmall}>2026 年 8 月 5 日 · 下午好</Text>
+          <Text style={styles.greetingTitle}>今天吃得怎么样？</Text>
+        </View>
+        <View style={styles.smallBrand}>
+          <Utensils color={colors.blue} size={19} />
+        </View>
+      </View>
+
+      <GlassCard style={styles.scoreCard}>
+        <View style={styles.scoreHalo} />
+        <ScoreRing score={78} />
+        <View style={styles.scoreCopy}>
+          <View style={styles.scoreTitleRow}>
+            <Text style={styles.scoreTitle}>状态良好</Text>
+            <Tag label="今日达标" tone="green" />
+          </View>
+          <Text style={styles.scoreDescription}>
+            热量适中，蛋白质偏低。晚餐适合补充豆腐、鱼类或鸡胸肉。
+          </Text>
+          <Pressable onPress={() => navigation.navigate('ScoreDetail')} style={styles.detailLink}>
+            <Text style={styles.detailLinkText}>查看健康评分</Text>
+            <ArrowRight color={colors.blue} size={14} />
+          </Pressable>
+        </View>
+      </GlassCard>
+
+      <View style={styles.warning}>
+        <CircleAlert color={colors.amberInk} size={18} />
+        <View style={styles.warningCopy}>
+          <Text style={styles.warningTitle}>钠摄入预警</Text>
+          <Text style={styles.warningText}>已达目标 82%，晚餐请注意控盐。</Text>
+        </View>
+        <Tag label="建议" tone="amber" />
+      </View>
+
+      <View style={styles.quickGrid}>
+        <QuickAction
+          icon={<Camera color={colors.blue} size={22} />}
+          title="识别这一餐"
+          description="拍照 · AI 分析"
+          blue
+          onPress={() => openDiet()}
+        />
+        <QuickAction
+          icon={<Sparkles color={colors.green} size={22} />}
+          title="下一餐处方"
+          description="AI 配餐"
+        />
+        <QuickAction
+          icon={<Target color={colors.blue} size={22} />}
+          title="今日目标"
+          description="调整目标"
+        />
+        <QuickAction
+          icon={<TrendingUp color={colors.blue} size={22} />}
+          title="历史追踪"
+          description="饮食 & 身体"
         />
       </View>
-    </View>
+
+      <SectionTitle
+        title="今日营养摄入"
+        detail={
+          loadingMeals
+            ? '正在加载…'
+            : todayMeals.length
+            ? `${todayMeals.length} 餐已记录`
+            : '还没有餐食记录'
+        }
+      />
+      <View style={styles.nutritionGrid}>
+        <MiniNutrition
+          label="热量"
+          value={formatNutrient(nutrientValue(todayNutrients, 'ENERGY_KCAL'))}
+          unit="kcal"
+        />
+        <MiniNutrition
+          label="蛋白质"
+          value={formatNutrient(nutrientValue(todayNutrients, 'PROTEIN'))}
+          unit="g"
+        />
+        <MiniNutrition
+          label="碳水"
+          value={formatNutrient(nutrientValue(todayNutrients, 'CARBOHYDRATE'))}
+          unit="g"
+        />
+        <MiniNutrition
+          label="脂肪"
+          value={formatNutrient(nutrientValue(todayNutrients, 'FAT'))}
+          unit="g"
+        />
+      </View>
+
+      <SectionTitle
+        title="今日饮食记录"
+        action={
+          <Pressable onPress={() => openDiet('MealHistory')}>
+            <Text style={styles.actionText}>全部记录</Text>
+          </Pressable>
+        }
+      />
+      <GlassCard style={styles.records}>
+        {todayMeals.map(meal => (
+          <RecordRow
+            key={meal.mealId}
+            emoji={recordEmoji(meal)}
+            name={meal.notes || '已分析餐食'}
+            detail={`${
+              meal.mealType === 'breakfast'
+                ? '早餐'
+                : meal.mealType === 'lunch'
+                ? '午餐'
+                : meal.mealType === 'dinner'
+                ? '晚餐'
+                : meal.mealType === 'snack'
+                ? '加餐'
+                : '其他'
+            } · ${new Date(meal.consumedAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })} · ${formatNutrient(nutrientValue(meal.nutrients, 'ENERGY_KCAL'))} kcal`}
+            tag="已分析"
+            tone="green"
+            onPress={() =>
+              openDiet('MealDetail', {
+                mealId: meal.mealId,
+              })
+            }
+          />
+        ))}
+        {!loadingMeals && !todayMeals.length ? (
+          <Pressable onPress={() => openDiet()} style={styles.emptyRecords}>
+            <Text style={styles.emptyRecordsText}>今天还没有餐食记录，点击开始记录。</Text>
+          </Pressable>
+        ) : null}
+      </GlassCard>
+
+      <GlassCard style={styles.prescription}>
+        <View style={styles.prescriptionHead}>
+          <Sparkles color={colors.blue} size={19} />
+          <Text style={styles.prescriptionTitle}>AI 下一餐处方</Text>
+          <Tag label="晚餐推荐" tone="green" />
+        </View>
+        <Text style={styles.prescriptionDescription}>
+          基于演示健康画像与今日累计营养，推荐低钠、高蛋白的一餐。
+        </Text>
+        <View style={styles.prescriptionGrid}>
+          <PrescriptionMetric label="推荐热量" value="450 kcal" />
+          <PrescriptionMetric label="蛋白质" value="≥ 35g" />
+          <PrescriptionMetric label="推荐食材" value="豆腐 · 西兰花" />
+          <PrescriptionMetric label="注意事项" value="控钠 · 高纤维" />
+        </View>
+      </GlassCard>
+    </AppScreen>
   );
 }
-
-// -----------------------------------------------------------------------------
-// 🧩 子组件：单条餐饮记录
-// -----------------------------------------------------------------------------
-function MealItem({
+const QuickAction = memo(function ({
   icon,
-  name,
-  meta,
-  score,
-  scoreType,
+  title,
+  description,
+  blue = false,
+  onPress,
 }: {
-  icon: string;
-  name: string;
-  meta: string;
-  score: string;
-  scoreType: 'good' | 'warn';
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  blue?: boolean;
+  onPress?: () => void;
 }) {
   return (
-    <View style={styles.mealCard}>
-      <Text style={styles.mealIcon}>{icon}</Text>
-      <View style={styles.mealInfo}>
-        <Text style={styles.mealName}>{name}</Text>
-        <Text style={styles.mealMeta}>{meta}</Text>
-      </View>
-      <View
-        style={[
-          styles.scoreBadge,
-          scoreType === 'good' ? styles.scoreGood : styles.scoreWarn,
-        ]}
-      >
-        <Text
-          style={[
-            styles.scoreBadgeText,
-            scoreType === 'good' ? styles.scoreGoodText : styles.scoreWarnText,
-          ]}
-        >
-          {score}
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      onPress={onPress}
+      style={styles.quickAction}
+    >
+      <GlassCard style={[styles.quickActionCard, blue && styles.quickActionBlue]}>
+        <View style={[styles.quickIcon, blue && styles.quickIconBlue]}>{icon}</View>
+        <Text style={[styles.quickTitle, blue && styles.quickTitleBlue]}>{title}</Text>
+        <Text style={[styles.quickDescription, blue && styles.quickDescriptionBlue]}>
+          {description}
         </Text>
-      </View>
+      </GlassCard>
+    </Pressable>
+  );
+});
+const PrescriptionMetric = memo(function ({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.prescriptionMetric}>
+      <Text style={styles.prescriptionMetricLabel}>{label}</Text>
+      <Text style={styles.prescriptionMetricValue}>{value}</Text>
     </View>
   );
-}
-
-// -----------------------------------------------------------------------------
-// 🎨 样式定义 (StyleSheet)
-// -----------------------------------------------------------------------------
+});
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f7',
+  homeHeader: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-
-  // 1. Header
-  header: {
-    marginBottom: 20,
-  },
-  dateText: {
-    fontSize: 13,
-    color: '#86868b',
-    marginBottom: 4,
+  greetingSmall: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
   },
   greetingTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1d1d1f',
+    color: colors.ink,
+    fontFamily: fonts.display,
+    fontSize: 25,
+    fontWeight: '800',
+    letterSpacing: -0.7,
+    marginTop: 3,
   },
-
-  // 2. Score Card
-  scoreCard: {
-    backgroundColor: '#1d1d1f',
-    borderRadius: 20,
-    padding: 20,
-    flexDirection: 'row', // 水平排列 (左边圆环，右边文字)
+  smallBrand: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  scoreRing: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 6,
-    borderColor: '#34c759',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+    backgroundColor: colors.blueSoft,
   },
-  scoreValue: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  scoreLabel: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  scoreInfo: {
-    flex: 1, // 占据剩余宽度
-  },
-  scoreTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  scoreDesc: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-    lineHeight: 16,
-    marginBottom: 8,
-  },
-  badgeList: {
+  scoreCard: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    overflow: 'hidden',
+  },
+  scoreHalo: {
+    position: 'absolute',
+    width: 145,
+    height: 145,
+    borderRadius: 73,
+    left: -48,
+    top: -46,
+    backgroundColor: colors.greenSoft,
+    opacity: 0.58,
+  },
+  scoreCopy: {
+    flex: 1,
     gap: 6,
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  badgeGreen: {
-    backgroundColor: 'rgba(52, 199, 89, 0.2)',
-  },
-  badgeGreenText: {
-    color: '#34c759',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  badgeOrange: {
-    backgroundColor: 'rgba(255, 149, 0, 0.2)',
-  },
-  badgeOrangeText: {
-    color: '#ff9500',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-
-  // 3. Risk Bar
-  riskBar: {
-    backgroundColor: '#fff3e0',
-    borderColor: '#ffe0b2',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
+  scoreTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 6,
   },
-  riskText: {
+  scoreTitle: {
+    color: colors.ink,
+    fontFamily: fonts.display,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  scoreDescription: {
+    color: colors.muted,
+    fontFamily: fonts.body,
     fontSize: 12,
-    color: '#e65100',
+    lineHeight: 18,
+  },
+  detailLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  detailLinkText: {
+    color: colors.blue,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  warning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.amberSoft,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: spacing.md,
+  },
+  warningCopy: {
     flex: 1,
-    marginRight: 8,
   },
-  riskButton: {
-    backgroundColor: '#ff9500',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+  warningTitle: {
+    color: colors.amberInk,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '800',
   },
-  riskButtonText: {
-    color: '#ffffff',
+  warningText: {
+    color: colors.amberInk,
+    fontFamily: fonts.body,
     fontSize: 11,
-    fontWeight: '600',
+    marginTop: 2,
   },
-
-  // 4. Quick Actions
-  actionsGrid: {
+  quickGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap', // 允许换行，实现 2x2 网格
-    gap: 10,
-    marginBottom: 24,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
-  actionBtn: {
-    width: '48%', // 一行放两个卡片
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
+  quickAction: {
+    width: '48%',
   },
-  actionPrimary: {
-    backgroundColor: '#0071e3',
-  },
-  actionIcon: {
-    fontSize: 22,
-    marginBottom: 8,
-  },
-  actionIconPrimary: {
-    fontSize: 22,
-    marginBottom: 8,
-  },
-  actionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1d1d1f',
-    marginBottom: 2,
-  },
-  actionTitlePrimary: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 2,
-  },
-  actionDesc: {
-    fontSize: 11,
-    color: '#86868b',
-  },
-  actionDescPrimary: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-
-  // Section Universal
-  sectionHeader: {
-    flexDirection: 'row',
+  quickActionCard: {
+    minHeight: 126,
+    padding: spacing.md,
     justifyContent: 'space-between',
+  },
+  quickActionBlue: {
+    backgroundColor: colors.blueSoft,
+    borderColor: colors.line,
+  },
+  quickIcon: {
+    width: 39,
+    height: 39,
+    borderRadius: 14,
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    backgroundColor: colors.greenSoft,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1d1d1f',
-    marginBottom: 12,
+  quickIconBlue: {
+    backgroundColor: colors.surface,
   },
-  moreText: {
-    fontSize: 12,
-    color: '#0071e3',
+  quickTitle: {
+    color: colors.ink,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: spacing.sm,
   },
-
-  // 5. Nutrition Grid
+  quickTitleBlue: {
+    color: colors.ink,
+  },
+  quickDescription: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  quickDescriptionBlue: {
+    color: colors.muted,
+  },
   nutritionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
+    gap: spacing.sm,
   },
-  nutriCard: {
+  nutritionCard: {
     width: '48%',
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
+    borderRadius: radii.md,
+    padding: spacing.md,
+    gap: 8,
   },
-  nutriLabel: {
+  nutritionLabel: {
+    color: colors.muted,
+    fontFamily: fonts.body,
     fontSize: 12,
-    color: '#86868b',
-    marginBottom: 4,
   },
-  nutriValue: {
+  nutritionValue: {
+    color: colors.ink,
+    fontFamily: fonts.display,
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1d1d1f',
-    marginBottom: 8,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
-  nutriUnit: {
-    fontSize: 12,
-    color: '#86868b',
-    fontWeight: 'normal',
+  nutritionUnit: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: '600',
   },
-  progressBarBackground: {
-    height: 4,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 2,
+  microTrack: {
+    height: 5,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.pill,
     overflow: 'hidden',
   },
-  progressBarFill: {
+  microFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: radii.pill,
   },
-
-  // 6. Meal List
-  mealList: {
-    gap: 10,
+  microFillCalories: {
+    width: '65%',
+    backgroundColor: colors.amber,
   },
-  mealCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 12,
+  microFillProtein: {
+    width: '45%',
+    backgroundColor: colors.green,
+  },
+  microFillCarbs: {
+    width: '80%',
+    backgroundColor: colors.blue,
+  },
+  microFillFat: {
+    width: '65%',
+    backgroundColor: colors.red,
+  },
+  actionText: {
+    color: colors.blue,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  records: {
+    paddingVertical: 3,
+  },
+  recordRow: {
+    minHeight: 72,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
+    gap: spacing.sm,
+    paddingVertical: 9,
   },
-  mealIcon: {
-    fontSize: 24,
-    marginRight: 12,
+  emptyRecords: {
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
   },
-  mealInfo: {
+  emptyRecordsText: {
+    color: colors.blue,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  recordEmoji: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordInfo: {
     flex: 1,
   },
-  mealName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1d1d1f',
-    marginBottom: 2,
+  recordName: {
+    color: colors.ink,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '800',
   },
-  mealMeta: {
+  recordDetail: {
+    color: colors.muted,
+    fontFamily: fonts.body,
     fontSize: 11,
-    color: '#86868b',
+    marginTop: 4,
   },
-  scoreBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
+  prescription: {
+    backgroundColor: colors.blueSoft,
   },
-  scoreGood: {
-    backgroundColor: '#f0f8f0',
+  prescriptionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    flexWrap: 'wrap',
   },
-  scoreGoodText: {
-    color: '#34c759',
+  prescriptionTitle: {
+    flex: 1,
+    color: colors.ink,
+    fontFamily: fonts.display,
+    fontSize: 17,
+    fontWeight: '800',
   },
-  scoreWarn: {
-    backgroundColor: '#fff8f0',
+  prescriptionDescription: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: spacing.sm,
   },
-  scoreWarnText: {
-    color: '#ff9500',
+  prescriptionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: spacing.md,
+    gap: 8,
   },
-  scoreBadgeText: {
+  prescriptionMetric: {
+    width: '48%',
+    gap: 3,
+  },
+  prescriptionMetricLabel: {
+    color: colors.muted,
+    fontFamily: fonts.body,
     fontSize: 11,
-    fontWeight: '600',
+  },
+  prescriptionMetricValue: {
+    color: colors.ink,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

@@ -4,7 +4,13 @@ import type { NativeAuthentikFlowResponse } from './authentikFlowTransport';
 
 type NativeAuthentikFlowModule = {
   createSession(): Promise<string>;
-  request(sessionId: string, method: string, url: string, headers: Record<string, string>, body?: string): Promise<NativeAuthentikFlowResponse>;
+  request(
+    sessionId: string,
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body?: string,
+  ): Promise<NativeAuthentikFlowResponse>;
   closeSession(sessionId: string): Promise<void>;
 };
 

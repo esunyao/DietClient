@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+android/.gradle/
+android/build/
+android/app/build/
+ios/build/
+ios/Pods/
+package-lock.json
+src/shared/config/appConfig.ts
+src/shared/native/*NativeComponent.ts

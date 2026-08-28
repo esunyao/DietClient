@@ -4,8 +4,9 @@ import type {
   DietaryRestriction,
   HealthGoal,
   MedicalCondition,
-} from '../../../../shared/types/api';
+} from '../../api/profileTypes';
 import { healthApi } from '../../api/healthApi';
+import { getHealthRecordId, type HealthRecordKind } from './healthRecordAdapter';
 
 export type HealthRecordsSnapshot = {
   measurements: BodyMeasurement[];
@@ -22,9 +23,7 @@ export function getCachedHealthRecords(): HealthRecordsSnapshot | null {
   return cachedSnapshot;
 }
 
-export async function getHealthRecords(
-  force = false,
-): Promise<HealthRecordsSnapshot> {
+export async function getHealthRecords(force = false): Promise<HealthRecordsSnapshot> {
   if (!force && cachedSnapshot) {
     return cachedSnapshot;
   }
@@ -58,7 +57,7 @@ export function invalidateHealthRecords(): void {
   cachedSnapshot = null;
 }
 
-type HealthRecordKind = keyof HealthRecordsSnapshot;
+type HealthRecordCacheKind = keyof HealthRecordsSnapshot;
 type HealthRecordByKind = {
   measurements: BodyMeasurement;
   goals: HealthGoal;
@@ -67,34 +66,36 @@ type HealthRecordByKind = {
   restrictions: DietaryRestriction;
 };
 
-const recordIdField: Record<HealthRecordKind, string> = {
-  measurements: 'measurementId',
-  goals: 'goalId',
-  allergies: 'allergyId',
-  conditions: 'conditionId',
-  restrictions: 'restrictionId',
+const adapterKind: Record<HealthRecordCacheKind, HealthRecordKind> = {
+  measurements: 'measurement',
+  goals: 'goal',
+  allergies: 'allergy',
+  conditions: 'condition',
+  restrictions: 'restriction',
 };
 
 /** 将已由服务端确认的单条变更同步到摘要缓存，避免返回上一页时展示旧计数。 */
-export function upsertHealthRecord<K extends HealthRecordKind>(
+export function upsertHealthRecord<K extends HealthRecordCacheKind>(
   kind: K,
   record: HealthRecordByKind[K],
 ): void {
   if (!cachedSnapshot) return;
-  const idField = recordIdField[kind];
   const nextRecords = cachedSnapshot[kind] as HealthRecordByKind[K][];
-  const identifier = String((record as unknown as Record<string, unknown>)[idField]);
-  const position = nextRecords.findIndex(item => String((item as unknown as Record<string, unknown>)[idField]) === identifier);
-  const updated = position < 0
-    ? [...nextRecords, record]
-    : nextRecords.map((item, index) => index === position ? record : item);
+  const identifier = getHealthRecordId(adapterKind[kind], record);
+  const position = nextRecords.findIndex(
+    item => getHealthRecordId(adapterKind[kind], item) === identifier,
+  );
+  const updated =
+    position < 0
+      ? [...nextRecords, record]
+      : nextRecords.map((item, index) => (index === position ? record : item));
   cachedSnapshot = { ...cachedSnapshot, [kind]: updated } as HealthRecordsSnapshot;
 }
 
-export function removeHealthRecord<K extends HealthRecordKind>(kind: K, id: string): void {
+export function removeHealthRecord<K extends HealthRecordCacheKind>(kind: K, id: string): void {
   if (!cachedSnapshot) return;
-  const idField = recordIdField[kind];
-  const nextRecords = (cachedSnapshot[kind] as HealthRecordByKind[K][])
-    .filter(item => String((item as unknown as Record<string, unknown>)[idField]) !== id);
+  const nextRecords = (cachedSnapshot[kind] as HealthRecordByKind[K][]).filter(
+    item => getHealthRecordId(adapterKind[kind], item) !== id,
+  );
   cachedSnapshot = { ...cachedSnapshot, [kind]: nextRecords } as HealthRecordsSnapshot;
 }
