@@ -1,12 +1,12 @@
 {
-    "name": "diet_client",
-    "short_name": "diet_client",
+    "name": "膳食健康 DietClient",
+    "short_name": "膳食健康",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#F4F8F5",
+    "theme_color": "#17664F",
+    "description": "DietClient 膳食健康 UI 演示",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {
