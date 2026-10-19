@@ -1,19 +1,20 @@
 # UI 迁移对照
 
-只读来源：DietClient-ReactNative 的 src/navigation/AppNavigator.tsx、src/shared/theme/tokens.ts、src/features/{auth,diet,profile}/screens。本阶段目标如下，验收记录见文末。
+主依据为新版需求PPT v2261009、20261002ui二次设计中的 C/B 最终样板、完整SVG及设计说明。React Native源码补充未绘辅助页。参考源只读，不将旧六导航和蓝色主题覆盖新设计。
 
-| RN 页面 | Flutter feature / 同名页面 |
+| 功能 | 来源与范围 |
 |---|---|
-| HomeScreen | home |
-| RecognitionScreen | capture |
-| MealHistoryScreen、MealDetailScreen、MealCorrectionScreen | meals |
-| MealPlanScreen | meal_plan |
-| TrendsScreen、ReportsScreen、ScoreDetailScreen | insights |
-| LoginScreen、RegisterScreen、VerifyEmailScreen、EmailVerifiedScreen | auth |
-| ProfileScreen、EditProfileScreen、HealthRecordsScreen、HealthRecordFormScreen、AiNutritionConsentScreen | profile |
+| home | 新版手机/平板首页；已知摄入、记录覆盖、下一步行动 |
+| meal_record | 新版记录；示例图片、草稿、餐别与备注 |
+| meal | 历史、详情、修正；手工补录为新建模式 |
+| meal_plan | 三方案比较、替换与加入计划 |
+| trend/report | 7/30/90日、逐营养素统计、报告版本与更新状态 |
+| profile | 我的、健康档案、编辑与五类记录表单 |
+| institution | 食堂菜单与餐食同步；计划/待确认/实际摄入分开 |
+| auth/settings | RN认证辅助页；新版外观与模式选择 |
 
-底栏顺序：首页、记录、配餐、趋势、报告、我的。详情与表单独立打开并隐藏底栏；认证界面从我的进入预览，不拦截主应用。页面标记 UI 演示；交互只更新内存或打开明确的演示预览。
+四主入口：首页、配餐、趋势、我的。详情与表单通过真实来源栈返回。所有操作是明确的内存演示，不迁OAuth、API、相机、上传、持久化和AI服务。
 
-迁移布局、主题、信息层级、表单验证、导航、图表、分段与浮层。排除会话、Token、真实授权、API、上传、相机、同步与原生玻璃。
+基础数据：早餐420与午餐680共1100kcal；加餐分析中。7日中6日有已知能量，9280÷6约1547。鱼份量修正样例使午餐620、当日1040、周期9220、日均1537。未知营养不补零，机构晚餐待确认不入账，旧报告保持原版本并标记需更新。
 
-测试或 Web 截图仅证明对应环境的结果，不代表 RN 像素级一致，也不替代移动真机性能和业务验收。
+验收由用户负责。agent仅做基础静态检查与编译，实际结果在最终交付说明与README记录，不把编译成功视为功能、视觉或真机性能验收。

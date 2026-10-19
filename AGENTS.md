@@ -11,7 +11,7 @@
 - 唯一可写目录：`E:/ProjectSpace/DietClient`。HealthServer、DietClient-ReactNative 和其他兄弟目录只读；不得在其中安装依赖、创建工作树、改动文件或提交。
 - 只迁 UI、路由、演示展示与局部交互。不迁 OAuth/Token、HTTP API、真实相机/相册、上传、持久化、AI 请求、推送与权限配置。
 - 界面必须标注演示；内存预览不能声称已真实登录、注册、保存、授权或完成分析。
-- 保留 RN 的主题值与信息层级。实体内容卡、悬浮玻璃导航；玻璃使用 Flutter BackdropFilter 并提供回退，不迁 RN 原生 Android/iOS 实现，不新增 PlatformView/MethodChannel。
+- 主要依据新版需求PPT与C/B端SVG设计，RN仅补充辅助流程。采用新版绿色主题与四项导航；玻璃封装纯Flutter库并提供三档切换与回退，不迁 RN 原生 Android/iOS 实现，不新增 PlatformView/MethodChannel。
 - 既有 doc-project 背景正文和 docp 只读。私有层缺失时以本文件、公开 doc、源码继续，不猜测内容。
 
 ## 链接树
@@ -21,6 +21,8 @@
 | 概览、启动、验证 | [README](README.md) → [doc](doc/README.md) |
 | 库选择和封装 | [library](doc/library.md) → [pubspec](pubspec.yaml) → [lock](pubspec.lock) |
 | 页面迁移范围 | [migration](doc/migration.md) |
+| 共享packages | [packages/AGENTS](packages/AGENTS.md) |
+| 演示数据 | [demo/AGENTS](lib/demo/AGENTS.md) |
 | Dart 源码 | [lib/AGENTS](lib/AGENTS.md) |
 | 装配、路由和底栏 | [app/AGENTS](lib/app/AGENTS.md) |
 | 主题、组件、UI 偏好 | [core/AGENTS](lib/core/AGENTS.md) |
@@ -35,11 +37,11 @@
 
 计划阶段不开子 agent；规划写入 doc-project 后进入实施协作。子 agent 默认 **gpt-6.1-sol / medium**。明确互斥文件归属；共享 checkout 不并发改同一文件、不并发提交。需要 worktree 时只能放本仓库内部忽略目录，分支按 dev/feature-*、dev/doc-* 划分；本轮复用 dev/feature。
 
-依赖方向：main → app → features → core。core 不依赖 app/features；feature 不横向导入其他 feature。统一路径常量位于 core 展示层，路由注册位于 app。局部模型、样例和交互留在 feature/presentation；按需增加真实 data/domain 层，不造空层。一个页面一个文件。
+依赖方向：main → app → features → core/demo/packages。feature 不横向导入；packages 不依赖应用。共享展示模型放 diet_models，设计系统放 diet_ui，公共演示状态放 demo。统一路径协议位于 core，路由注册位于 app；按需增添真实 data/domain 层，不造空层。一个页面一个文件。
 
 ## 验证与提交
 
-见 [tool/verify.sh](tool/verify.sh)：格式、静态检查、widget tests、可用平台 build。缓存指向本仓库，不升级机器 SDK。覆盖窄屏、大字号、返回、表单键盘和玻璃回退。Web 成功不等于移动真机验收。
+见 [tool/verify.sh](tool/verify.sh)：基础格式、静态检查和编译。用户负责功能、视觉、性能验收；不要扩大为完整测试矩阵。Android优先，Web/Windows其次，iOS不纳入本轮。缓存指向本仓库，不升级机器SDK；分别报告实际编译结果。
 
 Conventional Commits：`<type>(<scope>): <简短祈使摘要>`。type 为 feat/fix/docs/refactor/test/chore/build/ci/perf/revert；scope 按 app/core/home/capture/meals/meal-plan/insights/auth/profile/tool 等职责划分。频繁提交独立可审核变化，精确暂存自身文件，不夹带用户改动，不 push。doc-project/docp、密钥、缓存和截图生成物不提交。
 
