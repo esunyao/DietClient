@@ -1,0 +1,7 @@
+name: diet_models
+description: Shared presentation models for DietClient UI.
+publish_to: none
+version: 0.1.0
+resolution: workspace
+environment:
+  sdk: ^3.13.5
