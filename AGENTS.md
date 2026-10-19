@@ -27,6 +27,7 @@
 | 装配、路由和底栏 | [app/AGENTS](lib/app/AGENTS.md) |
 | 主题、组件、UI 偏好 | [core/AGENTS](lib/core/AGENTS.md) |
 | 功能页面 | [features/AGENTS](lib/features/AGENTS.md) → feature AGENTS → doc 与源码 |
+| 平台宿主 | [Android](android/AGENTS.md) → [Web](web/AGENTS.md)、[Windows](windows/AGENTS.md) |
 | 验证 | [test/AGENTS](test/AGENTS.md) → [tool/AGENTS](tool/AGENTS.md) |
 
 ## 开发与协作
@@ -43,6 +44,6 @@
 
 见 [tool/verify.sh](tool/verify.sh)：基础格式、静态检查和编译。用户负责功能、视觉、性能验收；不要扩大为完整测试矩阵。Android优先，Web/Windows其次，iOS不纳入本轮。缓存指向本仓库，不升级机器SDK；分别报告实际编译结果。
 
-Conventional Commits：`<type>(<scope>): <简短祈使摘要>`。type 为 feat/fix/docs/refactor/test/chore/build/ci/perf/revert；scope 按 app/core/home/capture/meals/meal-plan/insights/auth/profile/tool 等职责划分。频繁提交独立可审核变化，精确暂存自身文件，不夹带用户改动，不 push。doc-project/docp、密钥、缓存和截图生成物不提交。
+Conventional Commits：`<type>(<scope>): <简短祈使摘要>`。type 为 feat/fix/docs/refactor/test/chore/build/ci/perf/revert；scope 按 app/core/demo/home/meal-record/meal/meal-plan/trend/report/institution/auth/profile/settings/tool 等职责划分。频繁提交独立可审核变化，精确暂存自身文件，不夹带用户改动，不 push。doc-project/docp、密钥、缓存和截图生成物不提交。
 
 公开文档文件名使用小写英文单数，README.md 除外。CLAUDE.md 若存在，仅两行兼容入口，指向根规范、当前 AGENTS 和本地说明，不维护第二套规范。
