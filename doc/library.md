@@ -14,3 +14,5 @@
 玻璃参考 FlClash 的设置交互，使用 Flutter 绘制，避免原生桥接。标准为轻量磨砂；增强只在支持的渲染器使用折射，Web/Windows回退磨砂；高对比/减少透明度优先实体。仅导航、浮层与必要操作区域使用玻璃。
 
 视觉遵循新版绿色样板；系统中文字体回退，本地矢量插画，Phosphor regular 图标。表单、日期、弹层使用 Flutter 标准组件。共享包提供稳定展示接口，第三方 API 不散布到各 feature。
+
+Flutter 3.47 将 IconData 设为 final，phosphor_flutter 2.1.0 的继承式图标类无法编译。diet_ui 的 AppIcons 使用核对过的 Regular 字体码点和标准 const IconData，仍由该包提供字体；不直接导入旧 Dart 图标类，不修改缓存。此边界保持 release Web 的字体裁剪可用。
