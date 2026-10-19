@@ -1,0 +1,17 @@
+name: diet_ui
+description: DietClient Flutter design system and rendering adapters.
+publish_to: none
+version: 0.1.0
+resolution: workspace
+environment:
+  sdk: ^3.13.5
+dependencies:
+  flutter:
+    sdk: flutter
+  fl_chart: 1.2.0
+  phosphor_flutter: 2.1.0
+  flutter_svg: 2.3.0
+  liquid_glass_easy: 5.0.0
+flutter:
+  assets:
+    - assets/illustrations/
