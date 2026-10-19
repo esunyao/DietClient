@@ -2,7 +2,7 @@
 
 HealthServer 膳食应用的 Flutter UI 客户端。主要依据新版需求 PPT 和手机/平板 SVG；React Native 提供辅助流程参考。四导航：首页、配餐、趋势、我的。个人/机构体验显式切换，窗口尺寸只决定布局。
 
-当前仅 UI、内存演示数据与局部交互，不含真实登录、上传、相机、授权、持久化和 AI 服务。Android 优先，Web/Windows 其次；iOS 不在本轮范围。
+本轮仅登录接入真实 Authentik/OIDC；其他业务继续使用 UI、内存演示数据与局部交互，不接入业务 API、上传、相机、真实 AI 授权、持久化和 AI 服务。Android 优先，Web/Windows 其次；iOS 不在本轮范围。登录接入与验证状态见 [登录说明](authentication.md)。
 
 - [根规范](../AGENTS.md) · [源码入口](../lib/AGENTS.md)
 - [架构](architecture.md) · [库选择](library.md) · [迁移对照](migration.md)
