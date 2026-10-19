@@ -34,7 +34,14 @@ extension RecordSourceLabel on RecordSource {
 }
 
 class Nutrients {
-  const Nutrients({this.energy, this.protein, this.carbs, this.fat, this.fiber, this.sodium});
+  const Nutrients({
+    this.energy,
+    this.protein,
+    this.carbs,
+    this.fat,
+    this.fiber,
+    this.sodium,
+  });
   final double? energy;
   final double? protein;
   final double? carbs;
@@ -42,22 +49,49 @@ class Nutrients {
   final double? fiber;
   final double? sodium;
   double? value(String code) => switch (code) {
-    'energy' => energy, 'protein' => protein, 'carbs' => carbs,
-    'fat' => fat, 'fiber' => fiber, 'sodium' => sodium, _ => null,
+    'energy' => energy,
+    'protein' => protein,
+    'carbs' => carbs,
+    'fat' => fat,
+    'fiber' => fiber,
+    'sodium' => sodium,
+    _ => null,
   };
 }
 
 class FoodPortion {
-  const FoodPortion({required this.id, required this.name, required this.grams, this.nutrients = const Nutrients()});
+  const FoodPortion({
+    required this.id,
+    required this.name,
+    required this.grams,
+    this.nutrients = const Nutrients(),
+  });
   final String id;
   final String name;
   final double grams;
   final Nutrients nutrients;
-  FoodPortion copyWith({String? name, double? grams, Nutrients? nutrients}) => FoodPortion(id: id, name: name ?? this.name, grams: grams ?? this.grams, nutrients: nutrients ?? this.nutrients);
+  FoodPortion copyWith({String? name, double? grams, Nutrients? nutrients}) =>
+      FoodPortion(
+        id: id,
+        name: name ?? this.name,
+        grams: grams ?? this.grams,
+        nutrients: nutrients ?? this.nutrients,
+      );
 }
 
 class MealEntry {
-  const MealEntry({required this.id, required this.title, required this.type, required this.consumedAt, required this.nutrients, this.status = AnalysisStatus.ready, this.source = RecordSource.photo, this.foods = const [], this.notes = '', this.confirmed = true});
+  const MealEntry({
+    required this.id,
+    required this.title,
+    required this.type,
+    required this.consumedAt,
+    required this.nutrients,
+    this.status = AnalysisStatus.ready,
+    this.source = RecordSource.photo,
+    this.foods = const [],
+    this.notes = '',
+    this.confirmed = true,
+  });
   final String id;
   final String title;
   final MealType type;
@@ -68,11 +102,40 @@ class MealEntry {
   final List<FoodPortion> foods;
   final String notes;
   final bool confirmed;
-  MealEntry copyWith({String? title, MealType? type, DateTime? consumedAt, Nutrients? nutrients, AnalysisStatus? status, RecordSource? source, List<FoodPortion>? foods, String? notes, bool? confirmed}) => MealEntry(id: id, title: title ?? this.title, type: type ?? this.type, consumedAt: consumedAt ?? this.consumedAt, nutrients: nutrients ?? this.nutrients, status: status ?? this.status, source: source ?? this.source, foods: List.unmodifiable(foods ?? this.foods), notes: notes ?? this.notes, confirmed: confirmed ?? this.confirmed);
+  MealEntry copyWith({
+    String? title,
+    MealType? type,
+    DateTime? consumedAt,
+    Nutrients? nutrients,
+    AnalysisStatus? status,
+    RecordSource? source,
+    List<FoodPortion>? foods,
+    String? notes,
+    bool? confirmed,
+  }) => MealEntry(
+    id: id,
+    title: title ?? this.title,
+    type: type ?? this.type,
+    consumedAt: consumedAt ?? this.consumedAt,
+    nutrients: nutrients ?? this.nutrients,
+    status: status ?? this.status,
+    source: source ?? this.source,
+    foods: List.unmodifiable(foods ?? this.foods),
+    notes: notes ?? this.notes,
+    confirmed: confirmed ?? this.confirmed,
+  );
 }
 
 class PlanOption {
-  const PlanOption({required this.id, required this.name, required this.energy, required this.protein, required this.minutes, required this.foods, required this.reason});
+  const PlanOption({
+    required this.id,
+    required this.name,
+    required this.energy,
+    required this.protein,
+    required this.minutes,
+    required this.foods,
+    required this.reason,
+  });
   final String id;
   final String name;
   final double energy;
@@ -83,7 +146,17 @@ class PlanOption {
 }
 
 class PersonProfile {
-  const PersonProfile({this.name = '林知夏', this.email = 'lin***@mail.com', this.birthday = '1994.04.18', this.gender = '女', this.height = 164, this.weight = 58.4, this.activity = '轻度活动', this.waterGoal = 1600, this.goal = '维持体重'});
+  const PersonProfile({
+    this.name = '林知夏',
+    this.email = 'lin***@mail.com',
+    this.birthday = '1994.04.18',
+    this.gender = '女',
+    this.height = 164,
+    this.weight = 58.4,
+    this.activity = '轻度活动',
+    this.waterGoal = 1600,
+    this.goal = '维持体重',
+  });
   final String name;
   final String email;
   final String birthday;
@@ -93,11 +166,38 @@ class PersonProfile {
   final String activity;
   final int waterGoal;
   final String goal;
-  PersonProfile copyWith({String? name, String? email, String? birthday, String? gender, double? height, double? weight, String? activity, int? waterGoal, String? goal}) => PersonProfile(name: name ?? this.name, email: email ?? this.email, birthday: birthday ?? this.birthday, gender: gender ?? this.gender, height: height ?? this.height, weight: weight ?? this.weight, activity: activity ?? this.activity, waterGoal: waterGoal ?? this.waterGoal, goal: goal ?? this.goal);
+  PersonProfile copyWith({
+    String? name,
+    String? email,
+    String? birthday,
+    String? gender,
+    double? height,
+    double? weight,
+    String? activity,
+    int? waterGoal,
+    String? goal,
+  }) => PersonProfile(
+    name: name ?? this.name,
+    email: email ?? this.email,
+    birthday: birthday ?? this.birthday,
+    gender: gender ?? this.gender,
+    height: height ?? this.height,
+    weight: weight ?? this.weight,
+    activity: activity ?? this.activity,
+    waterGoal: waterGoal ?? this.waterGoal,
+    goal: goal ?? this.goal,
+  );
 }
 
 class HealthRecordPreview {
-  const HealthRecordPreview({required this.id, required this.kind, required this.title, required this.value, this.note = '', this.date = '2026-10-01'});
+  const HealthRecordPreview({
+    required this.id,
+    required this.kind,
+    required this.title,
+    required this.value,
+    this.note = '',
+    this.date = '2026-10-01',
+  });
   final String id;
   final String kind;
   final String title;
@@ -107,18 +207,37 @@ class HealthRecordPreview {
 }
 
 class ReportPreview {
-  const ReportPreview({required this.id, required this.title, required this.period, required this.average, required this.version, this.stale = false});
+  const ReportPreview({
+    required this.id,
+    required this.title,
+    required this.period,
+    required this.average,
+    required this.version,
+    this.stale = false,
+  });
   final String id;
   final String title;
   final String period;
   final double average;
   final int version;
   final bool stale;
-  ReportPreview copyWith({bool? stale}) => ReportPreview(id: id, title: title, period: period, average: average, version: version, stale: stale ?? this.stale);
+  ReportPreview copyWith({bool? stale}) => ReportPreview(
+    id: id,
+    title: title,
+    period: period,
+    average: average,
+    version: version,
+    stale: stale ?? this.stale,
+  );
 }
 
 class TrendPoint {
-  const TrendPoint({required this.date, required this.nutrients, this.recordCount = 0, this.analyzingCount = 0});
+  const TrendPoint({
+    required this.date,
+    required this.nutrients,
+    this.recordCount = 0,
+    this.analyzingCount = 0,
+  });
   final DateTime date;
   final Nutrients nutrients;
   final int recordCount;
@@ -127,7 +246,10 @@ class TrendPoint {
 
 String formatAmount(double? value, {String unknown = '待补充'}) {
   if (value == null) return unknown;
-  return value == value.roundToDouble() ? value.toInt().toString() : value.toStringAsFixed(1);
+  return value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toStringAsFixed(1);
 }
 
-bool sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+bool sameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
