@@ -4,22 +4,55 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/presentation/ui_preferences.dart';
+import '../core/session/session_controller.dart';
 import '../demo/demo_store.dart';
 import 'router.dart';
 
-class DietApp extends ConsumerWidget {
+class DietApp extends ConsumerStatefulWidget {
   const DietApp({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DietApp> createState() => _DietAppState();
+}
+
+class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(sessionProvider.notifier).checkExpiry();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(sessionProvider, (previous, next) {
+      if (previous != null && next == null) {
+        ref.read(demoProvider.notifier).setPrivacyHidden(false);
+      }
+    });
+    final signedIn = hasActiveSession(ref.watch(sessionProvider));
     final prefs = ref.watch(uiPreferencesProvider);
-    final hidden = ref.watch(
-      demoProvider.select((s) => s.isInstitution && s.privacyHidden),
-    );
+    final hidden =
+        signedIn &&
+        ref.watch(
+          demoProvider.select((s) => s.isInstitution && s.privacyHidden),
+        );
     return MaterialApp.router(
       title: '膳食健康 · UI演示',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      routerConfig: appRouter,
+      routerConfig: ref.watch(appRouterProvider),
       locale: const Locale('zh', 'CN'),
       supportedLocales: const [Locale('zh', 'CN')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

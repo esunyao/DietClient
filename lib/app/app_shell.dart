@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../core/presentation/app_routes.dart';
 import '../core/presentation/ui_preferences.dart';
+import '../core/session/session_controller.dart';
+import '../features/auth/application/login_controller.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child, required this.location});
@@ -13,6 +15,11 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(uiPreferencesProvider);
+    void logout() {
+      ref.invalidate(authGatewayProvider);
+      ref.read(sessionProvider.notifier).clear();
+    }
+
     final wide = MediaQuery.sizeOf(context).width >= 840;
     final routes = [
       AppRoutes.home,
@@ -94,6 +101,18 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       body: Column(
         children: [
+          if (!wide)
+            SafeArea(
+              bottom: false,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: logout,
+                  icon: const Icon(Icons.logout, size: 17),
+                  label: const Text('退出当前应用'),
+                ),
+              ),
+            ),
           if (wide)
             SafeArea(
               bottom: false,
@@ -120,6 +139,11 @@ class AppShell extends ConsumerWidget {
                       tooltip: '外观与演示设置',
                       onPressed: () => context.push(AppRoutes.settings),
                       icon: const Icon(Icons.tune),
+                    ),
+                    IconButton(
+                      tooltip: '退出当前应用，不注销单点登录',
+                      onPressed: logout,
+                      icon: const Icon(Icons.logout),
                     ),
                   ],
                 ),
