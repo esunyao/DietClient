@@ -1,8 +1,9 @@
-# 认证流程导航
+# 登录与认证辅助流程导航
 
 [根规范](../../../AGENTS.md) · [上级](../AGENTS.md) · [公开概览](doc/README.md)
 
-- [登录预览](presentation/screens/login_screen.dart)
+- [登录页面](presentation/screens/login_screen.dart)
+- [登录应用层](application/AGENTS.md)
 - [注册表单](presentation/screens/register_screen.dart)
 - [邮箱验证](presentation/screens/verify_email_screen.dart)
 - [验证结果](presentation/screens/email_verified_screen.dart)
