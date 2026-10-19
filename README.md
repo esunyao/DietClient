@@ -4,7 +4,7 @@
 
 本轮仅登录接入真实 Authentik/OIDC，启动先登录。记录/草稿、历史、详情与份量修正、配餐、机构、报告、健康档案及 AI 授权继续演示；业务共享状态只保留内存，重启或重置恢复样例。不接入注册、邮箱验证、MFA、业务 API、相机、上传、网络分析、Token 刷新或持久化。
 
-使用 Flutter 3.47.7 / Dart 3.13.5。依赖见 [pubspec](pubspec.yaml)，Pub workspace 按规划增加 diet_oidc 与 diet_auth，保留 diet_models 与 diet_ui。Android 优先，Web/Windows 次之，SDK 由用户自行管理。
+使用 Flutter 3.47.7 / Dart 3.13.5。依赖见 [pubspec](pubspec.yaml)，Pub workspace 包含 diet_oidc、diet_auth、diet_models 与 diet_ui。Android 优先，Web/Windows 次之，SDK 由用户自行管理。
 
 ```bash
 bash tool/flutter.sh pub get
@@ -13,20 +13,25 @@ bash tool/flutter.sh run -d chrome --web-port 7357 --dart-define-from-file=.env
 bash tool/verify.sh
 ```
 
-verify 只做格式、静态检查和 Android/Web/Windows 编译。功能、视觉、真机性能由用户验收；编译不代表运行验收。项目缓存与临时文件隔离在仓库内。
+verify 执行格式、静态检查、离线协议/门控测试及可用平台的编译；构建使用 .env.example 占位配置，不进行真实认证请求。功能、视觉、真机性能由用户验收，编译或离线测试不代表真实登录验收。项目缓存与临时文件隔离在仓库内。
 
-登录配置使用本地 .env，经 --dart-define-from-file 注入；公开 .env.example 只保留不可连接占位符与空 client ID。Web 回调为同源静态页面，本地固定 http://localhost:7357/auth-callback.html，通过 AUTHENTIK_WEB_REDIRECT_URI 配置。集成中需要落实本地环境文件忽略规则，详见 [登录说明](doc/authentication.md)。
+登录配置使用被忽略的本地 .env，经 --dart-define-from-file 注入；公开 [.env.example](.env.example) 只保留不可连接占位符与空 client ID。Web 回调为同源静态页面，本地固定 http://localhost:7357/auth-callback.html，通过 AUTHENTIK_WEB_REDIRECT_URI 配置。Web 登录关闭弹窗后可在主页面取消，或等待五分钟超时。配置与平台限制详见 [登录说明](doc/authentication.md)。
 
 导航：[根规范](AGENTS.md) → [公开概览](doc/README.md)、[架构](doc/architecture.md)、[迁移范围](doc/migration.md)、[库选型](doc/library.md)。
 
-2026-10-20 原 UI 阶段基础验证结果（不代表新增登录代码已验证）：
+2026-10-20 登录阶段实际验证结果：
 
-- `dart format --output=none --set-exit-if-changed lib packages test`：通过。
-- `bash tool/flutter.sh analyze --no-pub`：通过，无问题。
-- `bash tool/flutter.sh build web --no-pub`：通过，产物 `build/web`。
-- `bash tool/flutter.sh build windows --debug --no-pub`：通过，产物 `build/windows/x64/runner/Debug/diet_client.exe`。
-- Android：尚未编译通过，等待用户自行配置 SDK；已停止自动下载与安装。
+| 项目 | 结果 |
+|---|---|
+| 依赖解析 | pub get 退出 0 |
+| 格式与脚本 | 65 个 Dart 文件格式检查通过；4 个 Bash 脚本 bash -n 通过，退出均为 0 |
+| 静态检查 | flutter analyze：No issues found，退出 0 |
+| 协议与执行器 | 24 项离线测试通过，退出 0 |
+| 应用登录门控 | 门控、过期、配置、取消等 6 项离线测试通过，退出 0 |
+| Web release | .env.example 构建通过，退出 0；产物 build/web，含 auth-callback.html 与 auth-callback.js |
+| Windows debug | .env.example 构建通过，退出 0；产物 build/windows/x64/runner/Debug/diet_client.exe |
+| Android | 关键文件预检未通过，未启动构建、下载或修改 SDK |
 
-Web 构建保留 Flutter 的可选 Cupertino 字体提示；本应用的 Phosphor Regular 字体资源及裁剪已成功。未执行功能、视觉、性能验收或完整测试矩阵。
+Android 缺少 API 36 的 android.jar、Build Tools 36.0.0 的 aapt2.exe，以及 NDK 28.2.13676358 的 source.properties 和 clang.exe。SDK 由用户自行配置；缺失时 verify.sh 保留退出码 2，不能把已完成的 Web/Windows 编译当作全部平台通过。
 
-新增登录接入中；当前已知公开探测返回 502，尚未验证真实登录。该阶段的静态检查、编译与实际登录结果待实施收尾分别补充。
+真实登录仍未验证，client ID 为空。先前公开探测曾返回 502，该历史结果不表示当前部署仍返回 502。以上离线测试和构建没有完成真实认证，也不替代用户的功能、视觉、真机性能验收。
