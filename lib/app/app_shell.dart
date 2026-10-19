@@ -129,12 +129,11 @@ class AppShell extends ConsumerWidget {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      bottom: showBottom
-                          ? 96 + MediaQuery.paddingOf(context).bottom
-                          : 0,
-                    ),
+                  child: AppPageScope(
+                    onBackFallback: () => context.go(AppRoutes.home),
+                    bottomInset: showBottom
+                        ? 96 + MediaQuery.paddingOf(context).bottom
+                        : MediaQuery.paddingOf(context).bottom,
                     child: child,
                   ),
                 ),

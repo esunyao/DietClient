@@ -2,6 +2,24 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
+/// 应用提供导航回退与覆盖区域，设计系统无需导入应用路由。
+class AppPageScope extends InheritedWidget {
+  const AppPageScope({
+    super.key,
+    required super.child,
+    required this.onBackFallback,
+    this.bottomInset = 0,
+  });
+  final VoidCallback onBackFallback;
+  final double bottomInset;
+  static AppPageScope? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<AppPageScope>();
+  @override
+  bool updateShouldNotify(AppPageScope oldWidget) =>
+      oldWidget.bottomInset != bottomInset ||
+      oldWidget.onBackFallback != onBackFallback;
+}
+
 /// 页面布局不依赖应用路由；无返回栈时由应用外壳提供首页恢复入口。
 class AppPage extends StatelessWidget {
   const AppPage({
@@ -54,7 +72,9 @@ class AppPage extends StatelessWidget {
               MediaQuery.sizeOf(context).width >= 840 ? 32 : 24,
               24,
               MediaQuery.sizeOf(context).width >= 840 ? 32 : 24,
-              32,
+              32 +
+                  (AppPageScope.of(context)?.bottomInset ??
+                      MediaQuery.paddingOf(context).bottom),
             ),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             children: [
@@ -66,7 +86,12 @@ class AppPage extends StatelessWidget {
                       padding: const EdgeInsets.only(right: 8),
                       child: IconButton(
                         tooltip: '返回',
-                        onPressed: () => Navigator.of(context).maybePop(),
+                        onPressed: () async {
+                          final popped = await Navigator.of(context).maybePop();
+                          if (!popped && context.mounted) {
+                            AppPageScope.of(context)?.onBackFallback();
+                          }
+                        },
                         icon: const Icon(Icons.arrow_back),
                       ),
                     ),
