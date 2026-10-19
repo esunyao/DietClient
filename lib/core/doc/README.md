@@ -4,4 +4,6 @@
 
 共享视觉实现位于 diet_ui，core 原主题和组件路径是薄导出。业务展示模型位于 diet_models，业务演示状态位于 demo。
 
+登录接入由 config 装配编译配置、session 保留内存会话；会话与业务 demo 状态独立，不进行刷新或持久化。流程及验证状态见 [登录说明](../../../doc/authentication.md)。
+
 [导航](../AGENTS.md) · [根规范](../../../AGENTS.md)
