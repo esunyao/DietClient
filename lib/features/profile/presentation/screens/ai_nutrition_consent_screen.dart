@@ -70,11 +70,12 @@ class AiNutritionConsentScreen extends ConsumerWidget {
               if (confirm != true || !context.mounted) return;
             }
             ref.read(demoProvider.notifier).setAiConsent(!enabled);
-            if (context.mounted)
+            if (context.mounted) {
               showDemoMessage(
                 context,
                 enabled ? '演示开关已关闭，没有修改真实授权。' : '演示开关已开启，没有授予真实权限。',
               );
+            }
           },
         ),
       ],

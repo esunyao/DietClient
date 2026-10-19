@@ -63,8 +63,9 @@ class _GlassSurfaceState extends State<GlassSurface> {
         MediaQuery.highContrastOf(context);
     if (opaque ||
         widget.mode != GlassMode.enhanced ||
-        !GlassSurface.supportsEnhanced)
+        !GlassSurface.supportsEnhanced) {
       return _lite(opaque);
+    }
     _shader ??= _load();
     return FutureBuilder<bool>(
       future: _shader,

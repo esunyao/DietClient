@@ -95,8 +95,9 @@ class HealthRecordsScreen extends ConsumerWidget {
                           ref
                               .read(demoProvider.notifier)
                               .removeHealthRecord(record.id);
-                          if (context.mounted)
+                          if (context.mounted) {
                             showDemoMessage(context, '已从本次演示中移除。');
+                          }
                         }
                       },
                     ),

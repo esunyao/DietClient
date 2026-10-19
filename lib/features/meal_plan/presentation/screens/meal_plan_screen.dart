@@ -103,7 +103,7 @@ class MealPlanScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '${formatAmount(option.energy)}',
+                                formatAmount(option.energy),
                                 style: const TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.w800,

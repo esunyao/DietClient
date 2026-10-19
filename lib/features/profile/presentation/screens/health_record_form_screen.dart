@@ -40,8 +40,9 @@ class _HealthRecordFormScreenState
     final date = DateTime.tryParse(v);
     if (date == null ||
         date.toIso8601String().substring(0, 10) != v ||
-        date.isAfter(DateTime.now()))
+        date.isAfter(DateTime.now())) {
       return '请输入有效的记录日期';
+    }
     return null;
   }
 
@@ -77,12 +78,13 @@ class _HealthRecordFormScreenState
   @override
   Widget build(BuildContext context) {
     final label = healthKinds[widget.kind];
-    if (label == null)
+    if (label == null) {
       return const AppPage(
         title: '记录类别不可用',
         showBack: true,
         children: [InfoBanner(text: '请返回健康档案，选择支持的记录类别。')],
       );
+    }
     final measurement = widget.kind == 'measurement';
     return UnsavedForm(
       dirty: _dirty,

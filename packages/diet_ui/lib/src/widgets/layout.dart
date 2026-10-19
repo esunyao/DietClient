@@ -88,8 +88,9 @@ class AdaptiveColumns extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      if (MediaQuery.sizeOf(context).width < 1024 || aside.isEmpty)
+      if (MediaQuery.sizeOf(context).width < 1024 || aside.isEmpty) {
         return _column([...main, ...aside]);
+      }
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -54,17 +54,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           date.month != m ||
           date.day != d ||
           date.isAfter(DateTime.now()) ||
-          y < 1900)
+          y < 1900) {
         return '请输入有效出生日期';
+      }
     }
     if (key.contains('cm') &&
         ((double.tryParse(value) ?? 0) < 50 ||
-            (double.tryParse(value) ?? 0) > 250))
+            (double.tryParse(value) ?? 0) > 250)) {
       return '身高应为 50–250 cm';
+    }
     if (key.contains('ml') &&
         ((int.tryParse(value) ?? -1) < 100 ||
-            (int.tryParse(value) ?? 99999) > 10000))
+            (int.tryParse(value) ?? 99999) > 10000)) {
       return '请输入 100–10000 的整数';
+    }
     return null;
   }
 

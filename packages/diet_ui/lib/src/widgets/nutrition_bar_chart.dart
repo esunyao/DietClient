@@ -68,8 +68,9 @@ class NutritionBarChart extends StatelessWidget {
                       i >= labels.length ||
                       (labels.length > 10 &&
                           i % (labels.length ~/ 7) != 0 &&
-                          i != labels.length - 1))
+                          i != labels.length - 1)) {
                     return const SizedBox.shrink();
+                  }
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
