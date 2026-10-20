@@ -5,10 +5,16 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
+import 'personal_nutrition_summary.dart';
 
 class PersonalHomeContent extends StatelessWidget {
-  const PersonalHomeContent({super.key, required this.data});
+  const PersonalHomeContent({
+    super.key,
+    required this.data,
+    this.narrowPage = false,
+  });
   final DemoSnapshot data;
+  final bool narrowPage;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -21,9 +27,12 @@ class PersonalHomeContent extends StatelessWidget {
           const SizedBox(height: 20),
           const _QuickActions(),
           const SizedBox(height: 20),
-          HomeNutritionSummary(data: data),
+          PersonalNutritionSummary(data: data),
           const SizedBox(height: 12),
-          HomeMeals(meals: data.todayMeals),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: narrowPage ? 4 : 0),
+            child: HomeMeals(meals: data.todayMeals),
+          ),
           if (!wide) ...[const SizedBox(height: 20), _LunchCheck(data: data)],
         ],
       );
@@ -92,7 +101,7 @@ class _RecordEntry extends StatelessWidget {
   Widget build(BuildContext context) => AppCard(
     color: AppColors.primary,
     radius: 24,
-    padding: const EdgeInsets.fromLTRB(20, 16, 8, 2),
+    padding: const EdgeInsets.fromLTRB(20, 8, 8, 10),
     child: LayoutBuilder(
       builder: (context, constraints) {
         final compact =
@@ -107,15 +116,6 @@ class _RecordEntry extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '从这一餐开始记录',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 9),
-                  const Text(
                     '拍照记一餐',
                     style: TextStyle(
                       color: Colors.white,
@@ -126,7 +126,7 @@ class _RecordEntry extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   const Text(
-                    '识别菜品，核对实际份量',
+                    '智能识别食物，轻松记录热量',
                     style: TextStyle(
                       color: Color(0xFFD9E9DF),
                       fontSize: 13,
@@ -138,7 +138,7 @@ class _RecordEntry extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.greenSoft,
                       foregroundColor: AppColors.primary,
-                      minimumSize: const Size(145, 34),
+                      minimumSize: const Size(145, 44),
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       textStyle: const TextStyle(
                         fontSize: 15,
@@ -153,7 +153,15 @@ class _RecordEntry extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            ExcludeSemantics(child: PlateIllustration(size: plateSize)),
+            ExcludeSemantics(
+              child: Image.asset(
+                'assets/images/home_capture_bowl.png',
+                width: plateSize,
+                height: plateSize,
+                cacheWidth: 384,
+                fit: BoxFit.contain,
+              ),
+            ),
           ],
         );
       },
@@ -178,7 +186,7 @@ class _QuickActions extends StatelessWidget {
       const SizedBox(width: 14),
       Expanded(
         child: _QuickAction(
-          label: '饮食历史',
+          label: '历史记录',
           icon: AppIcons.history,
           route: AppRoutes.mealHistory,
         ),
@@ -211,29 +219,47 @@ class _QuickAction extends StatelessWidget {
     child: InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () => context.push(route),
-      child: Column(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.greenSoft,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 24),
-          ),
-          const SizedBox(height: 11),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              height: 1.2,
-            ),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact =
+                constraints.maxWidth < 100 ||
+                MediaQuery.textScalerOf(context).scale(14) > 20;
+            final iconWidget = Container(
+              width: 30,
+              height: 30,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.greenSoft,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 20),
+            );
+            final text = Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13),
+            );
+            if (compact) {
+              return Column(
+                children: [iconWidget, const SizedBox(height: 6), text],
+              );
+            }
+            return Row(
+              children: [
+                iconWidget,
+                const SizedBox(width: 4),
+                Expanded(child: text),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: AppColors.muted,
+                ),
+              ],
+            );
+          },
+        ),
       ),
     ),
   );

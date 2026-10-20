@@ -4,4 +4,6 @@ Riverpod demoProvider 统一持有个人/机构体验、餐食、档案、配餐
 
 已分析且已确认的餐食参与已知摄入统计；分析中记录与待确认机构餐分开表达。营养缺失保持未知。餐食修改会标记历史报告需更新；档案记录和基础资料分别保留。
 
+`demo_nutrition_targets.dart` 单独提供个人首页的本地只读 UI 目标1800 kcal/90g/250g/60g；不表示用户保存的目标，不写入网络、持久化或给出营养建议。
+
 [演示导航](../AGENTS.md) · [共享模型](../../../packages/diet_models/AGENTS.md) · [架构](../../../doc/architecture.md) · [根规范](../../../AGENTS.md)
