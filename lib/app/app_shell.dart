@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'navigation_collapse_controller.dart';
 import '../core/config/ui_preview_config.dart';
 import '../core/presentation/app_routes.dart';
+import '../core/presentation/account_identity.dart';
 import '../core/presentation/ui_preferences.dart';
 import '../core/session/session_controller.dart';
 import '../demo/demo_store.dart';
@@ -57,6 +58,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     final prefs = ref.watch(uiPreferencesProvider);
     final uiPreview = ref.watch(uiPreviewProvider);
     final demo = ref.watch(demoProvider);
+    final accountName = uiPreview
+        ? demo.profile.name
+        : ref.watch(accountIdentityProvider).asData?.value.name ?? '当前账户';
     void logout() {
       ref.invalidate(authGatewayProvider);
       ref.read(sessionProvider.notifier).clear();
@@ -204,7 +208,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                         top: 0,
                                         bottom: 0,
                                         child: const Center(
-                                          child: AvatarIllustration(size: 36),
+                                          child: AccountAvatar(size: 36),
                                         ),
                                       ),
                                       Positioned.directional(
@@ -226,7 +230,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                               child: SizedBox(
                                                 width: 130,
                                                 child: Text(
-                                                  demo.profile.name,
+                                                  accountName,
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
@@ -356,7 +360,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const AvatarIllustration(size: 40),
+                                          const AccountAvatar(size: 40),
                                           if (constraints.maxWidth >= 1000) ...[
                                             const SizedBox(width: 10),
                                             ConstrainedBox(
@@ -364,7 +368,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                                 maxWidth: 88,
                                               ),
                                               child: Text(
-                                                demo.profile.name,
+                                                accountName,
                                                 style: AppTypography.body,
                                               ),
                                             ),

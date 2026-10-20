@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../demo/demo_store.dart';
+import '../../../../core/presentation/account_identity.dart';
 import '../widgets/institution_home_content.dart';
 import '../widgets/personal_home_content.dart';
 
@@ -29,7 +30,7 @@ class HomeScreen extends ConsumerWidget {
                 '${demoDate.month}月${demoDate.day}日 17:40',
                 style: const TextStyle(color: AppColors.muted, fontSize: 13),
               )
-            : const AvatarIllustration(size: 48),
+            : const AccountAvatar(size: 48),
         children: [
           if (institution)
             InstitutionHomeContent(data: data)
