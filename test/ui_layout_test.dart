@@ -4,6 +4,7 @@ import 'package:diet_client/app/app_shell.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_client/features/home/presentation/screens/home_screen.dart';
+import 'package:diet_client/features/meal/presentation/screens/meal_correction_screen.dart';
 import 'package:diet_client/features/meal/presentation/screens/meal_history_screen.dart';
 import 'package:diet_client/features/meal_plan/presentation/screens/meal_plan_screen.dart';
 import 'package:diet_client/features/profile/presentation/screens/profile_screen.dart';
@@ -80,6 +81,168 @@ void main() {
     await tester.pumpAndSettle();
     expect(lastRowTaps, 1);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('横屏键盘下真实手工记录可编辑且保存操作可达', (tester) async {
+    _setViewport(tester, const Size(844, 390));
+    addTearDown(tester.view.resetViewInsets);
+    await _pumpShell(
+      tester,
+      initialLocation: AppRoutes.manualMeal,
+      page: const MealCorrectionScreen(),
+    );
+    final field = find.ancestor(
+      of: find.text('餐食名称'),
+      matching: find.byType(TextFormField),
+    );
+    final editable = find.descendant(
+      of: field,
+      matching: find.byType(EditableText),
+    );
+    final formState = tester.state<FormState>(find.byType(Form));
+    final fieldState = tester.state(field);
+    final scrollable = find
+        .descendant(of: find.byType(AppPage), matching: find.byType(Scrollable))
+        .first;
+    final scrollState = tester.state<ScrollableState>(scrollable);
+    await tester.enterText(field, '横屏输入');
+    final focusNode = tester.widget<EditableText>(editable).focusNode;
+    expect(focusNode.hasFocus, isTrue);
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 200);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final topBar = tester.getRect(find.byType(AppTopNavigation));
+    expect(AppPageScope.of(tester.element(find.byType(AppPage)))?.topInset, 84);
+    expect(topBar.bottom, lessThanOrEqualTo(84));
+    expect(tester.state(field), same(fieldState));
+    expect(tester.state<FormState>(find.byType(Form)), same(formState));
+    expect(tester.state<ScrollableState>(scrollable), same(scrollState));
+    await tester.ensureVisible(field);
+    await tester.pumpAndSettle();
+    final inputRect = tester.getRect(field);
+    expect(inputRect.top, greaterThanOrEqualTo(84));
+    expect(inputRect.bottom, lessThanOrEqualTo(190));
+    expect(editable.hitTestable(), findsOneWidget);
+    await tester.enterText(field, '键盘打开后仍可输入');
+    expect(tester.widget<EditableText>(editable).controller.text, '键盘打开后仍可输入');
+    expect(focusNode.hasFocus, isTrue);
+
+    final save = find.text('保存记录（演示）');
+    await tester.scrollUntilVisible(save, 160, scrollable: scrollable);
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    expect(save.hitTestable(), findsOneWidget);
+    expect(tester.getRect(save).top, greaterThanOrEqualTo(84));
+    expect(tester.getRect(save).bottom, lessThanOrEqualTo(190));
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(find.text('请选择餐别'), findsOneWidget);
+
+    tester.view.viewInsets = const FakeViewPadding();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(tester.state(field), same(fieldState));
+    expect(tester.state<FormState>(find.byType(Form)), same(formState));
+    expect(tester.state<ScrollableState>(scrollable), same(scrollState));
+    expect(tester.widget<EditableText>(editable).controller.text, '键盘打开后仍可输入');
+    await tester.showKeyboard(field);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 200);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(editable);
+    await tester.pumpAndSettle();
+    expect(tester.state(field), same(fieldState));
+    expect(tester.widget<EditableText>(editable).focusNode, same(focusNode));
+    expect(focusNode.hasFocus, isTrue);
+    expect(tester.widget<EditableText>(editable).controller.text, '键盘打开后仍可输入');
+    expect(editable.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('常规与短视口切换保留内部表单状态焦点和滚动位置', (tester) async {
+    _setViewport(tester, const Size(1194, 834));
+    addTearDown(tester.view.resetViewInsets);
+    var saves = 0;
+    await _pumpShell(
+      tester,
+      initialLocation: AppRoutes.manualMeal,
+      page: AppPage(
+        title: '保留编辑草稿',
+        showBack: true,
+        footer: SizedBox(
+          height: 48,
+          child: FilledButton(
+            onPressed: () => saves++,
+            child: const Text('保存内部草稿'),
+          ),
+        ),
+        children: [
+          Form(
+            child: Column(
+              children: [
+                const SizedBox(height: 320),
+                TextFormField(
+                  initialValue: '初始内容',
+                  decoration: const InputDecoration(labelText: '内部编辑字段'),
+                ),
+                const SizedBox(height: 600),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    final field = find.byType(TextFormField);
+    final editable = find.byType(EditableText);
+    final formState = tester.state<FormState>(find.byType(Form));
+    final fieldState = tester.state(field);
+    final scrollable = find
+        .descendant(of: find.byType(AppPage), matching: find.byType(Scrollable))
+        .first;
+    final scrollState = tester.state<ScrollableState>(scrollable);
+    scrollState.position.jumpTo(180);
+    await tester.enterText(field, '没有外部控制器的草稿');
+    await tester.pumpAndSettle();
+    final focusNode = tester.widget<EditableText>(editable).focusNode;
+    final titleRect = tester.getRect(find.text('保留编辑草稿'));
+    final footerRect = tester.getRect(find.text('保存内部草稿'));
+    scrollState.position.jumpTo(220);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.text('保留编辑草稿')), titleRect);
+    expect(tester.getRect(find.text('保存内部草稿')), footerRect);
+
+    tester.view.physicalSize = const Size(844, 390);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 200);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(tester.state(field), same(fieldState));
+    expect(tester.state<FormState>(find.byType(Form)), same(formState));
+    expect(tester.state<ScrollableState>(scrollable), same(scrollState));
+    expect(tester.widget<EditableText>(editable).focusNode, same(focusNode));
+    expect(focusNode.hasFocus, isTrue);
+    await tester.ensureVisible(field);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(field).top, greaterThanOrEqualTo(84));
+    expect(tester.getRect(field).bottom, lessThanOrEqualTo(190));
+    expect(editable.hitTestable(), findsOneWidget);
+    expect(tester.widget<EditableText>(editable).controller.text, '没有外部控制器的草稿');
+
+    tester.view.viewInsets = const FakeViewPadding();
+    tester.view.physicalSize = const Size(1194, 834);
+    await tester.pumpAndSettle();
+    expect(tester.state(field), same(fieldState));
+    expect(tester.state<FormState>(find.byType(Form)), same(formState));
+    expect(tester.state<ScrollableState>(scrollable), same(scrollState));
+    expect(scrollState.position.pixels, greaterThan(0));
+    expect(focusNode.hasFocus, isTrue);
+    expect(tester.widget<EditableText>(editable).controller.text, '没有外部控制器的草稿');
+    expect(tester.getRect(find.text('保留编辑草稿')), titleRect);
+    expect(tester.getRect(find.text('保存内部草稿')), footerRect);
+    await tester.tap(find.text('保存内部草稿'));
+    expect(saves, 1);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('手机二级标题居中使用 23 字号并保留左侧返回命中区', (tester) async {
@@ -433,6 +596,7 @@ Future<GoRouter> _pumpShell(
             AppRoutes.trends,
             AppRoutes.profile,
             if (initialLocation == AppRoutes.mealHistory) AppRoutes.mealHistory,
+            if (initialLocation == AppRoutes.manualMeal) AppRoutes.manualMeal,
           ])
             GoRoute(
               path: path,

@@ -28,7 +28,7 @@ class AppPageScope extends InheritedWidget {
       oldWidget.onBackFallback != onBackFallback;
 }
 
-/// 标题与操作固定，只有业务内容滚动；页面统一消费系统安全区。
+/// 常规高度固定标题与操作；短视口将它们并入滚动，统一消费安全区。
 class AppPage extends StatelessWidget {
   const AppPage({
     super.key,
@@ -165,51 +165,28 @@ class AppPage extends StatelessWidget {
                 final wide =
                     constraints.maxWidth >= AppLayout.navigationBreakpoint;
                 final gutter = AppLayout.pageGutter(constraints.maxWidth);
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        gutter,
-                        (wide
-                                ? 32
-                                : showBack
-                                ? 8
-                                : 10) +
-                            (scope?.topInset ?? 0),
-                        gutter,
-                        showBack && !wide ? 28 : 20,
-                      ),
-                      child: _header(context, wide: wide),
-                    ),
-                    Expanded(
-                      child: ListView(
-                        key: PageStorageKey(title),
+                final topInset = scope?.topInset ?? 0;
+                final short =
+                    constraints.maxHeight - topInset <
+                    MediaQuery.textScalerOf(context).scale(300);
+                final header = Padding(
+                  padding: EdgeInsets.only(
+                    top: wide
+                        ? 32
+                        : showBack
+                        ? 8
+                        : 10,
+                    bottom: showBack && !wide ? 28 : 20,
+                  ),
+                  child: _header(context, wide: wide),
+                );
+                final footerWidget = footer == null
+                    ? null
+                    : Container(
                         padding: EdgeInsets.fromLTRB(
-                          gutter,
-                          0,
-                          gutter,
-                          footer == null
-                              ? 24 + systemBottom + (scope?.bottomInset ?? 0)
-                              : 24,
-                        ),
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        children: [
-                          for (var i = 0; i < children.length; i++) ...[
-                            children[i],
-                            if (i < children.length - 1)
-                              const SizedBox(height: AppLayout.sectionGap),
-                          ],
-                        ],
-                      ),
-                    ),
-                    if (footer != null)
-                      Container(
-                        padding: EdgeInsets.fromLTRB(
-                          gutter,
+                          short ? 0 : gutter,
                           12,
-                          gutter,
+                          short ? 0 : gutter,
                           16 + (scope?.bottomInset ?? 0),
                         ),
                         decoration: const BoxDecoration(
@@ -219,8 +196,44 @@ class AppPage extends StatelessWidget {
                           ),
                         ),
                         child: footer,
+                      );
+                return Padding(
+                  padding: EdgeInsets.only(top: topInset),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: gutter),
+                        child: short ? const SizedBox.shrink() : header,
                       ),
-                  ],
+                      Expanded(
+                        child: ListView(
+                          key: PageStorageKey(title),
+                          padding: EdgeInsets.fromLTRB(
+                            gutter,
+                            0,
+                            gutter,
+                            footer == null
+                                ? 24 + systemBottom + (scope?.bottomInset ?? 0)
+                                : 24,
+                          ),
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          children: [
+                            // 保留标题槽位，键盘开闭不改变表单子项的索引。
+                            if (short) header else const SizedBox.shrink(),
+                            for (var i = 0; i < children.length; i++) ...[
+                              children[i],
+                              if (i < children.length - 1)
+                                const SizedBox(height: AppLayout.sectionGap),
+                            ],
+                            if (short && footerWidget != null) footerWidget,
+                          ],
+                        ),
+                      ),
+                      if (!short && footerWidget != null) footerWidget,
+                    ],
+                  ),
                 );
               },
             ),
