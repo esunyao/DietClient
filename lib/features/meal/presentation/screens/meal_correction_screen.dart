@@ -248,6 +248,100 @@ class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
     });
   }
 
+  Widget _foodCard(_FoodDraft food) {
+    FoodPortion? original;
+    for (final existing in _original?.foods ?? <FoodPortion>[]) {
+      if (existing.id == food.id) original = existing;
+    }
+    final showOriginal = original != null && food.id == 'fish';
+    final amount = TextFormField(
+      controller: food.grams,
+      decoration: InputDecoration(
+        labelText: showOriginal ? '修正后重量' : '实际食用量',
+        suffixText: 'g',
+      ),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) return '请填写实际食用量';
+        return _number(value);
+      },
+      onChanged: (_) => _invalidateNutrition(),
+    );
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: food.name,
+                  decoration: const InputDecoration(
+                    hintText: '菜品名称',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.primary),
+                    ),
+                    filled: false,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  validator: (value) =>
+                      value == null || value.trim().isEmpty ? '请填写菜品名称' : null,
+                  onChanged: (_) => _invalidateNutrition(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: AppColors.red),
+                onPressed: () {
+                  setState(() => _foods.remove(food));
+                  food.dispose();
+                  _invalidateNutrition();
+                },
+                child: const Text('移除'),
+              ),
+            ],
+          ),
+          if (showOriginal) ...[
+            const Text(
+              '重量基准：熟重 / 实际食用量',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: '原估算重量',
+                      suffixText: 'g',
+                    ),
+                    child: Text(
+                      formatAmount(original.grams),
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(child: amount),
+              ],
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            amount,
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isNew && _original == null) {
@@ -279,224 +373,287 @@ class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
         child: AppPage(
           title: _isNew ? '手工记录' : '修正${_original!.type.label}',
           showBack: true,
-          footer: AppButton(
-            label: _saving
-                ? '正在保存演示…'
-                : _isNew
-                ? '保存记录（演示）'
-                : '保存修正（演示）',
-            onPressed: _saving ? null : _save,
+          footer: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                '保存后同步更新单餐、当日与趋势',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              AppButton(
+                label: _saving
+                    ? '正在保存演示…'
+                    : _isNew
+                    ? '保存记录（演示）'
+                    : '保存修正（演示）',
+                icon: AppIcons.check,
+                onPressed: _saving ? null : _save,
+              ),
+            ],
           ),
           children: [
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                    controller: _title,
-                    decoration: const InputDecoration(
-                      labelText: '餐食名称',
-                      hintText: '填写这餐吃了什么',
-                    ),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? '请填写餐食名称' : null,
-                    onChanged: (_) => _markDirty(),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('餐别'),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: MealType.values
-                        .map(
-                          (t) => ChoiceChip(
-                            label: Text(t.label),
-                            selected: t == _type,
-                            onSelected: (_) => setState(() {
-                              _type = t;
+            AdaptiveColumns(
+              main: [
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_isNew) ...[
+                        TextFormField(
+                          controller: _title,
+                          decoration: const InputDecoration(
+                            labelText: '餐食名称',
+                            hintText: '填写这餐吃了什么',
+                          ),
+                          validator: (v) =>
+                              v == null || v.trim().isEmpty ? '请填写餐食名称' : null,
+                          onChanged: (_) => _markDirty(),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final type = DropdownButtonFormField<MealType>(
+                            initialValue: _type,
+                            isExpanded: true,
+                            decoration: const InputDecoration(labelText: '餐别'),
+                            hint: const Text('请选择'),
+                            items: MealType.values
+                                .map(
+                                  (type) => DropdownMenuItem(
+                                    value: type,
+                                    child: Text(type.label),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (type) => setState(() {
+                              _type = type;
                               _dirty = true;
                             }),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _changeDate,
-                    icon: const Icon(Icons.calendar_today_outlined),
-                    label: Text('用餐时间  ${mealDate(_date)} ${mealTime(_date)}'),
-                  ),
-                ],
-              ),
-            ),
-            if (!_isNew)
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SectionHeading(title: '本餐更新预览'),
-                    const SizedBox(height: 12),
-                    Text(
-                      '${formatAmount(originalEnergy)} → ${formatAmount(energy)}${energy == null ? '' : ' kcal'}',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
+                          );
+                          final time = Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Text(
+                                '用餐时间',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              OutlinedButton(
+                                onPressed: _changeDate,
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 14,
+                                  ),
+                                ),
+                                child: Text(
+                                  '${_date.month}月${_date.day}日 ${mealTime(_date)}',
+                                  style: const TextStyle(
+                                    color: AppColors.ink,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                          final scale =
+                              MediaQuery.textScalerOf(context).scale(14) / 14;
+                          if (constraints.maxWidth < 300 * scale) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                type,
+                                const SizedBox(height: 16),
+                                time,
+                              ],
+                            );
+                          }
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(flex: 4, child: type),
+                              const SizedBox(width: 16),
+                              Expanded(flex: 5, child: time),
+                            ],
+                          );
+                        },
                       ),
-                    ),
-                    if (afterToday != null)
-                      Text('保存后今日已记录能量：${formatAmount(afterToday)} kcal'),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '保存前不更新单餐、当日和趋势。',
-                      style: TextStyle(color: AppColors.muted),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            const SectionHeading(title: '按实际食用量核对'),
-            if (_canSample)
-              AppButton(
-                label: '应用样例：煎鱼 150 g → 120 g',
-                secondary: true,
-                onPressed: _applySample,
-              ),
-            ..._foods.map(
-              (food) => AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
+                if (!_isNew)
+                  AppCard(
+                    color: AppColors.greenSoft,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Expanded(
-                          child: Text(
-                            '重量基准：熟重 / 实际食用量',
-                            style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
+                        const SectionHeading(title: '本餐更新预览'),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 14,
+                          runSpacing: 8,
+                          children: [
+                            Text(
+                              formatAmount(originalEnergy),
+                              style: const TextStyle(
+                                fontSize: 28,
+                                color: AppColors.muted,
+                              ),
                             ),
-                          ),
+                            const Icon(
+                              AppIcons.chevronRight,
+                              size: 22,
+                              color: AppColors.muted,
+                            ),
+                            Text(
+                              formatAmount(energy),
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (energy != null)
+                              const Text(
+                                'kcal',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            if (energy != null &&
+                                originalEnergy != null &&
+                                energy != originalEnergy)
+                              AppBadge(
+                                label:
+                                    '${energy < originalEnergy ? '减少' : '增加'}${formatAmount((energy - originalEnergy).abs())}',
+                              ),
+                          ],
                         ),
-                        IconButton(
-                          tooltip: '移除菜品',
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            setState(() => _foods.remove(food));
-                            food.dispose();
-                            _invalidateNutrition();
-                          },
+                        if (afterToday != null)
+                          Text('保存后今日已记录能量：${formatAmount(afterToday)} kcal'),
+                        const SizedBox(height: 8),
+                        const Text(
+                          '保存前不更新单餐、当日和趋势。',
+                          style: TextStyle(color: AppColors.muted),
                         ),
                       ],
                     ),
-                    TextFormField(
-                      controller: food.name,
-                      decoration: const InputDecoration(labelText: '菜品名称'),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? '请填写菜品名称' : null,
-                      onChanged: (_) => _invalidateNutrition(),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: food.grams,
-                      decoration: const InputDecoration(
-                        labelText: '实际食用量',
-                        suffixText: 'g',
+                  ),
+                const SectionHeading(title: '按实际食用量核对'),
+                if (_canSample)
+                  AppButton(
+                    label: '应用样例：煎鱼 150 g → 120 g',
+                    secondary: true,
+                    onPressed: _applySample,
+                  ),
+                ..._foods.map((food) => _foodCard(food)),
+                AppButton(
+                  label: '添加漏识别的菜品',
+                  secondary: true,
+                  icon: AppIcons.plus,
+                  onPressed: () {
+                    setState(
+                      () => _foods.add(
+                        _FoodDraft(
+                          'food-${DateTime.now().microsecondsSinceEpoch}',
+                          '',
+                          '',
+                        ),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return '请填写实际食用量';
-                        }
-                        return _number(value);
-                      },
-                      onChanged: (_) => _invalidateNutrition(),
-                    ),
-                  ],
+                    );
+                    _invalidateNutrition();
+                  },
                 ),
-              ),
-            ),
-            AppButton(
-              label: '添加漏识别的菜品',
-              secondary: true,
-              icon: Icons.add,
-              onPressed: () {
-                setState(
-                  () => _foods.add(
-                    _FoodDraft(
-                      'food-${DateTime.now().microsecondsSinceEpoch}',
-                      '',
-                      '',
-                    ),
-                  ),
-                );
-                _invalidateNutrition();
-              },
-            ),
-            if (_foodChanged && !_sampleApplied)
-              const InfoBanner(text: '菜品或重量已改变。没有可靠换算依据，营养已留空，请按当前整份手动核对。'),
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SectionHeading(title: '营养核对', detail: '当前整份营养'),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '未填值保持未知，不自动转成零',
-                    style: TextStyle(color: AppColors.muted),
-                  ),
-                  ...[
-                    ('energy', '能量', 'kcal'),
-                    ('protein', '蛋白质', 'g'),
-                    ('carbs', '碳水', 'g'),
-                    ('fat', '脂肪', 'g'),
-                    if (_extraNutrients) ...[
-                      ('fiber', '膳食纤维', 'g'),
-                      ('sodium', '钠', 'mg'),
+                if (_foodChanged && !_sampleApplied)
+                  const InfoBanner(text: '菜品或重量已改变。没有可靠换算依据，营养已留空，请按当前整份手动核对。'),
+              ],
+              aside: [
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SectionHeading(title: '营养核对', detail: '当前整份营养'),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '未填值保持未知，不自动转成零',
+                        style: TextStyle(color: AppColors.muted),
+                      ),
+                      ...[
+                        ('energy', '能量', 'kcal'),
+                        ('protein', '蛋白质', 'g'),
+                        ('carbs', '碳水', 'g'),
+                        ('fat', '脂肪', 'g'),
+                        if (_extraNutrients) ...[
+                          ('fiber', '膳食纤维', 'g'),
+                          ('sodium', '钠', 'mg'),
+                        ],
+                      ].map(
+                        (field) => Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: TextFormField(
+                            controller: _nutrients[field.$1],
+                            decoration: InputDecoration(
+                              labelText: field.$2,
+                              hintText: '待补充',
+                              suffixText: field.$3,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            validator: _number,
+                            onChanged: (_) => _markDirty(),
+                          ),
+                        ),
+                      ),
+                      if (!_extraNutrients)
+                        TextButton(
+                          onPressed: () => setState(() {
+                            _extraNutrients = true;
+                            _dirty = true;
+                          }),
+                          child: const Text('添加营养项'),
+                        ),
                     ],
-                  ].map(
-                    (field) => Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: TextFormField(
-                        controller: _nutrients[field.$1],
-                        decoration: InputDecoration(
-                          labelText: field.$2,
-                          hintText: '待补充',
-                          suffixText: field.$3,
+                  ),
+                ),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (!_isNew) ...[
+                        TextFormField(
+                          controller: _title,
+                          decoration: const InputDecoration(labelText: '餐食名称'),
+                          validator: (v) =>
+                              v == null || v.trim().isEmpty ? '请填写餐食名称' : null,
+                          onChanged: (_) => _markDirty(),
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
+                        const SizedBox(height: 16),
+                      ],
+                      TextFormField(
+                        controller: _notes,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: '补充备注',
+                          hintText: '补充实际份量、烹饪方式或菜品说明',
                         ),
-                        validator: _number,
                         onChanged: (_) => _markDirty(),
                       ),
-                    ),
+                    ],
                   ),
-                  if (!_extraNutrients)
-                    TextButton(
-                      onPressed: () => setState(() {
-                        _extraNutrients = true;
-                        _dirty = true;
-                      }),
-                      child: const Text('添加营养项'),
-                    ),
-                ],
-              ),
-            ),
-            AppCard(
-              child: TextFormField(
-                controller: _notes,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: '补充备注',
-                  hintText: '补充实际份量、烹饪方式或菜品说明',
                 ),
-                onChanged: (_) => _markDirty(),
-              ),
-            ),
-            const InfoBanner(
-              text: '保存前确认\n仅预览调整，保存后才更新统计。实际份量只换算一次。跨日期修改后，原日期与新日期的统计都会更新。当前仅保存内存演示，不代表真实提交。',
+                const InfoBanner(
+                  text: '保存前确认\n仅预览调整，保存后才更新统计。实际份量只换算一次。跨日期修改后，原日期与新日期的统计都会更新。当前仅保存内存演示，不代表真实提交。',
+                ),
+              ],
             ),
           ],
         ),
