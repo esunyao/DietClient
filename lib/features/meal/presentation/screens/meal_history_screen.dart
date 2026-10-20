@@ -23,6 +23,7 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
   final _query = TextEditingController();
   String _appliedQuery = '';
   int _limit = 6;
+  String? _selectedMealId = 'lunch';
   @override
   void dispose() {
     _query.dispose();
@@ -73,10 +74,9 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(demoProvider);
     final meals =
-        ref
-            .watch(demoProvider)
-            .meals
+        state.meals
             .where(
               (m) =>
                   !DateUtils.dateOnly(m.consumedAt).isBefore(_appliedFrom) &&
@@ -88,97 +88,336 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
             .toList()
           ..sort((a, b) => b.consumedAt.compareTo(a.consumedAt));
     final visible = meals.take(_limit).toList();
+    MealEntry? selected;
+    for (final meal in visible) {
+      if (meal.id == _selectedMealId) selected = meal;
+    }
+    selected ??= visible.isEmpty ? null : visible.first;
     return AppPage(
       title: '饮食历史',
       showBack: true,
       children: [
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => _pick(true),
-                icon: const Icon(Icons.calendar_today_outlined),
-                label: Text('开始日期  ${mealDate(_from)}'),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () => _pick(false),
-                icon: const Icon(Icons.calendar_today_outlined),
-                label: Text('结束日期  ${mealDate(_to)}'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _query,
-                decoration: const InputDecoration(
-                  hintText: '搜索备注或菜品名称',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  ChoiceChip(
-                    label: const Text('全部'),
-                    selected: _type == null,
-                    onSelected: (_) => setState(() => _type = null),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= AppLayout.columnsMinWidth;
+            final selectedMeal = selected;
+            final groups = <List<MealEntry>>[];
+            for (final meal in visible) {
+              if (groups.isEmpty ||
+                  !sameDay(groups.last.first.consumedAt, meal.consumedAt)) {
+                groups.add([]);
+              }
+              groups.last.add(meal);
+            }
+            for (final group in groups) {
+              group.sort((a, b) => a.consumedAt.compareTo(b.consumedAt));
+            }
+            return AdaptiveColumns(
+              main: [
+                _filters(wide),
+                if (!wide)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${_appliedFrom.month}月${_appliedFrom.day}日 - ${_appliedTo.month}月${_appliedTo.day}日 / ${_appliedType?.label ?? '全部餐别'}',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '共 ${meals.length} 条记录',
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                  ...MealType.values.map(
-                    (type) => ChoiceChip(
-                      label: Text(type.label),
-                      selected: _type == type,
-                      onSelected: (_) => setState(() => _type = type),
+                if (meals.isEmpty)
+                  AppCard(
+                    child: Column(
+                      children: [
+                        const Text('没有符合这些条件的记录'),
+                        const SizedBox(height: 12),
+                        AppButton(
+                          label: '重置筛选',
+                          secondary: true,
+                          onPressed: _reset,
+                        ),
+                      ],
                     ),
                   ),
+                for (
+                  var groupIndex = 0;
+                  groupIndex < groups.length;
+                  groupIndex++
+                ) ...[
+                  SectionHeading(
+                    title:
+                        '${groups[groupIndex].first.consumedAt.month}月${groups[groupIndex].first.consumedAt.day}日${sameDay(groups[groupIndex].first.consumedAt, demoDate) ? '，今天' : ''}',
+                    detail: wide && groupIndex == 0
+                        ? '共 ${meals.length} 条记录'
+                        : null,
+                  ),
+                  if (wide)
+                    AppCard(
+                      radius: 16,
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        children: [
+                          for (
+                            var i = 0;
+                            i < groups[groupIndex].length;
+                            i++
+                          ) ...[
+                            MealRow(
+                              meal: groups[groupIndex][i],
+                              embedded: true,
+                              selected:
+                                  groups[groupIndex][i].id == selectedMeal?.id,
+                              onTap: () => setState(
+                                () =>
+                                    _selectedMealId = groups[groupIndex][i].id,
+                              ),
+                            ),
+                            if (i < groups[groupIndex].length - 1)
+                              const Divider(
+                                height: 1,
+                                indent: 80,
+                                endIndent: 14,
+                              ),
+                          ],
+                        ],
+                      ),
+                    )
+                  else
+                    for (final meal in groups[groupIndex])
+                      MealRow(
+                        meal: meal,
+                        onTap: () =>
+                            context.push(AppRoutes.mealDetail(meal.id)),
+                      ),
                 ],
+                if (_limit < meals.length)
+                  AppButton(
+                    label: '加载更早记录',
+                    secondary: true,
+                    onPressed: () => setState(() => _limit += 6),
+                  ),
+              ],
+              aside: wide
+                  ? [
+                      if (selectedMeal != null) ...[
+                        AppCard(
+                          radius: 16,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Text(
+                                '选中记录',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                '${selectedMeal.consumedAt.month}月${selectedMeal.consumedAt.day}日 · ${selectedMeal.type.label}',
+                                style: const TextStyle(
+                                  fontSize: 23,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${mealTime(selectedMeal.consumedAt)} / ${selectedMeal.source.label}',
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              MealNutrients(
+                                nutrients:
+                                    selectedMeal.status == AnalysisStatus.ready
+                                    ? selectedMeal.nutrients
+                                    : const Nutrients(),
+                                title:
+                                    selectedMeal.status == AnalysisStatus.ready
+                                    ? null
+                                    : selectedMeal.status.label,
+                                showScore: false,
+                                embedded: true,
+                                leading: const PlateIllustration(size: 80),
+                              ),
+                              const SizedBox(height: 16),
+                              AppButton(
+                                label: '查看单餐详情',
+                                secondary: true,
+                                onPressed: () => context.push(
+                                  AppRoutes.mealDetail(selectedMeal.id),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (!state.institutionConfirmed)
+                        const InfoBanner(
+                          icon: AppIcons.sync,
+                          text: '机构餐食尚未入账\n另有 1 条机构晚餐待本人确认，不出现在已确认摄入合计中。',
+                        ),
+                    ]
+                  : const [],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _dateField(String label, DateTime date, VoidCallback onTap) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+      const SizedBox(height: 8),
+      OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: AppColors.surface,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          side: const BorderSide(color: AppColors.line),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                mealDate(date),
+                style: const TextStyle(color: AppColors.ink, fontSize: 14),
               ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  AppButton(label: '重置', secondary: true, onPressed: _reset),
-                  AppButton(label: '应用筛选', onPressed: _apply),
-                ],
+            ),
+            const SizedBox(width: 6),
+            const Icon(AppIcons.calendar, color: AppColors.muted, size: 18),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _filters(bool wide) {
+    final dates = LayoutBuilder(
+      builder: (context, constraints) {
+        final minimum = 300 * MediaQuery.textScalerOf(context).scale(14) / 14;
+        if (constraints.maxWidth < minimum) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _dateField('开始日期', _from, () => _pick(true)),
+              const SizedBox(height: 12),
+              _dateField('结束日期', _to, () => _pick(false)),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: _dateField('开始日期', _from, () => _pick(true))),
+            const SizedBox(width: 14),
+            Expanded(child: _dateField('结束日期', _to, () => _pick(false))),
+          ],
+        );
+      },
+    );
+    final search = TextField(
+      controller: _query,
+      decoration: InputDecoration(
+        hintText: '搜索备注或菜品名称',
+        prefixIcon: const Icon(AppIcons.search),
+        fillColor: AppColors.surface,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.line),
+        ),
+      ),
+      onSubmitted: (_) => _apply(),
+    );
+    final types = AppSegmented(
+      labels: ['全部', ...MealType.values.map((type) => type.label)],
+      selected: _type == null ? 0 : MealType.values.indexOf(_type!) + 1,
+      equalWidth: true,
+      onChanged: (index) => setState(
+        () => _type = index == 0 ? null : MealType.values[index - 1],
+      ),
+    );
+    final actions = Row(
+      children: [
+        Expanded(
+          child: FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.greenSoft,
+              foregroundColor: AppColors.primary,
+            ),
+            onPressed: _reset,
+            child: const Text('重置'),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          flex: wide ? 1 : 2,
+          child: AppButton(label: wide ? '筛选' : '应用筛选', onPressed: _apply),
+        ),
+      ],
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (wide)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(flex: 6, child: dates),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 5,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      '关键词',
+                      style: TextStyle(color: AppColors.muted, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    search,
+                  ],
+                ),
               ),
             ],
-          ),
-        ),
-        Text(
-          '${mealDate(_appliedFrom)} - ${mealDate(_appliedTo)} / ${_appliedType?.label ?? '全部餐别'}',
-          style: const TextStyle(color: AppColors.muted),
-        ),
-        SectionHeading(title: '共 ${meals.length} 条记录'),
-        if (meals.isEmpty)
-          AppCard(
-            child: Column(
-              children: [
-                const Text('没有符合这些条件的记录'),
-                const SizedBox(height: 12),
-                AppButton(label: '重置筛选', secondary: true, onPressed: _reset),
-              ],
-            ),
-          ),
-        for (var i = 0; i < visible.length; i++) ...[
-          if (i == 0 ||
-              !sameDay(visible[i].consumedAt, visible[i - 1].consumedAt))
-            SectionHeading(
-              title:
-                  '${visible[i].consumedAt.month}月${visible[i].consumedAt.day}日${sameDay(visible[i].consumedAt, demoDate) ? '，今天' : ''}',
-            ),
-          MealRow(
-            meal: visible[i],
-            onTap: () => context.push(AppRoutes.mealDetail(visible[i].id)),
-          ),
+          )
+        else ...[
+          dates,
+          const SizedBox(height: 20),
+          search,
         ],
-        if (_limit < meals.length)
-          AppButton(
-            label: '加载更早记录',
-            secondary: true,
-            onPressed: () => setState(() => _limit += 6),
-          ),
+        const SizedBox(height: 16),
+        if (wide)
+          Row(
+            children: [
+              Expanded(flex: 5, child: types),
+              const SizedBox(width: 20),
+              Expanded(flex: 2, child: actions),
+            ],
+          )
+        else ...[
+          types,
+          const SizedBox(height: 14),
+          actions,
+        ],
+        const SizedBox(height: 6),
       ],
     );
   }
