@@ -13,15 +13,20 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final Color? color;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: padding,
-    decoration: BoxDecoration(
+  Widget build(BuildContext context) {
+    final border = Border.all(color: AppColors.line.withValues(alpha: 0.08));
+    return Material(
       color: color ?? AppColors.surface,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: AppColors.line.withValues(alpha: 0.08)),
-    ),
-    child: child,
-  );
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: border.top,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(padding: padding.add(border.dimensions), child: child),
+    );
+  }
 }
 
 class SectionHeading extends StatelessWidget {
