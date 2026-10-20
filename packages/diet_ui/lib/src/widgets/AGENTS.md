@@ -13,4 +13,4 @@
 
 - 三态连续进度与运动泡手势：[app_navigation.dart](app_navigation.dart) → [glass_surface.dart](glass_surface.dart)；[交互回归](../../../../../test/navigation_interaction_test.dart)
 
-- [侧栏](app_side_navigation.dart)：桌面紧凑导航，复用 GlassSurface；平台断点和账户操作由应用装配。
+- [侧栏](app_side_navigation.dart)：桌面紧凑导航，单图标与可逆运动进度，复用 GlassSurface；平台断点和连续账户展示由[应用装配](../../../../../lib/app/AGENTS.md)负责。[中间帧回归](../../../../../test/desktop_sidebar_motion_test.dart)。

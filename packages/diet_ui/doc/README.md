@@ -30,4 +30,4 @@ Flutter 3.47 的 IconData 为 final，而 phosphor_flutter 2.1.0 的 Dart 图标
 
 本说明描述组件契约；格式化或编译通过不代表已完成手机、平板或大字视觉验收。
 
-AppSideNavigation 是路由无关的桌面覆盖侧栏，复用 GlassSurface。宽96/216、圆角24；悬停延迟120/180ms，展开240ms、收起200ms，文字后显且入口高度稳定。键盘焦点和应用传入的菜单状态保持展开，非悬停标识点击切换；短视口滚动，大字换行，减少动画立即切换。账户通过 accountBuilder 注入。AppPageScope.uiPreview 默认为 false，包仅传递显示状态。NutritionBarChart 网格使用默认 null dashArray 实线，保留未知值为空柱与缺失语义。
+AppSideNavigation 是路由无关的桌面覆盖侧栏，复用 GlassSurface。宽96/216、圆角24；悬停延迟120/180ms，完整展开240ms、收起200ms，单一可逆缓动进度，同目标不重启、反向按剩余进度完成。每项只绘制一份图标并连续移动，紧凑／展开文字使用固定布局槽位和可逆淡化区间，测量仅随依赖或文案更新，不逐帧重测。标准 TextButton 保留单份入口语义与选中状态，高度在运动中稳定。键盘焦点和应用传入的菜单状态保持展开，非悬停标识点击切换；短视口滚动，大字换行，减少动画（含途中启用）立即切换。账户通过 `accountBuilder(double expansion)` 注入，进度为0–1，应用保持菜单和头像实例稳定并连续呈现名称。AppPageScope.uiPreview 默认为 false，包仅传递显示状态。NutritionBarChart 网格使用默认 null dashArray 实线，保留未知值为空柱与缺失语义。

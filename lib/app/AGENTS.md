@@ -10,3 +10,4 @@
 - 主体滚动筛选、收起与恢复：[navigation_collapse_controller.dart](navigation_collapse_controller.dart)；[交互回归](../../test/navigation_interaction_test.dart)
 
 - Web 未登录预览开关：[core/config/ui_preview_config.dart](../core/config/ui_preview_config.dart) → [router.dart](router.dart)；预览与侧栏回归：[desktop_sidebar_preview_test.dart](../../test/desktop_sidebar_preview_test.dart)。
+- 侧栏账户连续进度装配与菜单实例保持：[app_shell.dart](app_shell.dart) → [展示契约](doc/README.md)；中间帧、长名大字与菜单保持：[desktop_sidebar_motion_test.dart](../../test/desktop_sidebar_motion_test.dart)。

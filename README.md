@@ -103,3 +103,19 @@ bash tool/flutter.sh build web --no-pub --dart-define-from-file=.env.example --d
 | Web release | 上方预览构建命令成功，60.6s；保留既有CupertinoIcons字体资源警告 |
 
 回归包括图表真实绘制与更新、未知值/零值，悬停延迟与反向、鼠标点击后收起、键盘焦点、菜单、触摸切换、短视口大字，以及跨断点/侧栏动画/玻璃切档的页面状态和滚动保留。默认认证门控继续通过；预览以会话为空且认证网关构造即抛错的测试确认隔离。未读取真实.env，未改SDK或依赖。日志保存在忽略目录 `.local/desktop-*.log`；以上不代表浏览器实测、真实登录或视觉与性能验收，Android由用户验证。
+
+## Windows 侧栏连续动画修正（2026-10-20）
+
+本次反馈明确为悬停展开／移出收起的运动不自然，三档玻璃一致，不把它当作已确认的渲染掉帧。修正统一可逆时间线与重复目标处理，每项单图标连续移动、文字固定槽位淡化；账户改传连续进度，保持头像和菜单实例，不再在65%处硬切布局。仍保留96/216宽度、120正文预留、120/180ms悬停延迟、240/200ms完整运动时长；不改玻璃库、捕获策略、依赖、原生宿主或登录边界。
+
+| 检查 | 本次实际结果 |
+|---|---|
+| 失败复现 | 旧实现重复展开事件后，在原定结束时宽度约116而非216；部分展开反向后仍约105.6而非96。另确认入口双图标和账户名称阈值挂载；对应回归修复后通过 |
+| 格式 | `bash tool/dart.sh format --output=none --set-exit-if-changed lib/app/app_shell.dart packages/diet_ui/lib/src/widgets/app_side_navigation.dart test/desktop_sidebar_motion_test.dart`，3文件、0变更 |
+| 聚焦回归 | `bash tool/flutter.sh test --no-pub test/desktop_sidebar_motion_test.dart test/desktop_sidebar_preview_test.dart test/glass_backdrop_test.dart test/navigation_interaction_test.dart`，22项通过 |
+| 静态分析 | `bash tool/flutter.sh analyze --no-pub`，No issues found，5.2s |
+| Windows debug | `bash tool/flutter.sh build windows --debug --no-pub --dart-define-from-file=.env.example`，成功，19.1s；产物 `build/windows/x64/runner/Debug/diet_client.exe` |
+
+新增7项运动回归涵盖中间帧、反向剩余时长、重复事件、单份语义、途中减少动态，以及真实AppShell账户菜单、长名大字和短窗口。日志位于忽略目录 `.local/sidebar-*.log`。AI导航与协作模型已同步，公开入口为 [文档导航](doc/AGENTS.md)，动画实现与验证入口见 [设计系统](packages/diet_ui/AGENTS.md)。
+
+本次未运行真实Windows业务窗口、未执行真实登录，也未追加profile、Web、Android或iOS构建。自动回归和编译不能代替视觉验收；请在现有本地配置启动的Windows客户端中复核三档玻璃的悬停、快速进出、中途反向与账户菜单观感。不新增Windows绕过登录入口，不将本次修复声称为实测帧率提升。

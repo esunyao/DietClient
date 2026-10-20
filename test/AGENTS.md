@@ -14,3 +14,4 @@
 实际执行入口与结果见 [根说明](../README.md)，功能、视觉和性能验收由用户进行。
 
 - [desktop_sidebar_preview_test.dart](desktop_sidebar_preview_test.dart)：平台/编译开关、预览首页与深链接、无认证网关构造、隐私遮罩、侧栏定时/反向/键盘/鼠标/触摸/短视口、跨断点状态和图表绘制。
+- [desktop_sidebar_motion_test.dart](desktop_sidebar_motion_test.dart)：统一进度同目标去重、反向剩余时长、单图标中间帧、稳定文字槽位与单份语义、途中减少动态，以及真实 AppShell 账户／菜单实例保持、长名大字和短窗口；不代表真实窗口视觉或帧率验收。
