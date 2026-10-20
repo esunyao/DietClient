@@ -117,16 +117,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Center(child: PlateIllustration(size: 104)),
+                    const Row(
+                      children: [
+                        Icon(AppIcons.plan, size: 25, color: AppColors.primary),
+                        SizedBox(width: 10),
+                        Text(
+                          '膳食健康',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: PlateIllustration(size: 72),
+                    ),
                     const SizedBox(height: 24),
                     Text(
                       '欢迎回来',
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontSize: 28),
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      '登录膳食健康',
-                      style: TextStyle(color: AppColors.muted),
+                      '登录膳食健康，连接你的身份服务',
+                      style: TextStyle(color: AppColors.muted, fontSize: 14),
                     ),
                     const SizedBox(height: 24),
                     AppCard(
@@ -135,6 +153,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            const Text(
+                              '账号登录',
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
                             if (kIsWeb)
                               const Padding(
                                 padding: EdgeInsets.only(bottom: 20),
@@ -174,7 +200,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   : kIsWeb
                                   ? '通过 SSO 弹窗登录'
                                   : '登录',
-                              icon: Icons.login,
+                              icon: AppIcons.signIn,
                               onPressed: login.busy || !config.isReady
                                   ? null
                                   : _signIn,
@@ -221,9 +247,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     const SizedBox(height: 20),
-                    const Text(
-                      '登录连接真实身份服务；进入后的膳食业务仍使用演示数据。登录会话仅保留内存，关闭或过期后需重新登录。',
-                      style: TextStyle(color: AppColors.muted, height: 1.6),
+                    const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          AppIcons.shield,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '登录连接真实身份服务。膳食业务仍使用演示数据；登录会话只保留在内存，关闭或过期后需重新登录。',
+                            style: TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 13,
+                              height: 1.7,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     TextButton(
                       onPressed: login.busy

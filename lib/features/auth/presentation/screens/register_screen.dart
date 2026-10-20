@@ -33,52 +33,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
     dirty: _dirty,
     child: AppPage(
       title: '创建账号',
-      subtitle: '开启更有意识的饮食记录',
+      subtitle: '只预览填写与校验，不创建真实账号',
       showBack: true,
       children: [
-        const InfoBanner(text: '注册流程演示：只检查格式，不会创建真实账号或发送邮件。'),
-        AppCard(
-          child: Form(
-            key: _form,
-            onChanged: () => setState(() => _dirty = true),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AuthField(label: '用户名', controller: _name),
-                AuthField(
-                  label: '昵称（可选）',
-                  controller: _nickname,
-                  validator: (_) => null,
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 490),
+            child: AppCard(
+              child: Form(
+                key: _form,
+                onChanged: () => setState(() => _dirty = true),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      '注册流程演示',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '请使用虚构信息。这里只检查格式，不会发送邮件。',
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                        height: 1.7,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    AuthField(label: '用户名', controller: _name),
+                    AuthField(
+                      label: '昵称（可选）',
+                      controller: _nickname,
+                      validator: (_) => null,
+                    ),
+                    AuthField(
+                      label: '邮箱',
+                      controller: _email,
+                      email: true,
+                      validator: validateEmail,
+                    ),
+                    AuthField(
+                      label: '密码',
+                      controller: _password,
+                      password: true,
+                      validator: (v) =>
+                          (v?.length ?? 0) < 8 ? '演示密码至少填写 8 位' : null,
+                    ),
+                    AuthField(
+                      label: '确认密码',
+                      controller: _confirm,
+                      password: true,
+                      validator: (v) =>
+                          v != _password.text ? '两次输入的密码不一致' : null,
+                    ),
+                    AppButton(
+                      label: '继续验证演示',
+                      onPressed: () {
+                        if (_form.currentState!.validate()) {
+                          FocusScope.of(context).unfocus();
+                          context.push(AppRoutes.verifyEmail);
+                        }
+                      },
+                    ),
+                  ],
                 ),
-                AuthField(
-                  label: '邮箱',
-                  controller: _email,
-                  email: true,
-                  validator: validateEmail,
-                ),
-                AuthField(
-                  label: '密码',
-                  controller: _password,
-                  password: true,
-                  validator: (v) =>
-                      (v?.length ?? 0) < 8 ? '演示密码至少填写 8 位' : null,
-                ),
-                AuthField(
-                  label: '确认密码',
-                  controller: _confirm,
-                  password: true,
-                  validator: (v) => v != _password.text ? '两次输入的密码不一致' : null,
-                ),
-                AppButton(
-                  label: '继续验证演示',
-                  onPressed: () {
-                    if (_form.currentState!.validate()) {
-                      FocusScope.of(context).unfocus();
-                      context.push(AppRoutes.verifyEmail);
-                    }
-                  },
-                ),
-              ],
+              ),
             ),
           ),
         ),

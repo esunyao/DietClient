@@ -1,3 +1,4 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 
 class AuthField extends StatefulWidget {
@@ -27,6 +28,7 @@ class _AuthFieldState extends State<AuthField> {
     padding: const EdgeInsets.only(bottom: 18),
     child: TextFormField(
       controller: widget.controller,
+      style: const TextStyle(fontSize: 15, color: AppColors.ink),
       obscureText: widget.password && !_visible,
       autocorrect: !widget.password && !widget.email,
       enableSuggestions: !widget.password,
@@ -46,11 +48,7 @@ class _AuthFieldState extends State<AuthField> {
             ? IconButton(
                 tooltip: _visible ? '隐藏密码' : '显示密码',
                 onPressed: () => setState(() => _visible = !_visible),
-                icon: Icon(
-                  _visible
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                ),
+                icon: Icon(_visible ? AppIcons.eyeSlash : AppIcons.eye),
               )
             : null,
       ),
