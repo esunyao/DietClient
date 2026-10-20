@@ -2,10 +2,12 @@ import 'dart:math' as math;
 
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'navigation_collapse_controller.dart';
+import '../core/config/ui_preview_config.dart';
 import '../core/presentation/app_routes.dart';
 import '../core/presentation/ui_preferences.dart';
 import '../core/session/session_controller.dart';
@@ -23,6 +25,7 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   final _collapse = NavigationCollapseController();
+  bool _menuOpen = false;
   @override
   void didUpdateWidget(AppShell oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -52,6 +55,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     final location = widget.location;
     final prefs = ref.watch(uiPreferencesProvider);
+    final uiPreview = ref.watch(uiPreviewProvider);
     final demo = ref.watch(demoProvider);
     void logout() {
       ref.invalidate(authGatewayProvider);
@@ -76,6 +80,9 @@ class _AppShellState extends ConsumerState<AppShell> {
         builder: (context, constraints) {
           final padding = MediaQuery.paddingOf(context);
           final wide = constraints.maxWidth >= AppLayout.navigationBreakpoint;
+          final sidebar =
+              wide &&
+              (kIsWeb || defaultTargetPlatform == TargetPlatform.windows);
           final showBottom = !wide && _routes.contains(location);
           final topHeight = AppLayout.topBarHeight(
             MediaQuery.textScalerOf(context),
@@ -96,19 +103,109 @@ class _AppShellState extends ConsumerState<AppShell> {
             reduceTransparency: prefs.reduceTransparency,
             background: AppPageScope(
               onBackFallback: () => context.go(AppRoutes.home),
-              onLogout: logout,
-              topInset: wide ? topHeight : 0,
+              onLogout: uiPreview ? null : logout,
+              uiPreview: uiPreview,
+              topInset: sidebar
+                  ? 0
+                  : wide
+                  ? topHeight
+                  : 0,
               bottomInset: showBottom
                   ? bottomHeight + AppLayout.bottomNavigationMargin
                   : 0,
-              child: NotificationListener<ScrollNotification>(
-                onNotification: showBottom ? _collapse.handle : null,
-                child: widget.child,
+              child: Padding(
+                padding: EdgeInsets.only(left: sidebar ? 120 : 0),
+                child: Column(
+                  children: [
+                    if (uiPreview)
+                      const SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Text(
+                            'Web UI 预览 · 未登录',
+                            style: AppTypography.small,
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: showBottom ? _collapse.handle : null,
+                        child: widget.child,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             overlay: Stack(
               children: [
-                if (wide)
+                if (sidebar)
+                  Positioned(
+                    top: padding.top + 12,
+                    bottom: padding.bottom + 12,
+                    left: padding.left + 12,
+                    child: AppSideNavigation(
+                      destinations: _destinations,
+                      selectedIndex: index,
+                      onSelected: select,
+                      onSettings: () => context.push(AppRoutes.settings),
+                      glassMode: prefs.glassMode,
+                      reduceTransparency: prefs.reduceTransparency,
+                      menuOpen: _menuOpen,
+                      accountBuilder: (expanded) =>
+                          PopupMenuButton<_AccountAction>(
+                            tooltip: '个人菜单',
+                            onOpened: () => setState(() => _menuOpen = true),
+                            onCanceled: () => setState(() => _menuOpen = false),
+                            onSelected: (action) {
+                              setState(() => _menuOpen = false);
+                              switch (action) {
+                                case _AccountAction.profile:
+                                  context.go(AppRoutes.profile);
+                                case _AccountAction.settings:
+                                  context.push(AppRoutes.settings);
+                                case _AccountAction.logout:
+                                  logout();
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: _AccountAction.profile,
+                                child: Text('我的'),
+                              ),
+                              const PopupMenuItem(
+                                value: _AccountAction.settings,
+                                child: Text('外观与演示设置'),
+                              ),
+                              if (!uiPreview)
+                                const PopupMenuItem(
+                                  value: _AccountAction.logout,
+                                  child: Text('退出当前应用，不注销单点登录'),
+                                ),
+                            ],
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const AvatarIllustration(size: 36),
+                                  if (expanded) ...[
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        demo.profile.name,
+                                        style: AppTypography.body,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                    ),
+                  ),
+                if (wide && !sidebar)
                   Positioned(
                     top: padding.top,
                     left: padding.left,
@@ -193,7 +290,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                           logout();
                                       }
                                     },
-                                    itemBuilder: (context) => const [
+                                    itemBuilder: (context) => [
                                       PopupMenuItem(
                                         value: _AccountAction.profile,
                                         child: Text('我的'),
@@ -202,16 +299,17 @@ class _AppShellState extends ConsumerState<AppShell> {
                                         value: _AccountAction.settings,
                                         child: Text('外观与演示设置'),
                                       ),
-                                      PopupMenuDivider(),
-                                      PopupMenuItem(
-                                        value: _AccountAction.logout,
-                                        child: Text(
-                                          '退出当前应用，不注销单点登录',
-                                          style: TextStyle(
-                                            color: AppColors.red,
+                                      if (!uiPreview) const PopupMenuDivider(),
+                                      if (!uiPreview)
+                                        const PopupMenuItem(
+                                          value: _AccountAction.logout,
+                                          child: Text(
+                                            '退出当前应用，不注销单点登录',
+                                            style: TextStyle(
+                                              color: AppColors.red,
+                                            ),
                                           ),
                                         ),
-                                      ),
                                     ],
                                     child: Padding(
                                       padding: const EdgeInsets.all(8),
