@@ -33,15 +33,53 @@ if ($MyInvocation.InvocationName -ne '.') {
         Environment = $originalEnvironment
         Prompt = if ($originalPrompt) { $originalPrompt.ScriptBlock } else { $null }
         Deactivate = if ($originalDeactivate) { $originalDeactivate.ScriptBlock } else { $null }
+        PoshCommand = $null
+        PoshConfig = $env:POSH_CONFIG
+        PoshThemeFile = $null
     }
     foreach ($name in $environment.Keys) {
         [Environment]::SetEnvironmentVariable($name, $environment[$name], 'Process')
     }
 
-    function global:prompt {
-        '(DietClient) ' + $(if ($global:DietClientActivationState.Prompt) {
-            & $global:DietClientActivationState.Prompt
-        })
+    $poshCommand = Get-Command oh-my-posh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($poshCommand -and $originalPrompt.ModuleName -like 'oh-my-posh*') {
+        $themeFile = Join-Path $temporaryDirectory ('dietclient-' + [guid]::NewGuid().ToString('N') + '.omp.json')
+        try {
+            $configArguments = @()
+            if ($env:POSH_CONFIG) { $configArguments = @('--config', $env:POSH_CONFIG) }
+            $themeJson = & $poshCommand.Source config export @configArguments
+            if ($LASTEXITCODE -ne 0) { throw 'Could not export the current Oh My Posh theme.' }
+            $theme = ($themeJson -join "`n") | ConvertFrom-Json -ErrorAction Stop
+            $block = $theme.blocks | Where-Object { $_.type -eq 'prompt' -and $_.alignment -eq 'left' } | Select-Object -First 1
+            if (-not $block) { throw 'The current theme has no left prompt block.' }
+            $badge = [pscustomobject]@{
+                type = 'text'
+                style = 'diamond'
+                leading_diamond = [string][char]0xe0b6
+                trailing_diamond = ([string][char]0xe0b4) + ' '
+                foreground = '#E9F5EF'
+                background = '#216753'
+                template = ' DietClient '
+            }
+            $block.segments = @($badge) + @($block.segments)
+            [IO.File]::WriteAllText($themeFile, ($theme | ConvertTo-Json -Depth 100), [Text.UTF8Encoding]::new($false))
+            $initialization = & $poshCommand.Source init pwsh --config $themeFile
+            if ($LASTEXITCODE -ne 0) { throw 'Could not initialize the DietClient theme.' }
+            $initialization | Out-String | Invoke-Expression
+            $global:DietClientActivationState.PoshCommand = $poshCommand.Source
+            $global:DietClientActivationState.PoshThemeFile = $themeFile
+        }
+        catch {
+            Remove-Item -LiteralPath $themeFile -ErrorAction SilentlyContinue
+            Write-Warning 'Oh My Posh integration failed; using the plain DietClient prefix.'
+        }
+    }
+    if (-not $global:DietClientActivationState.PoshCommand) {
+        function global:prompt {
+            '(DietClient) ' + $(if ($global:DietClientActivationState.Prompt) {
+                & $global:DietClientActivationState.Prompt
+            })
+        }
     }
 
     function global:deactivate {
@@ -54,7 +92,19 @@ if ($MyInvocation.InvocationName -ne '.') {
                 [Environment]::SetEnvironmentVariable($name, $state.Environment[$name], 'Process')
             }
         }
-        if ($state.Prompt) {
+        if ($state.PoshCommand) {
+            $configArguments = @()
+            if ($state.PoshConfig) { $configArguments = @('--config', $state.PoshConfig) }
+            if ($null -eq $state.PoshConfig) {
+                Remove-Item Env:POSH_CONFIG -ErrorAction SilentlyContinue
+            }
+            else {
+                $env:POSH_CONFIG = $state.PoshConfig
+            }
+            & $state.PoshCommand init pwsh @configArguments | Out-String | Invoke-Expression
+            Remove-Item -LiteralPath $state.PoshThemeFile -ErrorAction SilentlyContinue
+        }
+        elseif ($state.Prompt) {
             Set-Item Function:global:prompt -Value $state.Prompt
         }
         else {

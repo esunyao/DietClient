@@ -14,11 +14,15 @@ flutter --version
 deactivate
 ```
 
-激活后提示符前显示 `(DietClient)`，当前目录保持不变。`PUB_CACHE`、`GRADLE_USER_HOME` 分别指向项目内 `.pub-cache`、`.gradle-cache`，`TMPDIR`、`TMP`、`TEMP` 指向自动创建的 `.local/tmp`；与 `flutter.ps1` 相同，`CI` 与 `FLUTTER_SUPPRESS_ANALYTICS` 为 `true`。七项设置仅影响当前进程及之后启动的子进程；`deactivate` 恢复激活前的环境变量、提示符和原有同名函数（若有）。重复点源不会叠加前缀或覆盖首次快照。
+已初始化 oh-my-posh 的终端会在当前主题左侧加入绿色 `DietClient` 色块，保留原主题其他段落与提示符引擎；普通 PowerShell 显示 `(DietClient)` 前缀，当前目录保持不变。`PUB_CACHE`、`GRADLE_USER_HOME` 分别指向项目内 `.pub-cache`、`.gradle-cache`，`TMPDIR`、`TMP`、`TEMP` 指向自动创建的 `.local/tmp`；与 `flutter.ps1` 相同，`CI` 与 `FLUTTER_SUPPRESS_ANALYTICS` 为 `true`。七项设置仅影响当前进程及之后启动的子进程；`deactivate` 恢复激活前的环境变量、提示符和原有同名函数（若有）。重复点源不会叠加前缀或覆盖首次快照。
+
+oh-my-posh 集成使用官方 `config export` 和 `init pwsh --config` 接口，将临时主题存入被忽略的 `.local/tmp/dietclient-*.omp.json`，退出时恢复原主题并删除本次临时文件，不修改用户配置文件或原主题。导出或初始化失败时提示并回退普通前缀。强制关闭终端可能留下临时主题文件，不影响原主题；它们不会提交。主题机制见 [官方自定义说明](https://ohmyposh.dev/docs/installation/customize)。
 
 从其他目录激活时使用该脚本的绝对路径。直接运行 `./tool/activate.ps1` 或 `pwsh -File ./tool/activate.ps1` 只提示必须点源。该入口不永久修改用户或系统环境，不修改 SDK、不读取 `.env`、不自动运行 `pub get`；激活后的 Flutter 使用当前 PATH 中的 SDK。普通单次命令仍可使用 `flutter.ps1`。
 
 激活入口已在 PowerShell 7 验证七项变量、重复激活、普通调用不激活、提示符与原有退出函数恢复、未设置变量恢复及当前目录保持；未重新编译应用。
+
+oh-my-posh 29.26.1 已验证真实主题导出与色块渲染、原引擎保留、重复激活、默认主题及含空格路径的自定义主题恢复和临时文件清理；普通 PowerShell 回退回归通过。
 
 android-ready.sh 只探测现有 SDK/构建条件，条件缺失时 verify 跳过 Android 编译并说明原因，不自动安装。verify.sh 完成其余平台步骤后以 2 退出，保留部分完成状态，不将全部平台标记为成功。真实登录运行使用被忽略的本地 .env，与离线构建配置分开。
 
