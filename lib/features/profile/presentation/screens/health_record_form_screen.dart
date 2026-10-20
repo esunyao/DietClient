@@ -5,6 +5,8 @@ import 'package:diet_client/demo/demo_store.dart';
 
 import '../widgets/health_kind.dart';
 import '../widgets/unsaved_form.dart';
+import '../../../../core/config/ui_preview_config.dart';
+import 'real_health_form_screen.dart';
 
 class HealthRecordFormScreen extends ConsumerStatefulWidget {
   const HealthRecordFormScreen({super.key, required this.kind});
@@ -104,6 +106,9 @@ class _HealthRecordFormScreenState
 
   @override
   Widget build(BuildContext context) {
+    if (!ref.watch(uiPreviewProvider)) {
+      return RealHealthFormScreen(kind: widget.kind);
+    }
     final label = healthKinds[widget.kind];
     if (label == null) {
       return const AppPage(

@@ -1,6 +1,10 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/config/ui_preview_config.dart';
+import 'real_health_records_screen.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/presentation/app_routes.dart';
@@ -13,6 +17,7 @@ class HealthRecordsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(uiPreviewProvider)) return const RealHealthRecordsScreen();
     final state = ref.watch(demoProvider);
     final wide = MediaQuery.sizeOf(context).width >= 1024;
     final profile = state.profile;
