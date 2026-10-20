@@ -13,15 +13,18 @@ class AppPageScope extends InheritedWidget {
     this.onLogout,
     this.bottomInset = 0,
     this.topInset = 0,
+    this.uiPreview = false,
   });
   final VoidCallback onBackFallback;
   final VoidCallback? onLogout;
   final double bottomInset;
   final double topInset;
+  final bool uiPreview;
   static AppPageScope? of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppPageScope>();
   @override
   bool updateShouldNotify(AppPageScope oldWidget) =>
+      oldWidget.uiPreview != uiPreview ||
       oldWidget.bottomInset != bottomInset ||
       oldWidget.topInset != topInset ||
       oldWidget.onLogout != onLogout ||
