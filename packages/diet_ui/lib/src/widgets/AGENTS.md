@@ -2,7 +2,7 @@
 
 [根规范](../../../../../AGENTS.md) · [包导航](../../../AGENTS.md) · [公开概览](../../../doc/README.md)
 
-- [页面](app_page.dart)：固定标题、独立滚动、footer、安全区与应用回调
+- [页面](app_page.dart)：常规固定标题与 footer、短视口合并滚动、安全区与应用回调
 - [导航展示](app_navigation.dart)：手机悬浮岛、宽屏文字 tab；路由装配见 [app](../../../../../lib/app/AGENTS.md)
 - [基础控件](primitives.dart)：Material 卡片、标题、按钮、状态与分段；[卡片回归](../../../../../test/app_card_material_test.dart)
 - [列表与布局](layout.dart)：标准 ListTile 薄封装、约束双栏与本地插画
