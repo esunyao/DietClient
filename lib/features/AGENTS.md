@@ -14,7 +14,7 @@
 | 报告预览、版本与更新提示 | [report](report/AGENTS.md) |
 | 食堂菜单、机构餐食同步与确认 | [institution](institution/AGENTS.md) |
 | 保留现有真实登录，校准注册/邮箱辅助预览 | [auth](auth/AGENTS.md) → [登录说明](../../doc/authentication.md) |
-| 个人资料、五类健康记录与授权预览 | [profile](profile/AGENTS.md) |
+| 真实个人资料、五类健康记录与 AI 同意；未登录 Web 演示 | [profile](profile/AGENTS.md) |
 | 外观、显式体验模式与隐私预览 | [settings](settings/AGENTS.md) |
 
 共享路径、偏好和真实会话见 [core](../core/AGENTS.md)，共享业务内存状态见 [demo](../demo/AGENTS.md)，设计系统见 [packages](../../packages/AGENTS.md)，路由与导航装配见 [app](../app/AGENTS.md)。跨页面数值语义沿 [demo](../demo/AGENTS.md) 核对，不由页面自行复制状态；分层和本轮范围以 [根规范](../../AGENTS.md) 为准。

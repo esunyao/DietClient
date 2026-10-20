@@ -2,7 +2,7 @@
 
 基于新版绿色 C/B 端样板的 Flutter 客户端。四个入口为首页、配餐、趋势、我的；个人/机构内个人模式在设置中明确选择，宽度只控制布局。
 
-本轮只校准 UI：保留现有 Authentik/OIDC 登录与启动门控，不扩展真实登录或业务集成。记录/草稿、历史、详情与份量修正、配餐、机构、报告、健康档案及 AI 授权继续演示；业务共享状态只保留内存，重启或重置恢复样例。不接入注册、邮箱验证、MFA、业务 API、相机、上传、网络分析、Token 刷新或持久化。
+本轮接入「我的」真实姓名/邮箱/头像、基础资料、五类健康档案与 AI 营养同意记录；姓名只读。保留绿色 UI、四导航、玻璃和现有 Authentik/OIDC 登录。记录/草稿、饮食历史、配餐、机构与报告仍为内存演示。不新增注册、令牌刷新、持久化或 AI 分析请求。Web 显式预览保持零会话零业务请求，编辑只作本地演示。
 
 使用 Flutter 3.47.7 / Dart 3.13.5。依赖见 [pubspec](pubspec.yaml)，Pub workspace 包含 diet_oidc、diet_auth、diet_models 与 diet_ui。Android 优先，Web/Windows 次之，SDK 由用户自行管理。
 
@@ -16,6 +16,23 @@ bash tool/verify.sh
 verify 是完整验证入口；本轮 UI 校准不默认执行全矩阵，仅按改动做格式、静态检查、少量聚焦回归和必要的一次 Web 或 Windows 编译。Android 构建、真机、视觉与性能交给用户，不因验证下载或更换 SDK。构建使用 .env.example 占位配置，不进行真实认证请求；离线测试或编译不代表真实登录、视觉或性能验收。项目缓存与临时文件隔离在仓库内。
 
 登录配置使用被忽略的本地 .env，经 --dart-define-from-file 注入；公开 [.env.example](.env.example) 只保留不可连接占位符与空 client ID。Web 回调为同源静态页面，本地固定 http://localhost:7357/auth-callback.html，通过 AUTHENTIK_WEB_REDIRECT_URI 配置。Web 登录关闭弹窗后可在主页面取消，或等待五分钟超时。配置与平台限制详见 [登录说明](doc/authentication.md)。
+
+真实资料需在本地 `.env` 配置 API_BASE_URL 为部署网关的 HTTPS 基址；`.invalid` 示例会被拒绝，缺失或无效配置显示资料加载错误。客户端不保存凭据或健康资料到磁盘；无会话、Web 显式预览不发送业务请求。Web 部署需允许应用源访问 API，以及对象存储的预签名 PUT/Content-Type 和头像读取，详见 [网络说明](lib/core/network/doc/README.md)。
+
+Windows 使用用户现有 SDK 验证，不下载、更换或升级 SDK。本机关闭 Developer Mode 导致插件 symlink 权限不足时，当前工作区为忽略的 `windows/flutter/ephemeral/.plugin_symlinks` 和 `linux/flutter/ephemeral/.plugin_symlinks` 创建指向本仓库 `.pub-cache` 的目录 junction；Flutter 的 Windows 构建也检查已启用平台的插件链接。这是当前机器缓存处理，不要求全局修改系统设置，不提交这些缓存链接。
+
+## 我的页面功能迁移验证（2026-10-20）
+
+| 检查 | 实际结果 |
+|---|---|
+| 格式 | `bash tool/dart.sh format --output=none --set-exit-if-changed lib packages/diet_ui/lib test`，98 文件、0 处变更 |
+| 静态分析 | `bash tool/flutter.sh analyze --no-pub`，No issues found |
+| 资料与相关 UI 回归 | profile_api、profile_widget、authentication_gate、ui_layout、desktop_sidebar_preview、navigation_interaction、glass_backdrop、app_card_material、desktop_sidebar_motion 共 66 项通过 |
+| 文档与依赖审查 | 本轮 61 个文件严格 UTF-8 解码通过；318 条相对链接无缺失，根阅读说明保留，原有锁定依赖版本无漂移 |
+| Windows debug | `bash tool/flutter.sh build windows --debug --no-pub --dart-define-from-file=.env.example`，成功，13.0s |
+| Web release | `bash tool/flutter.sh build web --no-pub --dart-define-from-file=.env.example --dart-define=WEB_UI_PREVIEW=true`，成功，50.0s；Wasm dry run 通过，保留既有 CupertinoIcons 字体资源警告 |
+
+回归包含无损 ID、五类 CRUD 请求、同意版本及排序、无认证头像直传、迟到 401 和换账号隔离、Web 预览无业务客户端、实际库裁剪与取消、配置错误、失败保留输入、短视口大字键盘和原侧栏运动。使用离线替身及示例配置，没有读取真实 `.env`、执行真实登录或业务服务联调，也没有构建 Android/iOS。真实头像存储、后端保存、Android 真机与视觉性能由用户验收。日志位于忽略的 `.local/profile-*.log`。
 
 导航：[根规范](AGENTS.md) → [公开概览](doc/README.md)、[架构](doc/architecture.md)、[迁移范围](doc/migration.md)、[库选型](doc/library.md)、[UI 逻辑尺寸基准](doc/ui-spec.md)。
 

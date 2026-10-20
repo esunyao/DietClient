@@ -8,7 +8,7 @@ diet_models 只定义营养、餐食、来源、覆盖和报告等展示模型�
 
 本轮校准目标是固定 header、业务独立滚动、安全区单次消费，并按实际父级可用宽度启用适用双栏，保持原 1024 窗口语义的可用宽度等价。手机/平板几何与字阶详见 [UI 规格](ui-spec.md)。这些是本轮目标，不代表所有页面已完成或已视觉验收；实际检查与未完成项在 [根说明](../README.md) 和交付说明另记。
 
-业务演示状态统一由 demo store 驱动。修正影响单餐、首页、历史、趋势和报告更新提示；计划、机构待确认与分析中记录不混入已知摄入。业务数据重启重置，没有真实业务后端。登录会话由 core/session 单独保留内存，auth/application 控制流程；不刷新或持久化会话。平台和配置边界见 [登录说明](authentication.md)。
+餐食、计划、机构与报告演示统一由 demo store 驱动。我的个人资料、头像、五类健康记录和 AI 同意接入 Orion：core/network 提供独立 Dio 薄客户端，profile/data 与 application 管理接口和异步状态，不创建空 domain 层。共享真实姓名/邮箱/头像放 core/presentation，app/home 不横向导入 profile。真实资料不回退演示；Web 预览保持零会话零业务请求。登录会话只保留内存，不刷新或持久化，退出或切换账户丢弃旧请求结果。平台和配置边界见 [登录说明](authentication.md)。
 
 导航：[lib](../lib/AGENTS.md) → [app](../lib/app/AGENTS.md)、[core](../lib/core/AGENTS.md)、[demo](../lib/demo/AGENTS.md)、[features](../lib/features/AGENTS.md)、[packages](../packages/AGENTS.md)。
 

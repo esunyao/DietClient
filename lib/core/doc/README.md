@@ -9,3 +9,5 @@
 [导航](../AGENTS.md) · [根规范](../../../AGENTS.md)
 
 config 另提供默认关闭且仅 Web 生效的 WEB_UI_PREVIEW 展示开关；其值独立于内存登录会话，详见 [配置概览](../config/doc/README.md)。
+
+资料业务请求使用独立的 [network](../network/AGENTS.md)；共享真实姓名、邮箱与头像见 [account_identity](../presentation/account_identity.dart)，与预览演示身份分开。登录 Cookie 客户端不承载资料请求。

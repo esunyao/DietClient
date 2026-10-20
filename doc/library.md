@@ -1,12 +1,16 @@
 # 库与封装
 
-依赖解析以 [pubspec.lock](../pubspec.lock) 为准，下表沿用已锁定的选择；本轮 UI 校准不新增或升级依赖。项目记录的本机基线为 Flutter 3.47.7 / Dart 3.13.5，SDK 由用户管理，不自动下载、替换或升级。几何与字阶目标见 [UI 规格](ui-spec.md)。
+依赖解析以 [pubspec.lock](../pubspec.lock) 为准。资料迁移新增必要图片插件与 Dio 直接依赖，不升级无关依赖。项目记录的本机基线为 Flutter 3.47.7 / Dart 3.13.5，SDK 由用户管理，不自动下载、替换或升级。几何与字阶目标见 [UI 规格](ui-spec.md)。
 
 | 能力 | 选择 | 封装 |
 |---|---|---|
 | 路由 | [go_router](https://pub.dev/packages/go_router) 18.1.0 | app/router |
 | UI状态 | [flutter_riverpod](https://pub.dev/packages/flutter_riverpod) 3.4.3 | core 与 demo |
 | 图表 | [fl_chart](https://pub.dev/packages/fl_chart) 1.2.0 | diet_ui |
+| 业务网络 | Dio 5.11.1 | core/network，与登录 Cookie 客户端独立 |
+| 图片选择 | image_picker 1.2.4 | profile 头像；Android 系统相机/相册与恢复，Windows/Web 选择 |
+| 方形裁剪 | crop_your_image 2.0.1 | diet_ui 字节组件，不暴露第三方类型 |
+| 图片处理 | image 4.12.0 | profile/data 方向归一化、尺寸限制和 512 PNG |
 | 图标 | [phosphor_flutter](https://pub.dev/packages/phosphor_flutter) 2.1.0 | diet_ui 图标入口 |
 | SVG | [flutter_svg](https://pub.dev/packages/flutter_svg) 2.3.0 | 本地原稿插画 |
 | 玻璃 | [liquid_glass_easy](https://pub.dev/packages/liquid_glass_easy) 5.0.0 | diet_ui；关闭/标准/增强与能力回退 |
@@ -22,7 +26,7 @@ GlassBackdrop 的背景只装配一次，overlay 不参与捕获。Windows 容�
 
 Flutter 3.47 将 IconData 设为 final，phosphor_flutter 2.1.0 的继承式图标类无法编译。diet_ui 的 AppIcons 使用核对过的 Regular 字体码点和标准 const IconData，仍由该包提供字体；不直接导入旧 Dart 图标类，不修改缓存。此边界保持 release Web 的字体裁剪可用。
 
-登录依赖已由包声明和根 pubspec.lock 核对。diet_oidc 只复用 openid_client 的 PKCE Flow 与令牌模型，使用受约束 http 执行授权码交换和 JWKS 获取，避免库内通用交换路径记录原始 Token 响应；jose 负责签名验证，客户端补充 claims/nonce 检查。既有登录保留真实联网，其余业务仍为内存演示；本轮 UI 校准不增加网络能力，详见 [登录边界](authentication.md)。
+登录依赖已由包声明和根 pubspec.lock 核对。diet_oidc 只复用 openid_client 的 PKCE Flow 与令牌模型，使用受约束 http 执行授权码交换和 JWKS 获取，避免库内通用交换路径记录原始 Token 响应；jose 负责签名验证，客户端补充 claims/nonce 检查。既有登录保留真实联网，资料迁移使用独立业务客户端；餐食、报告与机构仍为内存演示，详见 [登录边界](authentication.md) 和 [资料说明](../lib/features/profile/doc/README.md)。
 # 导航运动泡补充
 
 窄屏导航在既有 GlassBackdrop/GlassSurface 内使用 liquid_glass_easy 5.0.0 公共 LiquidGlassMotionPill，包内薄封装位置、按住预览与抬起/取消吸附；第三方类型不透出 diet_ui，不引用库内部实现。标准、关闭、Web 和无障碍回退保留相同手势，增强仅在能力与 shader 就绪后启用；减少动画时直接定位并关闭弹性伸展。

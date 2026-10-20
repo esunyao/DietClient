@@ -1,6 +1,6 @@
 # 登录接入
 
-应用已接入 Authentik/OIDC 登录与启动门控；登录后的膳食、画像、机构、报告和 AI 授权页面继续使用共享内存样例。当前阶段仅校准 UI，保留已有登录和内存会话，不扩展认证或业务网络能力。真实注册、邮箱验证、MFA、业务 API、Token 刷新与持久化仍不在范围内。
+应用已接入 Authentik/OIDC 登录与启动门控；本轮保留认证协议和内存会话，将「我的」个人资料、头像、五类健康档案与 AI 同意接入独立业务客户端。膳食、机构和报告仍使用演示样例。真实注册、邮箱验证、MFA、令牌刷新与持久化不在范围内，资料行为见 [profile](../lib/features/profile/AGENTS.md)。
 
 ## 包与应用边界
 
@@ -37,7 +37,9 @@ Web 使用弹窗访问身份提供方，经 [静态回调](../web/auth-callback.
 | AUTHENTIK_WEB_REDIRECT_URI | Web 同源静态回调 |
 | AUTHENTIK_SCOPES | 空格分隔，必须含 openid |
 
-example 保留用户样例中的 offline_access；返回的 refresh_token 不进入 OidcSession，不使用也不持久化，当前没有刷新能力。example 中的注册、邮件或业务 API 键不代表已接入相应流程。
+example 保留用户样例中的 offline_access；返回的 refresh_token 不进入 OidcSession，不使用也不持久化，当前没有刷新能力。注册与邮件配置键不表示已接入相应流程。API_BASE_URL 现用于资料接口，独立客户端不复用登录 Cookie。
+
+业务 API_BASE_URL 应设为部署网关 HTTPS 基址，通过同一 `--dart-define-from-file` 注入；`.env.example` 的 `.invalid` 地址只用于构建，不能连接。HTTP 仅允许 loopback 开发地址。客户端按固定路径发送当前会话 Bearer，禁用重定向；无会话或 Web 预览不请求。Web 需部署方为 API 配置应用源、Authorization 与 JSON 请求所需的 CORS，同时为对象存储允许应用源的预签名 PUT、Content-Type 和头像读取。上传客户端独立且不附 Bearer/Cookie；不要将凭据放入 URL 或公开配置。
 
 `AUTHENTIK_WEB_REDIRECT_URI` 是 Web 专用回调配置。本地使用 `http://localhost:7357/auth-callback.html`，启动固定端口：
 

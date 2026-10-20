@@ -27,7 +27,8 @@
 ## 范围与边界
 
 - 唯一可写目录：`E:/ProjectSpace/DietClient`。HealthServer、DietClient-ReactNative 和其他兄弟目录只读；不得在其中安装依赖、创建工作树、改动文件或提交。
-- 当前阶段仅做全量 UI 校准，保留已有 Authentik/OIDC 登录、启动门控、内存会话与业务演示交互；仅显式启用 `WEB_UI_PREVIEW=true` 的 Web 构建允许未登录 UI 预览，不构造认证会话或调用认证网关；不扩展认证或其他网络能力。不新增真实注册、邮箱验证、MFA、业务 API、相机/相册、上传、Token 刷新、持久化、AI 请求和推送。
+- 本轮在已有 UI 校准基础上接入「我的」个人资料、头像、五类健康档案与 AI 营养同意记录，保留 Authentik/OIDC 登录和内存会话。姓名只显示真实姓名，不修改。报告、餐食与机构服务仍为明确标注的演示。不新增注册、令牌刷新、持久化、AI 分析请求和推送。
+- 仅显式启用 `WEB_UI_PREVIEW=true` 的 Web 构建允许未登录 UI 预览；不构造认证会话或发送业务请求，编辑只能标为本地演示。真实账户缺失资料保持未知或空态，不用样例补齐。头像由官方选图、裁剪与图片库完成，Android 支持系统相机，其余平台按插件能力选择图片。
 - 视觉依据为 `20261002ui二次设计` 的 C/B 端最终 SVG、设计说明与用户提供的手机个人首页、平板机构首页两张目标图；新版需求 PPT 补充业务语义，React Native 仅辅助未绘流程，不照搬旧主题和六项导航。可复核目标见 [UI 规格](doc/ui-spec.md)。
 - 采用新版绿色主题和首页、配餐、趋势、我的四项导航。个人/机构模式显式选择，不由窗口尺寸推断。业务内存预览须清楚标注演示，不能声称已真实注册、保存业务记录、授权 AI 或完成分析。
 - 玻璃沿用纯 Flutter 库和关闭/标准/增强三档及能力、无障碍回退；主要用于导航与必要浮层。保留 Windows 背景捕获和状态稳定性，不迁 RN 原生实现，不新增 PlatformView、MethodChannel 或 WebView，不把 Web 磨砂称为实时折射。
@@ -74,9 +75,9 @@
 
 默认 Git Bash。Dart 使用 UTF-8 无 BOM、dart format、flutter_lints。PowerShell 先设置 UTF-8；不要仅凭终端乱码判断损坏，改写非 ASCII 文件前严格 UTF-8 解码，尽量保留原编码。
 
-存在 `.codegraph/` 时先用 CodeGraph 理解或定位代码；缺失时不主动建索引。按需使用确实相关且可用的 skills，先读取并说明用途，不假称调用不可用工具。本轮沿用现有 lock，不新增或升级依赖；优先成熟库、Flutter 标准控件和薄封装，用实际约束与逻辑尺寸 tokens 校准布局，不引入 ScreenUtil 式全局缩放，不关闭系统文字缩放。
+存在 `.codegraph/` 时先用 CodeGraph 理解或定位代码；缺失时不主动建索引。按需使用确实相关且可用的 skills，先读取并说明用途，不假称调用不可用工具。本轮允许新增已批准的 Dio、image_picker、crop_your_image 与 image 直接依赖，不升级无关锁定依赖；优先成熟库、Flutter 标准控件和薄封装，用实际约束与逻辑尺寸 tokens 校准布局，不引入 ScreenUtil 式全局缩放，不关闭系统文字缩放。
 
-计划阶段禁止子 agent；新规划落入 `doc-project/` 并获批准后再实施。实施阶段子 agent 默认使用 **sonnet / medium**；宿主未提供 effort 参数时如实说明，不静默更换模型或声称已控制该参数。当前分支为 `dev/ui`。明确互斥文件归属，共享 checkout 不并发改同一文件、不并发提交，由主 agent 集成提交。需要 worktree 时仅放本仓库忽略目录 `.worktrees/`，分支使用 `dev/feature-ui-*` 或 `dev/doc-ui-*`，不在兄弟仓库建工作树。
+计划阶段禁止子 agent；新规划落入 `doc-project/` 并获批准后再实施。本轮由一个 **gpt-6.1-sol / medium** 子 agent 实施，主 agent 审查与提交，不再派生子 agent。当前实施分支以 git 实际状态为准，不自动切换。明确互斥文件归属，共享 checkout 不并发改同一文件、不并发提交，由主 agent 集成提交。需要 worktree 时仅放本仓库忽略目录 `.worktrees/`，分支使用 `dev/feature-ui-*` 或 `dev/doc-ui-*`，不在兄弟仓库建工作树。
 
 依赖方向：main → app → features → core/demo/packages。feature 不横向导入；packages 不依赖应用。共享展示模型放 diet_models，设计系统放 diet_ui，业务演示状态放 demo。diet_oidc 是不依赖 Authentik、Flutter、Riverpod、Cookie 的纯 Dart 通用协议包；diet_auth 是依赖 diet_oidc 的纯 Dart Authentik Flow Executor，使用 Dio 内存 Cookie。应用 core/config 装配配置，core/session 保留内存会话，auth/application 控制登录；Web 平台差异由协议包条件导出隔离。统一路径协议位于 core，路由注册位于 app；本轮沿用现有层次，不造空 data/domain/repository 层、不机械搬文件。一个页面一个文件，feature 内复用放本 feature 的 widgets。
 
