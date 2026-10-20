@@ -76,7 +76,7 @@
 
 存在 `.codegraph/` 时先用 CodeGraph 理解或定位代码；缺失时不主动建索引。按需使用确实相关且可用的 skills，先读取并说明用途，不假称调用不可用工具。本轮沿用现有 lock，不新增或升级依赖；优先成熟库、Flutter 标准控件和薄封装，用实际约束与逻辑尺寸 tokens 校准布局，不引入 ScreenUtil 式全局缩放，不关闭系统文字缩放。
 
-计划阶段禁止子 agent；新规划落入 `doc-project/` 并获批准后再实施。实施阶段按最新约定使用 **Opus / medium**；若当前接口只能指定 Opus、没有 effort 参数，须如实说明 medium 未保证生效。当前分支为 `dev/ui`。明确互斥文件归属，共享 checkout 不并发改同一文件、不并发提交，由主 agent 集成提交。需要 worktree 时仅放本仓库忽略目录 `.worktrees/`，分支使用 `dev/feature-ui-*` 或 `dev/doc-ui-*`，不在兄弟仓库建工作树。
+计划阶段禁止子 agent；新规划落入 `doc-project/` 并获批准后再实施。实施阶段按用户最新约定使用 **gpt-6.1-sol / medium**。当前分支为 `dev/ui`。明确互斥文件归属，共享 checkout 不并发改同一文件、不并发提交，由主 agent 集成提交。需要 worktree 时仅放本仓库忽略目录 `.worktrees/`，分支使用 `dev/feature-ui-*` 或 `dev/doc-ui-*`，不在兄弟仓库建工作树。
 
 依赖方向：main → app → features → core/demo/packages。feature 不横向导入；packages 不依赖应用。共享展示模型放 diet_models，设计系统放 diet_ui，业务演示状态放 demo。diet_oidc 是不依赖 Authentik、Flutter、Riverpod、Cookie 的纯 Dart 通用协议包；diet_auth 是依赖 diet_oidc 的纯 Dart Authentik Flow Executor，使用 Dio 内存 Cookie。应用 core/config 装配配置，core/session 保留内存会话，auth/application 控制登录；Web 平台差异由协议包条件导出隔离。统一路径协议位于 core，路由注册位于 app；本轮沿用现有层次，不造空 data/domain/repository 层、不机械搬文件。一个页面一个文件，feature 内复用放本 feature 的 widgets。
 

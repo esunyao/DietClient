@@ -23,3 +23,6 @@ GlassBackdrop 的背景只装配一次，overlay 不参与捕获。Windows 容�
 Flutter 3.47 将 IconData 设为 final，phosphor_flutter 2.1.0 的继承式图标类无法编译。diet_ui 的 AppIcons 使用核对过的 Regular 字体码点和标准 const IconData，仍由该包提供字体；不直接导入旧 Dart 图标类，不修改缓存。此边界保持 release Web 的字体裁剪可用。
 
 登录依赖已由包声明和根 pubspec.lock 核对。diet_oidc 只复用 openid_client 的 PKCE Flow 与令牌模型，使用受约束 http 执行授权码交换和 JWKS 获取，避免库内通用交换路径记录原始 Token 响应；jose 负责签名验证，客户端补充 claims/nonce 检查。既有登录保留真实联网，其余业务仍为内存演示；本轮 UI 校准不增加网络能力，详见 [登录边界](authentication.md)。
+# 导航运动泡补充
+
+窄屏导航在既有 GlassBackdrop/GlassSurface 内使用 liquid_glass_easy 5.0.0 公共 LiquidGlassMotionPill，包内薄封装位置、按住预览与抬起/取消吸附；第三方类型不透出 diet_ui，不引用库内部实现。标准、关闭、Web 和无障碍回退保留相同手势，增强仅在能力与 shader 就绪后启用；减少动画时直接定位并关闭弹性伸展。

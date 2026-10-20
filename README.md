@@ -68,3 +68,17 @@ bash tool/flutter.sh run -d <android-device-id> --dart-define-from-file=.env
 Android 缺少 API 36 的 android.jar、Build Tools 36.0.0 的 aapt2.exe，以及 NDK 28.2.13676358 的 source.properties 和 clang.exe。SDK 由用户自行配置；缺失时 verify.sh 保留退出码 2，不能把已完成的 Web/Windows 编译当作全部平台通过。
 
 真实登录仍未验证，client ID 为空。先前公开探测曾返回 502，该历史结果不表示当前部署仍返回 502。以上离线测试和构建没有完成真实认证，也不替代用户的功能、视觉、真机性能验收。
+
+2026-10-20 个人首页与玻璃导航补充验证（最终源码）：
+
+| 检查 | 实际结果 |
+|---|---|
+| 格式 | `bash tool/dart.sh format --output=none --set-exit-if-changed lib packages/diet_ui/lib test`：76文件、0改动，退出0 |
+| 静态分析 | `bash tool/flutter.sh analyze --no-pub`：No issues found，6.0s，退出0 |
+| 聚焦回归 | `bash tool/flutter.sh test --no-pub test/navigation_interaction_test.dart test/ui_layout_test.dart test/glass_backdrop_test.dart test/app_card_material_test.dart test/authentication_gate_test.dart`：32项通过，退出0 |
+| Windows debug | `bash tool/flutter.sh build windows --debug --no-pub --dart-define-from-file=.env.example`：11.5s，退出0；产物 `build/windows/x64/runner/Debug/diet_client.exe` |
+| 差异检查 | `git diff --check` 通过 |
+
+本次个人首页使用只读演示目标，今日总量继续来自共享记录；HomeMeals 实现、机构营养、宽屏顶部导航、认证与锁文件未改动。回归包含390/430布局、三态、拖动提交/取消、多指主触点、迷你首手势及键盘、程序化滚动过滤、真实AppShell主体状态、营养未知/超额和大字。减少动画关闭吸附过渡与弹性伸展，保留跟手定位。
+
+本地日志位于 `.local/home-glass-format.log`、`.local/home-glass-test.log`、`.local/home-glass-analyze.log`、`.local/home-glass-windows.log`。这些检查不代表真机折射、视觉还原或性能验收；Android、真实登录及新增Web构建本次未执行，SDK与真实.env未调整。
