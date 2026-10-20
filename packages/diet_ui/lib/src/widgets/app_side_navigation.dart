@@ -37,7 +37,13 @@ class AppSideNavigation extends StatefulWidget {
 
 class _AppSideNavigationState extends State<AppSideNavigation>
     with SingleTickerProviderStateMixin {
-  late final _animation = AnimationController(vsync: this);
+  late final _animation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 240),
+    reverseDuration: const Duration(milliseconds: 200),
+  );
+  bool _expanded = false;
+  double get _progress => Curves.easeInOutCubic.transform(_animation.value);
   Timer? _timer;
   bool _hover = false;
   bool _pointerInside = false;
@@ -67,13 +73,15 @@ class _AppSideNavigationState extends State<AppSideNavigation>
     final expand = _hover || _focus || _pinned || widget.menuOpen;
     final target = expand ? 1.0 : 0.0;
     if (MediaQuery.disableAnimationsOf(context)) {
+      _expanded = expand;
       _animation.value = target;
-    } else {
-      _animation.animateTo(
-        target,
-        duration: Duration(milliseconds: expand ? 240 : 200),
-        curve: Curves.easeInOutCubic,
-      );
+    } else if (_expanded != expand) {
+      _expanded = expand;
+      if (expand) {
+        _animation.forward();
+      } else {
+        _animation.reverse();
+      }
     }
   }
 
@@ -95,7 +103,7 @@ class _AppSideNavigationState extends State<AppSideNavigation>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) _update();
+    _update();
   }
 
   @override
@@ -207,7 +215,7 @@ class _AppSideNavigationState extends State<AppSideNavigation>
         child: AnimatedBuilder(
           animation: _animation,
           builder: (context, _) => SizedBox(
-            width: 96 + 120 * _animation.value,
+            width: 96 + 120 * _progress,
             child: GlassSurface(
               radius: 24,
               mode: widget.glassMode,
@@ -228,7 +236,7 @@ class _AppSideNavigationState extends State<AppSideNavigation>
                               if (_pointerInside) return;
                               _pinned = !_pinned;
                               _update();
-                            }, progress: _animation.value),
+                            }, progress: _progress),
                             const SizedBox(height: 18),
                             for (var i = 0; i < widget.destinations.length; i++)
                               _entry(
@@ -236,7 +244,7 @@ class _AppSideNavigationState extends State<AppSideNavigation>
                                 widget.destinations[i].icon,
                                 () => widget.onSelected(i),
                                 selected: i == widget.selectedIndex,
-                                progress: _animation.value,
+                                progress: _progress,
                               ),
                             const Spacer(),
                             const SizedBox(height: 18),
@@ -244,9 +252,9 @@ class _AppSideNavigationState extends State<AppSideNavigation>
                               '设置',
                               AppIcons.settings,
                               widget.onSettings,
-                              progress: _animation.value,
+                              progress: _progress,
                             ),
-                            widget.accountBuilder(_animation.value > .65),
+                            widget.accountBuilder(_progress > .65),
                           ],
                         ),
                       ),
