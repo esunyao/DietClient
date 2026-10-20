@@ -5,6 +5,8 @@ import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/demo/demo_store.dart';
 
+import '../widgets/trend_widgets.dart';
+
 class TrendsScreen extends ConsumerStatefulWidget {
   const TrendsScreen({super.key});
   @override
@@ -29,130 +31,193 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
     final nutrient = _nutrients[_nutrient];
     final values = points.map((p) => p.nutrients.value(nutrient.code)).toList();
     final known = values.whereType<double>().toList();
-    final average = known.isEmpty
-        ? null
-        : known.reduce((a, b) => a + b) / known.length;
+    final total = known.isEmpty ? null : known.reduce((a, b) => a + b);
+    final average = total == null ? null : total / known.length;
     final records = points.fold(0, (sum, point) => sum + point.recordCount);
     final analyzing = points.fold(
       0,
       (sum, point) => sum + point.analyzingCount,
     );
     final labels = points.map((p) => '${p.date.month}/${p.date.day}').toList();
-    return AppPage(
-      title: '营养趋势',
-      subtitle: '看记录中的变化',
-      children: [
-        AppSegmented(
-          labels: const ['7 日', '30 日', '90 日'],
-          selected: _range,
-          onChanged: (value) => setState(() => _range = value),
-        ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (var i = 0; i < _nutrients.length; i++)
-              ChoiceChip(
-                label: Text(_nutrients[i].label),
-                selected: _nutrient == i,
-                onSelected: (_) => setState(() => _nutrient = i),
-              ),
-          ],
-        ),
-        AdaptiveColumns(
-          main: [
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final period =
+        '${points.first.date.month}月${points.first.date.day}日 — ${points.last.date.month}月${points.last.date.day}日';
+    final rangeSelector = AppSegmented(
+      labels: const ['7 日', '30 日', '90 日'],
+      equalWidth: true,
+      selected: _range,
+      onChanged: (value) => setState(() => _range = value),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 1024;
+        final nutrientSelector = AppSegmented(
+          labels: _nutrients.map((value) => value.label).toList(),
+          selected: _nutrient,
+          onChanged: (value) => setState(() => _nutrient = value),
+          equalWidth: true,
+          selectedFilled: !wide,
+        );
+        final chart = AppCard(
+          radius: wide ? 16 : 20,
+          padding: EdgeInsets.all(wide ? 24 : 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 6,
                 children: [
                   Text(
-                    '${nutrient.label}每日变化',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                    wide ? '每日已记录${nutrient.label}' : '${nutrient.label}每日变化',
+                    style: TextStyle(
+                      fontSize: wide ? 20 : 17,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text('${labels.first} – ${labels.last} / 2026'),
-                  const SizedBox(height: 8),
                   Text(
-                    '日均 ${average == null ? '待补充' : average.round()} ${nutrient.unit}',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 23,
-                      fontWeight: FontWeight.w700,
+                    wide
+                        ? nutrient.unit
+                        : '日均 ${formatAmount(average?.roundToDouble())}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: wide ? FontWeight.w400 : FontWeight.w600,
+                      color: wide ? AppColors.muted : AppColors.primary,
                     ),
-                  ),
-                  const Text(
-                    '仅使用有数值的记录日',
-                    style: TextStyle(color: AppColors.muted),
-                  ),
-                  const SizedBox(height: 20),
-                  NutritionBarChart(
-                    values: values,
-                    labels: labels,
-                    unit: nutrient.unit,
                   ),
                 ],
               ),
-            ),
-            const SectionHeading(title: '逐日记录概况'),
-            AppCard(
-              child: Column(
-                children: [
-                  for (final point in points)
-                    AppListRow(
-                      title: '${point.date.month}月${point.date.day}日',
-                      subtitle: point.recordCount == 0
-                          ? '没有餐食记录'
-                          : '${point.recordCount - point.analyzingCount} 餐已分析${point.analyzingCount > 0 ? ' / ${point.analyzingCount} 餐分析中' : ''}',
-                      trailing: Text(
-                        '${formatAmount(point.nutrients.value(nutrient.code), unknown: point.recordCount == 0 ? '未记录' : '待补充')}${point.nutrients.value(nutrient.code) == null ? '' : ' ${nutrient.unit}'}',
+              if (!wide) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Text(
+                      period,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
                       ),
                     ),
-                ],
-              ),
-            ),
-          ],
-          aside: [
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                MetricTile(label: '有数值记录天数', value: '${known.length} / $days'),
-                MetricTile(label: '餐食记录', value: '$records', unit: '餐'),
+                    Text(
+                      '${nutrient.unit} / 有数值的记录日',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
               ],
-            ),
-            InfoBanner(
-              text:
-                  '当前为记录日均值\n缺失日不补零，${analyzing > 0 ? '本周期仍有 $analyzing 餐分析中。' : '仅统计已知营养。'}',
-            ),
-            AppCard(
-              child: AppListRow(
-                title: '本周营养报告',
-                subtitle: '查看数据覆盖、来源与阶段摘要',
-                leading: const Icon(Icons.description_outlined),
-                onTap: () => context.push(AppRoutes.reports),
-              ),
-            ),
-            const AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '怎样读这张图',
-                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    '图表汇总已知营养值，不代表每一天完整摄入。\n\n缺少该营养素的记录日不进入均值分母。身体测量与营养摄入采用不同来源和口径。',
-                  ),
+              const SizedBox(height: 18),
+              NutritionBarChart(
+                values: values,
+                labels: labels,
+                unit: nutrient.unit,
+                height: wide ? 266 : 186,
+                highlightLast: true,
+                showValueLabels: days == 7,
+                missingLabels: [
+                  for (final point in points)
+                    point.recordCount == 0 ? '未记录' : '待补充',
                 ],
               ),
+              if (wide) ...[
+                const SizedBox(height: 12),
+                Text(
+                  analyzing > 0 ? '本周期仍有 $analyzing 餐分析中' : '仅汇总已知营养值',
+                  style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                ),
+              ],
+            ],
+          ),
+        );
+        final coverage = TrendCoverage(
+          knownDays: known.length,
+          days: days,
+          records: records,
+          analyzing: analyzing,
+          wide: wide,
+        );
+        final readingGuide = TrendReadingGuide(
+          label: nutrient.label,
+          wide: wide,
+        );
+        final reportEntry = TrendReportEntry(
+          wide: wide,
+          onTap: () => context.push(AppRoutes.reports),
+        );
+        return AppPage(
+          title: wide ? '看记录中的营养变化' : '营养趋势',
+          eyebrow: wide ? null : '看记录中的变化',
+          subtitle: wide ? '$period · 只比较有已知数值的记录' : null,
+          children: [
+            AdaptiveColumns(
+              main: [
+                if (wide)
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth < 700 ||
+                          MediaQuery.textScalerOf(context).scale(14) > 20) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            rangeSelector,
+                            const SizedBox(height: 12),
+                            nutrientSelector,
+                          ],
+                        );
+                      }
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 246, child: rangeSelector),
+                          const SizedBox(width: 24),
+                          Expanded(child: nutrientSelector),
+                        ],
+                      );
+                    },
+                  )
+                else ...[
+                  rangeSelector,
+                  nutrientSelector,
+                ],
+                chart,
+                coverage,
+                if (!wide) ...[
+                  TrendCoverageNotice(analyzing: analyzing),
+                  reportEntry,
+                ],
+              ],
+              aside: wide
+                  ? [
+                      TrendAverageCard(
+                        average: average,
+                        total: total,
+                        knownDays: known.length,
+                        days: days,
+                        unit: nutrient.unit,
+                      ),
+                      readingGuide,
+                      reportEntry,
+                    ]
+                  : const [],
             ),
+            const SizedBox(height: 4),
+            const SectionHeading(title: '逐日记录概况'),
+            TrendDailyTable(
+              points: points,
+              code: nutrient.code,
+              unit: nutrient.unit,
+              wide: wide,
+            ),
+            if (!wide) readingGuide,
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
