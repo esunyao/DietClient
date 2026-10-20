@@ -190,14 +190,16 @@ class ProfileAccountCard extends StatelessWidget {
           icon: AppIcons.settings,
           onTap: () => context.push(AppRoutes.settings),
         ),
-        const Divider(height: 1, indent: 36),
-        ProfileEntryRow(
-          title: '退出当前应用',
-          subtitle: '查看退出范围',
-          icon: AppIcons.signOut,
-          color: AppColors.red,
-          onTap: () => _confirmLogout(context),
-        ),
+        if (!(AppPageScope.of(context)?.uiPreview ?? false)) ...[
+          const Divider(height: 1, indent: 36),
+          ProfileEntryRow(
+            title: '退出当前应用',
+            subtitle: '查看退出范围',
+            icon: AppIcons.signOut,
+            color: AppColors.red,
+            onTap: () => _confirmLogout(context),
+          ),
+        ],
       ],
     ),
   );

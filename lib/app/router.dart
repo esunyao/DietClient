@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/config/ui_preview_config.dart';
 import '../core/presentation/app_routes.dart';
 import '../core/session/session_controller.dart';
 import '../features/home/presentation/screens/home_screen.dart';
@@ -27,13 +28,18 @@ import '../features/profile/presentation/screens/health_record_form_screen.dart'
 import '../features/profile/presentation/screens/ai_nutrition_consent_screen.dart';
 import 'app_shell.dart';
 
-String? authenticationRedirect(String path, {required bool authenticated}) {
+String? authenticationRedirect(
+  String path, {
+  required bool authenticated,
+  bool uiPreview = false,
+}) {
   const public = {
     AppRoutes.login,
     AppRoutes.register,
     AppRoutes.verifyEmail,
     AppRoutes.emailVerified,
   };
+  if (uiPreview) return public.contains(path) ? AppRoutes.home : null;
   if (!authenticated && !public.contains(path)) return AppRoutes.login;
   if (authenticated && public.contains(path)) return AppRoutes.home;
   return null;
@@ -44,13 +50,15 @@ class _RouterRefresh extends ChangeNotifier {
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final uiPreview = ref.watch(uiPreviewProvider);
   final refresh = _RouterRefresh();
   ref.listen(sessionProvider, (_, next) => refresh.refresh());
   final router = GoRouter(
-    initialLocation: AppRoutes.login,
+    initialLocation: uiPreview ? AppRoutes.home : AppRoutes.login,
     refreshListenable: refresh,
     redirect: (context, state) => authenticationRedirect(
       state.uri.path,
+      uiPreview: uiPreview,
       authenticated: hasActiveSession(ref.read(sessionProvider)),
     ),
     routes: [

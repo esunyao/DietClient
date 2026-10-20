@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/config/ui_preview_config.dart';
 import '../core/presentation/ui_preferences.dart';
 import '../core/session/session_controller.dart';
 import '../demo/demo_store.dart';
@@ -44,7 +45,7 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
     final signedIn = hasActiveSession(ref.watch(sessionProvider));
     final prefs = ref.watch(uiPreferencesProvider);
     final hidden =
-        signedIn &&
+        (signedIn || ref.watch(uiPreviewProvider)) &&
         ref.watch(
           demoProvider.select((s) => s.isInstitution && s.privacyHidden),
         );
