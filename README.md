@@ -21,6 +21,75 @@ verify 是完整验证入口；本轮 UI 校准不默认执行全矩阵，仅按
 
 Windows 使用用户现有 SDK 验证，不下载、更换或升级 SDK。本机关闭 Developer Mode 导致插件 symlink 权限不足时，当前工作区为忽略的 `windows/flutter/ephemeral/.plugin_symlinks` 和 `linux/flutter/ephemeral/.plugin_symlinks` 创建指向本仓库 `.pub-cache` 的目录 junction；Flutter 的 Windows 构建也检查已启用平台的插件链接。这是当前机器缓存处理，不要求全局修改系统设置，不提交这些缓存链接。
 
+## Android release 构建与自定义签名
+
+以下命令在项目根目录使用 Git Bash 执行。先自行准备项目所需的 Android SDK、Build Tools、NDK 与 JDK，再使用既有工具入口构建；不自动下载或更换 SDK。下面是构建方法，不代表本仓库已完成 Android release 或真机验证。
+
+### 1. 指定自己的签名密钥
+
+已有 `.jks` 或 `.keystore` 时直接使用，不要为升级已发布应用重新生成密钥。建议将密钥文件保存在仓库外，在本地创建 `android/key.properties`，按实际情况填写：
+
+```properties
+storeFile=E:/Keys/diet-release.jks
+storePassword=替换为密钥库密码
+keyAlias=替换为密钥别名
+keyPassword=替换为该别名的密钥密码
+```
+
+`storeFile` 使用 Windows 绝对路径和正斜杠 `/`；值不额外加引号。上面的路径与密码均为示例，不是真实配置。忘记别名时可运行以下命令，在交互提示中输入密码，不把密码放到命令行参数中：
+
+```bash
+keytool -list -v -keystore "E:/Keys/diet-release.jks"
+```
+
+签名读取入口为 [android/app/build.gradle.kts](android/app/build.gradle.kts)。使用 `Properties()` 读取配置时，须在文件顶部、`plugins` 块之前导入：
+
+```kotlin
+import java.util.Properties
+```
+
+Gradle 应从 `rootProject.file("key.properties")` 加载上述配置，将四个属性绑定到 `signingConfigs.create("release")` 的 `storeFile`、`storePassword`、`keyAlias`、`keyPassword`，并在 `buildTypes.release` 中指定：
+
+```kotlin
+signingConfig = signingConfigs.getByName("release")
+```
+
+不要使用 `signingConfigs.getByName("debug")` 签署正式发布包，也不要在缺失配置时回退到 debug 签名。[android/.gitignore](android/.gitignore) 已忽略 `key.properties`、`*.jks` 与 `*.keystore`；不要强制添加这些文件，不在源码、日志或聊天中公开密钥和密码。
+
+### 2. 构建 APK 或 AAB
+
+本地 `.env` 填写真实 API 与登录公开参数；仅验证编译时可将命令中的 `.env` 换为 `.env.example`，但占位配置不能用于真实登录或业务请求。签名密码只放在 `key.properties`，不要放入 `.env` 或 `--dart-define`；编译期注入不是秘密存储，配置可能进入客户端产物。
+
+```bash
+# 首次构建或依赖变更后解析依赖
+bash tool/flutter.sh pub get
+
+# 通用 release APK，用于直接安装
+bash tool/flutter.sh build apk --release --dart-define-from-file=.env
+
+# 可选：按 CPU 架构拆分 APK，减小单个安装包体积
+bash tool/flutter.sh build apk --release --split-per-abi --dart-define-from-file=.env
+
+# AAB，用于 Google Play 等支持 App Bundle 的渠道
+bash tool/flutter.sh build appbundle --release --dart-define-from-file=.env
+```
+
+按需要选择一种构建方式，无需全部执行。
+
+| 构建方式 | 产物位置 |
+|---|---|
+| 通用 APK | `build/app/outputs/flutter-apk/app-release.apk` |
+| 分架构 APK | `build/app/outputs/flutter-apk/app-<abi>-release.apk`，例如 `app-arm64-v8a-release.apk` |
+| AAB | `build/app/outputs/bundle/release/app-release.aab` |
+
+### 3. 发布前核对
+
+- 使用 Android SDK Build Tools 的 `apksigner` 校验 APK：`apksigner verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk`；工具不在 PATH 时使用其完整路径，并将签名证书 SHA-256 指纹与自己的证书核对。
+- 升级已安装应用须保持相同 `applicationId` 和兼容的应用签名证书，并递增版本号；项目版本来自 `pubspec.yaml`，也可通过 Flutter 的 `--build-name`、`--build-number` 指定。
+- 启用 Google Play App Signing 时，构建上传包使用已登记的上传密钥，最终分发应用由 Play 使用应用签名密钥签署，不混淆两类密钥。
+- `applicationId` 目前为 `com.example.diet_client`；首次正式发布前确认包名，已发布应用不要随意更改。
+- 签名成功不代表登录、头像直传或 UI 已验收，仍需使用 release 包完成 Android 真机验证。
+
 ## 我的页面功能迁移验证（2026-10-20）
 
 | 检查 | 实际结果 |
