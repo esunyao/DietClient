@@ -138,10 +138,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(GlassBackdrop), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text(AppRoutes.home)).dy,
-      greaterThan(tester.getBottomLeft(find.text('首页')).dy),
+      tester.getTopLeft(find.text(AppRoutes.home)).dx,
+      greaterThanOrEqualTo(120),
     );
-    await tester.tap(find.text('配餐'));
+    expect(find.byType(AppSideNavigation), findsOneWidget);
+    await tester.tap(find.text('配餐').first);
     await tester.pumpAndSettle();
     expect(router.routeInformationProvider.value.uri.path, AppRoutes.mealPlan);
     expect(tester.takeException(), isNull);
