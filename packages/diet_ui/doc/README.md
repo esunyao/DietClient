@@ -6,6 +6,10 @@
 
 [包导航](../AGENTS.md) · [库选择](../../../doc/library.md) · [根规范](../../../AGENTS.md)
 
+## 卡片表面
+
+AppCard 以圆角 Material 承载底色与边框，支持 ListTile、AppListRow 和 SwitchListTile 的背景与 ink 交互；保持零阴影、无表面染色及圆角裁剪。padding 仍包含原卡片的额外 1px 边框内缩。聚焦回归见 [卡片测试](../../../test/app_card_material_test.dart)。
+
 ## 图标兼容边界
 
 Flutter 3.47 的 IconData 为 final，而 phosphor_flutter 2.1.0 的 Dart 图标类继承 IconData。AppIcons 使用核对过的上游 Regular 字体码点和标准 const IconData；依赖包仍提供字体资源与许可。页面只使用 AppIcons，不直接导入旧图标类，不修改依赖缓存。
