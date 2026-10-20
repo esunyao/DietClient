@@ -9,4 +9,10 @@
 [目录导航](../AGENTS.md) · [工具](../../tool/AGENTS.md) · [根规范](../../AGENTS.md)
 ## Windows 玻璃回归
 
-[glass_backdrop_test.dart](../glass_backdrop_test.dart) 覆盖配置和状态边界；真实 shader 渲染、视觉与性能仍由用户验收。
+[glass_backdrop_test.dart](../glass_backdrop_test.dart) 覆盖配置和状态边界，并以标题固定、内容位置保留检查顶部导航覆盖量，不绑定旧 ListView 状态或树结构；真实 shader 渲染、视觉与性能仍由用户验收。
+
+## 响应式布局回归
+
+[ui_layout_test.dart](../ui_layout_test.dart) 使用 430×960 手机、1194×834 平板和 320×720 大字视口，聚焦一级/二级标题对齐、固定标题与底部操作、末项可达、受实际父约束控制的双栏、导航高度/大字增长/选中语义/路由点击，以及个人和机构首页的信息顺序。另用配餐 430、饮食历史 1194、我的 360 与文字缩放 1.3 做三处代表性首帧/短滚动检查，不扩展全页矩阵。页面通过 `demoProvider` 替换实例读取本地演示数据，不连接业务网络，不修改生产登录门控。
+
+可由集成验证统一执行：`bash tool/flutter.sh test --no-pub test/ui_layout_test.dart test/glass_backdrop_test.dart test/app_card_material_test.dart test/authentication_gate_test.dart`。本节说明覆盖范围，不声明命令已经运行或测试通过；实际执行结果记录在[根说明](../../README.md)。这些几何与交互断言不是逐页截图/golden 矩阵，也不代表 Android 真机、视觉还原或性能验收。

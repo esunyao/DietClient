@@ -212,7 +212,7 @@ void main() {
     container.read(appRouterProvider).go('/home');
     await tester.pumpAndSettle();
     expect(find.text('欢迎回来'), findsOneWidget);
-    expect(find.text('今天的餐食'), findsNothing);
+    expect(find.text('今天吃了什么'), findsNothing);
     container.read(sessionProvider.notifier).establish(session());
     await tester.pumpAndSettle();
     container

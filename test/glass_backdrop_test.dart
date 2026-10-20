@@ -83,24 +83,32 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
-  testWidgets(
-    'AppPage top inset changes initial padding without replacing list',
-    (tester) async {
-      Widget build(double inset) => MaterialApp(
-        home: AppPageScope(
-          topInset: inset,
-          onBackFallback: () {},
-          child: const AppPage(title: 'Page', children: [Text('Content')]),
+  testWidgets('AppPage 顶部覆盖量移动固定标题但保留业务滚动位置', (tester) async {
+    Widget build(double inset) => MaterialApp(
+      theme: AppTheme.light,
+      home: AppPageScope(
+        topInset: inset,
+        onBackFallback: () {},
+        child: AppPage(
+          title: 'Page',
+          children: [
+            for (var i = 0; i < 20; i++)
+              SizedBox(height: 80, child: Text('Content $i')),
+          ],
         ),
-      );
-      await tester.pumpWidget(build(0));
-      final top = tester.getTopLeft(find.text('Page')).dy;
-      final list = tester.state(find.byType(Scrollable));
-      await tester.pumpWidget(build(84));
-      expect(tester.getTopLeft(find.text('Page')).dy, top + 84);
-      expect(tester.state(find.byType(Scrollable)), same(list));
-    },
-  );
+      ),
+    );
+    await tester.pumpWidget(build(0));
+    final headerTop = tester.getTopLeft(find.text('Page')).dy;
+    await tester.drag(find.byType(Scrollable), const Offset(0, -160));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('Page')).dy, headerTop);
+    final contentTop = tester.getTopLeft(find.text('Content 4')).dy;
+    await tester.pumpWidget(build(84));
+    expect(tester.getTopLeft(find.text('Page')).dy, headerTop + 84);
+    expect(tester.getTopLeft(find.text('Content 4')).dy, contentTop + 84);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Windows wide floating navigation routes clicks', (tester) async {
     tester.view.physicalSize = const Size(1100, 800);
