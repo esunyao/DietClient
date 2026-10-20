@@ -58,3 +58,5 @@ Android API 36、Build Tools 36.0.0 与 NDK 28.2 的关键文件不完整，预�
 [.gitignore](../.gitignore) 已忽略 `.env` 与 `.env.*`，单独允许 `.env.example`。client ID 为空，真实登录尚未验证。先前公开探测曾返回 502，该历史记录不代表当前部署状态；离线通过不能证明真实 discovery、授权码交换或浏览器流程已联通。功能和体验仍由用户验收。
 
 [根规范](../AGENTS.md) · [架构](architecture.md) · [认证模块](../lib/features/auth/AGENTS.md) · [共享包](../packages/AGENTS.md)
+
+Web UI 预览例外：只有 Web 构建显式传入 `--dart-define=WEB_UI_PREVIEW=true` 才允许未登录访问业务演示，登录、注册和验证页面转到首页。该开关默认 false，Windows/Android 忽略；不构造认证网关、不调用登录网络、不创建会话或伪造 Token。预览始终显示“Web UI 预览 · 未登录”、隐藏退出，机构隐私遮罩仍可使用。真实认证协议与默认登录门控保持原有行为。运行命令见 [根说明](../README.md)。

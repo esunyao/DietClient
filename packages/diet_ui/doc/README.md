@@ -29,3 +29,5 @@ GlassBackdrop 将真实 background 与 overlay 分开装配，第三方类型只
 Flutter 3.47 的 IconData 为 final，而 phosphor_flutter 2.1.0 的 Dart 图标类继承 IconData。AppIcons 使用核对过的上游 Regular 字体码点和标准 const IconData；依赖包仍提供字体资源与许可。页面只使用 AppIcons，不直接导入旧图标类，不修改依赖缓存。新增手工、历史、档案、餐碗、设置、退出与箭头图标仍来自同一字库。
 
 本说明描述组件契约；格式化或编译通过不代表已完成手机、平板或大字视觉验收。
+
+AppSideNavigation 是路由无关的桌面覆盖侧栏，复用 GlassSurface。宽96/216、圆角24；悬停延迟120/180ms，展开240ms、收起200ms，文字后显且入口高度稳定。键盘焦点和应用传入的菜单状态保持展开，非悬停标识点击切换；短视口滚动，大字换行，减少动画立即切换。账户通过 accountBuilder 注入。AppPageScope.uiPreview 默认为 false，包仅传递显示状态。NutritionBarChart 网格使用默认 null dashArray 实线，保留未知值为空柱与缺失语义。

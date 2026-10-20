@@ -82,3 +82,24 @@ Android 缺少 API 36 的 android.jar、Build Tools 36.0.0 的 aapt2.exe，以�
 本次个人首页使用只读演示目标，今日总量继续来自共享记录；HomeMeals 实现、机构营养、宽屏顶部导航、认证与锁文件未改动。回归包含390/430布局、三态、拖动提交/取消、多指主触点、迷你首手势及键盘、程序化滚动过滤、真实AppShell主体状态、营养未知/超额和大字。减少动画关闭吸附过渡与弹性伸展，保留跟手定位。
 
 本地日志位于 `.local/home-glass-format.log`、`.local/home-glass-test.log`、`.local/home-glass-analyze.log`、`.local/home-glass-windows.log`。这些检查不代表真机折射、视觉还原或性能验收；Android、真实登录及新增Web构建本次未执行，SDK与真实.env未调整。
+
+2026-10-20 桌面侧栏与 Web UI 预览补充：
+
+Windows/Web 在宽度840及以上使用玻璃侧栏，紧凑96、展开216，正文固定左预留120；Android宽屏保持顶栏，窄屏保持原三态底栏。新增预览开关默认关闭且仅Web有效，不建立登录身份或访问认证网关；首页及业务深链接可预览，登录/注册/验证页回首页，页面显示“Web UI 预览 · 未登录”并隐藏退出。隐私遮罩继续可用。
+
+```bash
+bash tool/flutter.sh run -d chrome --dart-define-from-file=.env.example --dart-define=WEB_UI_PREVIEW=true
+bash tool/flutter.sh build web --no-pub --dart-define-from-file=.env.example --dart-define=WEB_UI_PREVIEW=true
+```
+
+本次实际检查：
+
+| 检查 | 结果 |
+|---|---|
+| 格式 | `bash tool/dart.sh format --output=none --set-exit-if-changed lib packages/diet_ui/lib test`，零变更 |
+| 静态分析 | `bash tool/flutter.sh analyze --no-pub`，No issues found |
+| 聚焦回归 | `bash tool/flutter.sh test --no-pub test/desktop_sidebar_preview_test.dart test/navigation_interaction_test.dart test/glass_backdrop_test.dart test/authentication_gate_test.dart test/ui_layout_test.dart test/app_card_material_test.dart`，39项通过 |
+| Windows debug | `bash tool/flutter.sh build windows --debug --no-pub --dart-define-from-file=.env.example`，成功，23.1s |
+| Web release | 上方预览构建命令成功，60.6s；保留既有CupertinoIcons字体资源警告 |
+
+回归包括图表真实绘制与更新、未知值/零值，悬停延迟与反向、鼠标点击后收起、键盘焦点、菜单、触摸切换、短视口大字，以及跨断点/侧栏动画/玻璃切档的页面状态和滚动保留。默认认证门控继续通过；预览以会话为空且认证网关构造即抛错的测试确认隔离。未读取真实.env，未改SDK或依赖。日志保存在忽略目录 `.local/desktop-*.log`；以上不代表浏览器实测、真实登录或视觉与性能验收，Android由用户验证。

@@ -12,3 +12,5 @@
 - 几何与字阶入口见 [theme](../theme/AGENTS.md)；[聚焦布局回归](../../../../../test/ui_layout_test.dart)
 
 - 三态连续进度与运动泡手势：[app_navigation.dart](app_navigation.dart) → [glass_surface.dart](glass_surface.dart)；[交互回归](../../../../../test/navigation_interaction_test.dart)
+
+- [侧栏](app_side_navigation.dart)：桌面紧凑导航，复用 GlassSurface；平台断点和账户操作由应用装配。

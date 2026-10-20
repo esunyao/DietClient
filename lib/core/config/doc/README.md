@@ -5,3 +5,5 @@
 Web 专用 AUTHENTIK_WEB_REDIRECT_URI 在本地为 http://localhost:7357/auth-callback.html，部署回调需与应用同源。配置键和校验入口见 [auth_config.dart](../auth_config.dart)，无效或缺失配置不应触发登录请求。
 
 [目录导航](../AGENTS.md) · [登录说明](../../../../doc/authentication.md) · [根规范](../../../../AGENTS.md)
+
+`ui_preview_config.dart` 独立提供 `WEB_UI_PREVIEW` 编译开关，默认 false；只有 Web 且显式开启才为 true。它不读取认证配置，不伪造身份、不触发网络；由 app 路由与页面 scope 消费。测试通过纯平台/flag 判定覆盖非 Web 忽略开关。

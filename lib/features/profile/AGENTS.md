@@ -10,3 +10,5 @@
 - [未保存返回提示](presentation/widgets/unsaved_form.dart)
 
 跨页演示状态见 [demo store](../../demo/demo_store.dart)，公共模型见 [diet_models](../../../packages/diet_models/lib/diet_models.dart)。设置与路由由 [app](../../app/AGENTS.md) 装配。
+
+未登录 Web 预览通过 AppPageScope.uiPreview 隐藏退出入口，真实登录退出范围保持原有行为。

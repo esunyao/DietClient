@@ -7,3 +7,5 @@
 真实登录接入：[config](config/AGENTS.md) → [session](session/AGENTS.md)。跨平台流程见 [登录说明](../../doc/authentication.md)。
 
 主题、组件、布局、图表与玻璃的唯一实现位于 [diet_ui](../../packages/diet_ui/AGENTS.md)。core/theme 和 core/widgets 只保留兼容导出。
+
+Web 预览开关：[ui_preview_config.dart](config/ui_preview_config.dart)，不建立登录身份。

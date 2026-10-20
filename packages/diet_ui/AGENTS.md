@@ -17,3 +17,5 @@
 库选型与来源见 [library](../../doc/library.md)。
 
 - 连续三态、预览拖动与无障碍：[app_navigation.dart](lib/src/widgets/app_navigation.dart)；[交互回归](../../test/navigation_interaction_test.dart)
+
+- [桌面侧栏](lib/src/widgets/app_side_navigation.dart)：96/216 覆盖式玻璃导航、悬停/键盘/菜单展开、短视口滚动；应用注入账户展示和路由回调。AppPageScope.uiPreview 默认 false，只传预览展示状态。
