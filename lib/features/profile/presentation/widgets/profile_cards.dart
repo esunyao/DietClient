@@ -11,10 +11,16 @@ class ProfileIdentityCard extends StatelessWidget {
     super.key,
     required this.profile,
     this.wide = false,
+    this.avatar,
+    this.identityLabel = '演示身份',
+    this.heightLabel,
   });
 
   final PersonProfile profile;
   final bool wide;
+  final Widget? avatar;
+  final String identityLabel;
+  final String? heightLabel;
 
   @override
   Widget build(BuildContext context) => AppCard(
@@ -24,7 +30,7 @@ class ProfileIdentityCard extends StatelessWidget {
       constraints: BoxConstraints(minHeight: wide ? 102 : 98),
       child: Row(
         children: [
-          AvatarIllustration(size: wide ? 76 : 65),
+          avatar ?? AvatarIllustration(size: wide ? 76 : 65),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -49,7 +55,7 @@ class ProfileIdentityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 if (wide)
-                  const AppBadge(label: '演示身份')
+                  AppBadge(label: identityLabel)
                 else
                   SizedBox(
                     width: double.infinity,
@@ -58,7 +64,7 @@ class ProfileIdentityCard extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 8,
                       children: [
-                        const AppBadge(label: '演示身份'),
+                        AppBadge(label: identityLabel),
                         TextButton(
                           onPressed: () => context.push(AppRoutes.editProfile),
                           child: const Text('编辑资料'),
@@ -89,7 +95,7 @@ class ProfileIdentityCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${formatAmount(profile.height)} cm · ${profile.activity}',
+                    '${heightLabel ?? '${formatAmount(profile.height)} cm'} · ${profile.activity}',
                     textAlign: TextAlign.end,
                     style: const TextStyle(
                       color: AppColors.muted,
@@ -107,9 +113,15 @@ class ProfileIdentityCard extends StatelessWidget {
 }
 
 class ProfileFactsCard extends StatelessWidget {
-  const ProfileFactsCard({super.key, required this.profile});
+  const ProfileFactsCard({
+    super.key,
+    required this.profile,
+    this.heightLabel,
+    this.waterLabel,
+  });
 
   final PersonProfile profile;
+  final String? heightLabel, waterLabel;
 
   @override
   Widget build(BuildContext context) => AppCard(
@@ -126,13 +138,14 @@ class ProfileFactsCard extends StatelessWidget {
         _FactRow(
           icon: AppIcons.profile,
           label: '身高与活动',
-          value: '${formatAmount(profile.height)} cm / ${profile.activity}',
+          value:
+              '${heightLabel ?? '${formatAmount(profile.height)} cm'} / ${profile.activity}',
         ),
         const Divider(height: 1, indent: 36),
         _FactRow(
           icon: AppIcons.drop,
           label: '饮水目标',
-          value: '${profile.waterGoal} ml / 用户设置',
+          value: waterLabel ?? '${profile.waterGoal} ml / 用户设置',
         ),
         const SizedBox(height: 10),
         const Text(
@@ -149,10 +162,12 @@ class ProfileHealthSummary extends StatelessWidget {
     super.key,
     required this.records,
     this.wide = false,
+    this.real = false,
   });
 
   final List<HealthRecordPreview> records;
   final bool wide;
+  final bool real;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +245,7 @@ class ProfileHealthSummary extends StatelessWidget {
                   measurement?.value ?? '暂未填写',
                   measurement == null
                       ? '添加测量后查看'
-                      : '${healthRecordDate(measurement.date)} / 手工测量',
+                      : '${healthRecordDate(measurement.date)}${real ? '' : ' / 手工测量'}',
                   valueSize: wide ? 28 : 23,
                   icon: AppIcons.scales,
                 ),

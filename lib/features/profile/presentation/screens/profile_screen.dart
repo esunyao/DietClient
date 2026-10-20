@@ -1,6 +1,10 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/config/ui_preview_config.dart';
+import 'real_profile_screen.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/presentation/app_routes.dart';
@@ -14,6 +18,7 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(uiPreviewProvider)) return const RealProfileScreen();
     final state = ref.watch(demoProvider);
     final wide = MediaQuery.sizeOf(context).width >= 1024;
     final identity = ProfileIdentityCard(profile: state.profile, wide: wide);
@@ -40,17 +45,17 @@ class ProfileScreen extends ConsumerWidget {
           AdaptiveColumns(
             main: [
               identity,
-              _ProfileSection(
+              ProfileSection(
                 title: '健康档案',
                 action: '查看全部',
                 onTap: () => context.push(AppRoutes.healthRecords),
                 child: health,
               ),
-              _ProfileSection(
+              ProfileSection(
                 title: '常用入口',
                 child: ProfileServiceEntries(institution: state.isInstitution),
               ),
-              _ProfileSection(
+              ProfileSection(
                 title: '基础资料',
                 action: '编辑',
                 onTap: () => context.push(AppRoutes.editProfile),
@@ -70,16 +75,16 @@ class ProfileScreen extends ConsumerWidget {
             children: [
               identity,
               const SizedBox(height: 14),
-              const _ProfileShortcuts(),
+              const ProfileShortcuts(),
               const SizedBox(height: 12),
-              _ProfileSection(
+              ProfileSection(
                 title: '基础资料',
                 action: '编辑',
                 onTap: () => context.push(AppRoutes.editProfile),
                 child: ProfileFactsCard(profile: state.profile),
               ),
               const SizedBox(height: 16),
-              _ProfileSection(
+              ProfileSection(
                 title: '健康资料',
                 action: '管理',
                 onTap: () => context.push(AppRoutes.healthRecords),
@@ -100,10 +105,7 @@ class ProfileScreen extends ConsumerWidget {
                 const ProfilePrivacyCard(),
                 const SizedBox(height: 16),
               ],
-              const _ProfileSection(
-                title: '账户与帮助',
-                child: ProfileAccountCard(),
-              ),
+              const ProfileSection(title: '账户与帮助', child: ProfileAccountCard()),
             ],
           ),
         const Padding(
@@ -118,8 +120,9 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _ProfileSection extends StatelessWidget {
-  const _ProfileSection({
+class ProfileSection extends StatelessWidget {
+  const ProfileSection({
+    super.key,
     required this.title,
     required this.child,
     this.action,
@@ -142,8 +145,8 @@ class _ProfileSection extends StatelessWidget {
   );
 }
 
-class _ProfileShortcuts extends StatelessWidget {
-  const _ProfileShortcuts();
+class ProfileShortcuts extends StatelessWidget {
+  const ProfileShortcuts({super.key});
 
   @override
   Widget build(BuildContext context) => Row(

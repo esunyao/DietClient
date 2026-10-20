@@ -43,9 +43,10 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
       }
     });
     final signedIn = hasActiveSession(ref.watch(sessionProvider));
+    final uiPreview = ref.watch(uiPreviewProvider);
     final prefs = ref.watch(uiPreferencesProvider);
     final hidden =
-        (signedIn || ref.watch(uiPreviewProvider)) &&
+        (signedIn || uiPreview) &&
         ref.watch(
           demoProvider.select((s) => s.isInstitution && s.privacyHidden),
         );
@@ -99,14 +100,16 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                const Text(
-                                  '共享平板演示遮罩。恢复仅演示界面，不代表真实身份核验。',
+                                Text(
+                                  uiPreview
+                                      ? '共享平板演示遮罩。恢复仅演示界面，不代表真实身份核验。'
+                                      : '此操作仅隐藏界面，当前账户仍保持登录。',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(color: AppColors.muted),
                                 ),
                                 const SizedBox(height: 24),
                                 AppButton(
-                                  label: '恢复演示预览',
+                                  label: uiPreview ? '恢复演示预览' : '恢复显示',
                                   onPressed: () => ref
                                       .read(demoProvider.notifier)
                                       .setPrivacyHidden(false),
