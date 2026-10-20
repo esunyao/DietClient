@@ -14,7 +14,9 @@
 | Authentik 流程 | 本地纯 Dart diet_auth；dio 5.11.1、dio_cookie_manager 3.5.0、cookie_jar 4.0.9 | 内存 Cookie 与有限阶段执行器；依赖 diet_oidc |
 | Dart 包测试 | test 1.31.1 | 包内离线协议与执行器验证，不代表真实身份提供方联通 |
 
-玻璃参考 FlClash 的设置交互，使用 Flutter 绘制，避免原生桥接。标准为轻量磨砂；增强只在支持的渲染器使用折射，Web/Windows回退磨砂；高对比/减少透明度优先实体。仅导航、浮层与必要操作区域使用玻璃。
+玻璃参考 FlClash 的设置交互，使用 Flutter 绘制，避免原生桥接。标准为轻量磨砂；增强在支持的渲染器实时折射，Windows Skia 通过 GlassBackdrop 捕获真实背景（同步、pixelRatio 1、high 约60fps），Web 回退磨砂；高对比/减少透明度优先实体。仅导航、浮层与必要操作区域使用玻璃。
+
+GlassBackdrop 的背景只装配一次，overlay 不参与捕获。Windows 容器跨档位稳定，仅增强且 shader 成功后持续捕获；标准、关闭、无障碍与 shader 失败不持续捕获，库首次挂载可有一次初始化捕获。GlassSurface 根据实际后端加载 shader，失败回退磨砂。
 
 视觉遵循新版绿色样板；系统中文字体回退，本地矢量插画，Phosphor regular 图标。表单、日期、弹层使用 Flutter 标准组件。共享包提供稳定展示接口，第三方 API 不散布到各 feature。
 
