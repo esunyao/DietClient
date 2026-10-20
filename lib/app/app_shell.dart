@@ -5,16 +5,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'navigation_collapse_controller.dart';
 import '../core/presentation/app_routes.dart';
 import '../core/presentation/ui_preferences.dart';
 import '../core/session/session_controller.dart';
 import '../demo/demo_store.dart';
 import '../features/auth/application/login_controller.dart';
 
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child, required this.location});
   final Widget child;
   final String location;
+
+  @override
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  final _collapse = NavigationCollapseController();
+  @override
+  void didUpdateWidget(AppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.location != widget.location) _collapse.restore();
+  }
+
+  @override
+  void dispose() {
+    _collapse.dispose();
+    super.dispose();
+  }
 
   static const _routes = [
     AppRoutes.home,
@@ -30,7 +49,8 @@ class AppShell extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final location = widget.location;
     final prefs = ref.watch(uiPreferencesProvider);
     final demo = ref.watch(demoProvider);
     void logout() {
@@ -81,7 +101,10 @@ class AppShell extends ConsumerWidget {
               bottomInset: showBottom
                   ? bottomHeight + AppLayout.bottomNavigationMargin
                   : 0,
-              child: child,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: showBottom ? _collapse.handle : null,
+                child: widget.child,
+              ),
             ),
             overlay: Stack(
               children: [
@@ -226,19 +249,18 @@ class AppShell extends ConsumerWidget {
                     right: AppLayout.mobileGutter + padding.right,
                     bottom: AppLayout.bottomNavigationMargin + padding.bottom,
                     child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: AppLayout.bottomNavigationMaxWidth,
-                        ),
-                        child: GlassSurface(
-                          radius: AppLayout.bottomNavigationRadius,
-                          mode: prefs.glassMode,
+                      child: ValueListenableBuilder<double>(
+                        valueListenable: _collapse,
+                        builder: (context, progress, _) => AppBottomNavigation(
+                          destinations: _destinations,
+                          selectedIndex: index,
+                          onSelected: select,
+                          collapseProgress: progress,
+                          onExpand: _collapse.restore,
+                          onInteractionChanged: (active) =>
+                              _collapse.interacting = active,
+                          glassMode: prefs.glassMode,
                           reduceTransparency: prefs.reduceTransparency,
-                          child: AppBottomNavigation(
-                            destinations: _destinations,
-                            selectedIndex: index,
-                            onSelected: select,
-                          ),
                         ),
                       ),
                     ),
