@@ -16,10 +16,10 @@ abstract final class AppLayout {
   static const cardRadius = 20.0;
   static const listRadius = 16.0;
   static const controlRadius = 12.0;
-  static const bottomNavigationHeight = 62.0;
+  static const bottomNavigationHeight = 58.0;
   static const bottomNavigationRadius = 31.0;
   static const bottomNavigationMargin = 16.0;
-  static const bottomNavigationMaxWidth = 430.0;
+  static const bottomNavigationMaxWidth = 340.0;
   static const topNavigationHeight = 84.0;
 
   static double pageGutter(double width) =>

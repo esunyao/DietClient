@@ -15,3 +15,5 @@
 - 应用展示偏好入口：[core](../../lib/core/AGENTS.md)；导航装配：[app](../../lib/app/AGENTS.md)
 
 库选型与来源见 [library](../../doc/library.md)。
+
+- 连续三态、预览拖动与无障碍：[app_navigation.dart](lib/src/widgets/app_navigation.dart)；[交互回归](../../test/navigation_interaction_test.dart)

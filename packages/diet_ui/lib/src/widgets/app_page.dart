@@ -40,8 +40,12 @@ class AppPage extends StatelessWidget {
     this.trailing,
     this.showBack = false,
     this.footer,
+    this.titleStyle,
+    this.mobileGutter,
   });
   final String title;
+  final TextStyle? titleStyle;
+  final double? mobileGutter;
   final String? subtitle;
   final String? eyebrow;
   final String? demoLabel;
@@ -74,11 +78,13 @@ class AppPage extends StatelessWidget {
       Text(
         title,
         textAlign: centered ? TextAlign.center : TextAlign.start,
-        style: showBack && !wide
-            ? AppTypography.secondaryTitle
-            : AppTypography.pageTitle.copyWith(
-                fontWeight: wide ? FontWeight.w600 : FontWeight.w700,
-              ),
+        style:
+            titleStyle ??
+            (showBack && !wide
+                ? AppTypography.secondaryTitle
+                : AppTypography.pageTitle.copyWith(
+                    fontWeight: wide ? FontWeight.w600 : FontWeight.w700,
+                  )),
       ),
       if (subtitle != null)
         Padding(
@@ -164,7 +170,9 @@ class AppPage extends StatelessWidget {
               builder: (context, constraints) {
                 final wide =
                     constraints.maxWidth >= AppLayout.navigationBreakpoint;
-                final gutter = AppLayout.pageGutter(constraints.maxWidth);
+                final gutter = !wide && mobileGutter != null
+                    ? mobileGutter!
+                    : AppLayout.pageGutter(constraints.maxWidth);
                 final topInset = scope?.topInset ?? 0;
                 final short =
                     constraints.maxHeight - topInset <

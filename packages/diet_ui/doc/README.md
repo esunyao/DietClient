@@ -8,9 +8,9 @@
 
 AppLayout 集中维护手机左右24、宽屏左右32、栏距24、840导航断点和1194最大页面宽度；AdaptiveColumns 根据自身可用约束在960及以上分双栏，等价于原1024窗口扣除两侧32。双栏按754:352分配，窄容器仍合为单栏，不因屏幕宽就强塞双栏。AppTypography 提供主标题28、二级标题23、区块19、正文14–16、辅助12–13与主数值39。
 
-AppPage 保留 title、subtitle、children、trailing、showBack、footer，新增 eyebrow（标题上方说明）与 demoLabel（默认“设计样例 · 演示数据”，传null隐藏）。手机二级页标题23居中，左侧返回保留44命中区；平板页标题28，右侧 demoLabel 与 trailing 纵排。常规高度标题和 footer 固定，业务 ListView 独立滚动，不再插入额外科学图标提示行。按实际可用高度扣除顶部导航覆盖量后不足随系统文字缩放的300时，标题与 footer 并入同一 ListView，顶部导航覆盖区仍留在滚动区外；字段可完整滚入视口，footer 可滚动触达。键盘开闭及高度模式切换保持业务子项槽位与 Scrollable，不重挂载内部表单和字段。页面统一消费系统安全区；AppPageScope.topInset/bottomInset 只表示导航覆盖量，不包含系统安全区，onLogout 可选回调由应用传入，包不处理会话。没有 footer 时，列表底部一次预留安全区及导航覆盖；有 footer 时，安全区由外层 SafeArea 消费，不重复加入列表与 footer。
+AppPage 保留 title、subtitle、children、trailing、showBack、footer，支持局部 titleStyle/mobileGutter（个人首页24号与20边距），新增 eyebrow（标题上方说明）与 demoLabel（默认“设计样例 · 演示数据”，传null隐藏）。手机二级页标题23居中，左侧返回保留44命中区；平板页标题28，右侧 demoLabel 与 trailing 纵排。常规高度标题和 footer 固定，业务 ListView 独立滚动，不再插入额外科学图标提示行。按实际可用高度扣除顶部导航覆盖量后不足随系统文字缩放的300时，标题与 footer 并入同一 ListView，顶部导航覆盖区仍留在滚动区外；字段可完整滚入视口，footer 可滚动触达。键盘开闭及高度模式切换保持业务子项槽位与 Scrollable，不重挂载内部表单和字段。页面统一消费系统安全区；AppPageScope.topInset/bottomInset 只表示导航覆盖量，不包含系统安全区，onLogout 可选回调由应用传入，包不处理会话。没有 footer 时，列表底部一次预留安全区及导航覆盖；有 footer 时，安全区由外层 SafeArea 消费，不重复加入列表与 footer。
 
-AppBottomNavigation 和 AppTopNavigation 只负责展示与选中回调，不依赖应用路由。手机岛默认62高、圆角31，选中项使用浅绿胶囊；宽屏使用横向文字 tab。底栏文本按系统 TextScaler 测量增长，顶部导航高度同步增长，应用使用相同高度预留覆盖区。
+AppBottomNavigation 和 AppTopNavigation 只负责展示与选中回调，不依赖应用路由。手机岛完整最大340×58、收紧248×48、迷你184×44；公开 AppNavigationState 对应三态，连续进度先淡出文字再收窄。当前泡横拖跟手预览，抬起/取消以150ms吸附；迷你首手势仅展开。最小44触控，纯图标仍有语义与键盘选择；宽屏使用横向文字 tab。底栏文本按系统 TextScaler 测量增长，顶部导航高度同步增长，应用使用相同高度预留覆盖区。
 
 ## 卡片与标准控件
 
@@ -22,7 +22,7 @@ NutritionBarChart 沿用 fl_chart，height 默认210，highlightLast、showValue
 
 ## 玻璃效果
 
-GlassBackdrop 将真实 background 与 overlay 分开装配，第三方类型只留在包内。Android Impeller 保持实时镜片；Windows Skia 捕获单次装配的背景，增强且 shader 成功后以 pixelRatio 1、同步 high（约60fps）持续更新。标准、关闭、高对比与减少透明度停止持续捕获；库首次挂载仍可能初始化捕获一次。shader 失败回退磨砂，关闭与无障碍使用实体；Web 保持磨砂，不冒称折射。Windows 容器跨档位稳定，保留页面状态。应用偏好由 core 管理，包本身不接入原生权限、网络或业务状态。
+GlassBackdrop 将真实 background 与 overlay 分开装配，第三方类型只留在包内。Android Impeller 保持实时镜片；Windows Skia 捕获单次装配的背景，增强且 shader 成功后以 pixelRatio 1、同步 high（约60fps）持续更新。标准、关闭、高对比与减少透明度停止持续捕获；库首次挂载仍可能初始化捕获一次。增强运动泡仅使用 liquid_glass_easy 5.0.0 公共 LiquidGlassMotionPill，并等待 shader 成功；失败与其他档沿用相同手势及浅绿回退。shader 失败回退磨砂，关闭与无障碍使用实体；Web 保持磨砂，不冒称折射。Windows 容器跨档位稳定，保留页面状态。应用偏好由 core 管理，包本身不接入原生权限、网络或业务状态。
 
 ## 图标兼容边界
 
