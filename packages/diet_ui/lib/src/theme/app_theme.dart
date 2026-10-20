@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'app_layout.dart';
+import 'app_typography.dart';
 
 abstract final class AppTheme {
   static ThemeData get light {
@@ -23,32 +25,15 @@ abstract final class AppTheme {
     );
     return base.copyWith(
       textTheme: base.textTheme.copyWith(
-        headlineMedium: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w800,
-          color: AppColors.ink,
-          letterSpacing: -0.8,
+        headlineMedium: AppTypography.pageTitle,
+        headlineSmall: AppTypography.secondaryTitle,
+        titleLarge: AppTypography.sectionTitle,
+        titleMedium: AppTypography.bodyLarge.copyWith(
+          fontWeight: FontWeight.w600,
         ),
-        titleLarge: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          color: AppColors.ink,
-        ),
-        titleMedium: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          color: AppColors.ink,
-        ),
-        bodyMedium: const TextStyle(
-          fontSize: 14,
-          height: 1.5,
-          color: AppColors.ink,
-        ),
-        bodySmall: const TextStyle(
-          fontSize: 12,
-          height: 1.5,
-          color: AppColors.muted,
-        ),
+        bodyLarge: AppTypography.bodyLarge,
+        bodyMedium: AppTypography.body,
+        bodySmall: AppTypography.small,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -72,17 +57,27 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(44, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          textStyle: AppTypography.body.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppLayout.controlRadius),
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(44, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          textStyle: AppTypography.body.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppLayout.controlRadius),
           ),
         ),
       ),

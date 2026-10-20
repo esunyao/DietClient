@@ -9,6 +9,7 @@ abstract final class AppColors {
   static const muted = Color(0xFF61766C);
   static const line = Color(0xFFDEE8E0);
   static const greenSoft = Color(0xFFE6F0E8);
+  static const navigationSelected = Color(0xFFDCEBDE);
   static const amberInk = Color(0xFF94621C);
   static const amberSoft = Color(0xFFFFF3DB);
   static const red = Color(0xFFA74235);
