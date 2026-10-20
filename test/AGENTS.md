@@ -11,6 +11,9 @@
 
 测试使用本地替换边界，不代表真实身份提供方联通；执行结果见根说明。
 
+- [profile_api_test.dart](profile_api_test.dart)：无损 ID、网络目的地、五类 CRUD、头像顺序与认证隔离、同意排序、配置与会话切换。
+- [profile_widget_test.dart](profile_widget_test.dart)：真实资料空态、预览零请求、配置错误、保存失败留存、原 ID/编码编辑和裁剪。
+
 实际执行入口与结果见 [根说明](../README.md)，功能、视觉和性能验收由用户进行。
 
 - [desktop_sidebar_preview_test.dart](desktop_sidebar_preview_test.dart)：平台/编译开关、预览首页与深链接、无认证网关构造、隐私遮罩、侧栏定时/反向/键盘/鼠标/触摸/短视口、跨断点状态和图表绘制。

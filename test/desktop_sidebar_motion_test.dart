@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:diet_client/app/app_shell.dart';
 import 'package:diet_client/core/presentation/ui_preferences.dart';
-import 'package:diet_client/demo/demo_store.dart';
+import 'package:diet_client/core/presentation/account_identity.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,10 +56,16 @@ void main() {
     tester.view.physicalSize = const Size(1100, 800);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
-    final container = ProviderContainer();
+    const name = '测试账户';
+    final container = ProviderContainer(
+      overrides: [
+        accountIdentityProvider.overrideWith(
+          (_) async => const AccountIdentity(name: name),
+        ),
+      ],
+    );
     addTearDown(container.dispose);
     container.read(uiPreferencesProvider.notifier).setGlassMode(GlassMode.off);
-    final name = container.read(demoProvider).profile.name;
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -69,9 +75,10 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
     final avatar = find.descendant(
       of: find.byType(AppSideNavigation),
-      matching: find.byType(AvatarIllustration),
+      matching: find.byType(AccountAvatar),
     );
     final account = find.byTooltip('个人菜单');
     final accountElement = tester.element(account);
@@ -113,14 +120,16 @@ void main() {
     tester.view.physicalSize = const Size(1000, 420);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
-    final container = ProviderContainer();
+    const name = '用于验证侧栏连续动画的长账户名称';
+    final container = ProviderContainer(
+      overrides: [
+        accountIdentityProvider.overrideWith(
+          (_) async => const AccountIdentity(name: name),
+        ),
+      ],
+    );
     addTearDown(container.dispose);
     container.read(uiPreferencesProvider.notifier).setGlassMode(GlassMode.off);
-    const name = '用于验证侧栏连续动画的长演示名称';
-    final profile = container.read(demoProvider).profile;
-    container
-        .read(demoProvider.notifier)
-        .updateProfile(profile.copyWith(name: name));
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -133,6 +142,7 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
     final scroll = find.descendant(
       of: find.byType(AppSideNavigation),
       matching: find.byType(Scrollable),
