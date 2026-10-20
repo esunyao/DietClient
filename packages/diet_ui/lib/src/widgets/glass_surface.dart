@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 import '../theme/app_colors.dart';
+import 'glass_backdrop.dart';
 
 enum GlassMode { off, standard, enhanced }
 
-/// Android Impeller 才启用折射；其余平台和加载失败均保留轻量磨砂。
+/// 支持的实时后端或 Windows 背景捕获启用折射；加载失败回退磨砂。
 class GlassSurface extends StatefulWidget {
   const GlassSurface({
     super.key,
@@ -23,8 +24,9 @@ class GlassSurface extends StatefulWidget {
   final bool reduceTransparency;
   static bool get supportsEnhanced =>
       !kIsWeb &&
-      defaultTargetPlatform == TargetPlatform.android &&
-      ImageFilter.isShaderFilterSupported;
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          (defaultTargetPlatform == TargetPlatform.android &&
+              ImageFilter.isShaderFilterSupported));
   @override
   State<GlassSurface> createState() => _GlassSurfaceState();
 }
@@ -33,7 +35,9 @@ class _GlassSurfaceState extends State<GlassSurface> {
   Future<bool>? _shader;
   Future<bool> _load() async {
     try {
-      await LiquidGlassShaders.ensureLoaded(true);
+      await LiquidGlassShaders.ensureLoaded(
+        ImageFilter.isShaderFilterSupported,
+      );
       return true;
     } catch (_) {
       return false;
@@ -65,6 +69,10 @@ class _GlassSurfaceState extends State<GlassSurface> {
         widget.mode != GlassMode.enhanced ||
         !GlassSurface.supportsEnhanced) {
       return _lite(opaque);
+    }
+    if (!ImageFilter.isShaderFilterSupported &&
+        !GlassCaptureScope.availableOf(context)) {
+      return _lite(false);
     }
     _shader ??= _load();
     return FutureBuilder<bool>(

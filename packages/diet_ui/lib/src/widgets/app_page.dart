@@ -9,14 +9,17 @@ class AppPageScope extends InheritedWidget {
     required super.child,
     required this.onBackFallback,
     this.bottomInset = 0,
+    this.topInset = 0,
   });
   final VoidCallback onBackFallback;
   final double bottomInset;
+  final double topInset;
   static AppPageScope? of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppPageScope>();
   @override
   bool updateShouldNotify(AppPageScope oldWidget) =>
       oldWidget.bottomInset != bottomInset ||
+      oldWidget.topInset != topInset ||
       oldWidget.onBackFallback != onBackFallback;
 }
 
@@ -70,7 +73,7 @@ class AppPage extends StatelessWidget {
             key: PageStorageKey(title),
             padding: EdgeInsets.fromLTRB(
               MediaQuery.sizeOf(context).width >= 840 ? 32 : 24,
-              24,
+              24 + (AppPageScope.of(context)?.topInset ?? 0),
               MediaQuery.sizeOf(context).width >= 840 ? 32 : 24,
               32 +
                   (AppPageScope.of(context)?.bottomInset ??
