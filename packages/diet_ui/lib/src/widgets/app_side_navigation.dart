@@ -51,6 +51,33 @@ class _AppSideNavigationState extends State<AppSideNavigation>
   bool _pinned = false;
   final _focusNode = FocusNode();
   bool _keyboardInput = true;
+  static const _compactStyle = TextStyle(fontSize: 11, height: 1.2);
+  static const _expandedStyle = TextStyle(fontSize: 14, height: 1.4);
+  final _entrySizes = <String, ({double height, double expandedHeight})>{};
+
+  void _measureEntries() {
+    _entrySizes.clear();
+    for (final label in [
+      '膳食健康',
+      ...widget.destinations.map((item) => item.label),
+      '设置',
+    ]) {
+      final text = TextPainter(
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      );
+      text.text = TextSpan(text: label, style: _compactStyle);
+      text.layout(maxWidth: 56);
+      final compactHeight = 27 + text.height;
+      text.text = TextSpan(text: label, style: _expandedStyle);
+      text.layout(maxWidth: 142);
+      _entrySizes[label] = (
+        height: compactHeight > text.height ? compactHeight : text.height,
+        expandedHeight: text.height,
+      );
+      text.dispose();
+    }
+  }
 
   @override
   void initState() {
@@ -97,12 +124,14 @@ class _AppSideNavigationState extends State<AppSideNavigation>
   @override
   void didUpdateWidget(AppSideNavigation oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.destinations != widget.destinations) _measureEntries();
     if (oldWidget.menuOpen != widget.menuOpen) _update();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _measureEntries();
     _update();
   }
 
@@ -122,18 +151,11 @@ class _AppSideNavigationState extends State<AppSideNavigation>
     bool selected = false,
     required double progress,
   }) {
-    final labelOpacity = ((progress - .65) / .35).clamp(0.0, 1.0);
-    final text = TextPainter(
-      text: TextSpan(
-        text: label,
-        style: const TextStyle(fontSize: 11, height: 1.2),
-      ),
-      textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
-    )..layout(maxWidth: 56);
-    final height = 27 + text.height;
-    text.dispose();
+    final size = _entrySizes[label]!;
+    final compactOpacity = 1 - (progress / .4).clamp(0.0, 1.0);
+    final expandedOpacity = ((progress - .3) / .5).clamp(0.0, 1.0);
     return Semantics(
+      label: label,
       selected: selected,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
@@ -149,46 +171,46 @@ class _AppSideNavigationState extends State<AppSideNavigation>
               borderRadius: BorderRadius.circular(16),
             ),
           ),
-          child: SizedBox(
-            height: height,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                ExcludeSemantics(
-                  excluding: labelOpacity > 0,
-                  child: Opacity(
-                    opacity: 1 - labelOpacity,
-                    child: SizedBox(
+          child: ExcludeSemantics(
+            child: ClipRect(
+              child: SizedBox(
+                height: size.height,
+                width: double.infinity,
+                child: Stack(
+                  children: [
+                    Positioned.directional(
+                      textDirection: Directionality.of(context),
+                      start: 17 * (1 - progress),
+                      top: (size.height - 22) / 2 * progress,
+                      child: Icon(icon, size: 22),
+                    ),
+                    Positioned.directional(
+                      textDirection: Directionality.of(context),
+                      start: 0,
+                      top: 27,
                       width: 56,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(icon, size: 22),
-                          const SizedBox(height: 5),
-                          Text(
-                            label,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 11, height: 1.2),
-                          ),
-                        ],
+                      child: Opacity(
+                        opacity: compactOpacity,
+                        child: Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          style: _compactStyle,
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                ExcludeSemantics(
-                  excluding: labelOpacity == 0,
-                  child: Opacity(
-                    opacity: labelOpacity,
-                    child: Row(
-                      children: [
-                        Icon(icon, size: 22),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(label)),
-                      ],
+                    Positioned.directional(
+                      textDirection: Directionality.of(context),
+                      start: 34,
+                      top: (size.height - size.expandedHeight) / 2,
+                      width: 142,
+                      child: Opacity(
+                        opacity: expandedOpacity,
+                        child: Text(label, style: _expandedStyle),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
