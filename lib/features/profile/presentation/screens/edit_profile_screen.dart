@@ -4,6 +4,8 @@ import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/demo/demo_store.dart';
 
 import '../widgets/unsaved_form.dart';
+import '../../../../core/config/ui_preview_config.dart';
+import 'real_edit_profile_screen.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -91,71 +93,84 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => UnsavedForm(
-    dirty: _dirty,
-    child: AppPage(
-      title: '编辑基础资料',
-      subtitle: '仅用于本次演示，不会上传或持久保存',
-      showBack: true,
-      footer: AppButton(label: '保留本次演示修改', onPressed: _save),
-      children: [
-        Form(
-          key: _form,
-          child: AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final entry in _fields.entries)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
-                    child: TextFormField(
-                      controller: entry.value,
-                      onChanged: (_) => setState(() => _dirty = true),
-                      validator: (v) => _validate(entry.key, v),
-                      keyboardType:
-                          entry.key.contains('cm') || entry.key.contains('ml')
-                          ? const TextInputType.numberWithOptions(decimal: true)
-                          : TextInputType.text,
-                      decoration: InputDecoration(
-                        labelText: entry.key,
-                        errorMaxLines: 3,
+  Widget build(BuildContext context) => !ref.watch(uiPreviewProvider)
+      ? const RealEditProfileScreen()
+      : UnsavedForm(
+          dirty: _dirty,
+          child: AppPage(
+            title: '编辑基础资料',
+            subtitle: '仅用于本次演示，不会上传或持久保存',
+            showBack: true,
+            footer: AppButton(label: '保留本次演示修改', onPressed: _save),
+            children: [
+              Form(
+                key: _form,
+                child: AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final entry in _fields.entries)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: TextFormField(
+                            controller: entry.value,
+                            onChanged: (_) => setState(() => _dirty = true),
+                            validator: (v) => _validate(entry.key, v),
+                            keyboardType:
+                                entry.key.contains('cm') ||
+                                    entry.key.contains('ml')
+                                ? const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  )
+                                : TextInputType.text,
+                            decoration: InputDecoration(
+                              labelText: entry.key,
+                              errorMaxLines: 3,
+                            ),
+                          ),
+                        ),
+                      DropdownButtonFormField<String>(
+                        initialValue: _gender,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: '性别'),
+                        items: ['女', '男', '其他', '未说明']
+                            .map(
+                              (v) => DropdownMenuItem(value: v, child: Text(v)),
+                            )
+                            .toList(),
+                        onChanged: (v) => setState(() {
+                          _gender = v!;
+                          _dirty = true;
+                        }),
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      DropdownButtonFormField<String>(
+                        initialValue: _activity,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: '活动水平'),
+                        items: ['久坐', '轻度活动', '中度活动', '活跃', '高强度活动']
+                            .map(
+                              (v) => DropdownMenuItem(value: v, child: Text(v)),
+                            )
+                            .toList(),
+                        onChanged: (v) => setState(() {
+                          _activity = v!;
+                          _dirty = true;
+                        }),
+                      ),
+                    ],
                   ),
-                DropdownButtonFormField<String>(
-                  initialValue: _gender,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: '性别'),
-                  items: ['女', '男', '其他', '未说明']
-                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
-                      .toList(),
-                  onChanged: (v) => setState(() {
-                    _gender = v!;
-                    _dirty = true;
-                  }),
                 ),
-                const SizedBox(height: 20),
-                DropdownButtonFormField<String>(
-                  initialValue: _activity,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: '活动水平'),
-                  items: ['久坐', '轻度活动', '中度活动', '活跃', '高强度活动']
-                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
-                      .toList(),
-                  onChanged: (v) => setState(() {
-                    _activity = v!;
-                    _dirty = true;
-                  }),
+              ),
+              const Text(
+                '身体测量请在健康档案中单独添加。修改基础资料不会覆盖测量记录；饮水目标为用户设置，不是统一医学建议。',
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 13,
+                  height: 1.7,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
-        const Text(
-          '身体测量请在健康档案中单独添加。修改基础资料不会覆盖测量记录；饮水目标为用户设置，不是统一医学建议。',
-          style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.7),
-        ),
-      ],
-    ),
-  );
+        );
 }
