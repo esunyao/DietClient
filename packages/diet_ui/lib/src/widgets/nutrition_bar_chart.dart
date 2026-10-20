@@ -103,11 +103,8 @@ class NutritionBarChart extends StatelessWidget {
               gridData: FlGridData(
                 show: true,
                 drawVerticalLine: false,
-                getDrawingHorizontalLine: (_) => const FlLine(
-                  color: AppColors.line,
-                  strokeWidth: 1,
-                  dashArray: [],
-                ),
+                getDrawingHorizontalLine: (_) =>
+                    const FlLine(color: AppColors.line, strokeWidth: 1),
               ),
               borderData: FlBorderData(show: false),
               titlesData: FlTitlesData(
