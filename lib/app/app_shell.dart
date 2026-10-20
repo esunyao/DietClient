@@ -1,4 +1,5 @@
 import 'package:diet_ui/diet_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -98,6 +99,103 @@ class AppShell extends ConsumerWidget {
         child: navigation(),
       ),
     );
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      final padding = MediaQuery.paddingOf(context);
+      final headerHeight =
+          20 + 18 + 22 + 3 + MediaQuery.textScalerOf(context).scale(12) * 1.5;
+      return Scaffold(
+        body: Column(
+          children: [
+            if (!wide)
+              SafeArea(
+                bottom: false,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: logout,
+                    icon: const Icon(Icons.logout, size: 17),
+                    label: const Text('退出当前应用'),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: GlassBackdrop(
+                mode: wide || showBottom ? prefs.glassMode : GlassMode.off,
+                reduceTransparency: prefs.reduceTransparency,
+                background: AppPageScope(
+                  onBackFallback: () => context.go(AppRoutes.home),
+                  topInset: wide ? headerHeight : 0,
+                  bottomInset: showBottom
+                      ? 96 + padding.bottom
+                      : padding.bottom,
+                  child: child,
+                ),
+                overlay: Stack(
+                  children: [
+                    if (wide)
+                      Positioned(
+                        top: padding.top,
+                        left: padding.left,
+                        right: padding.right,
+                        height: headerHeight,
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1194),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Text(
+                                    '膳食健康',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  SizedBox(width: 370, child: glass),
+                                  const SizedBox(width: 18),
+                                  IconButton(
+                                    tooltip: '外观与演示设置',
+                                    onPressed: () =>
+                                        context.push(AppRoutes.settings),
+                                    icon: const Icon(Icons.tune),
+                                  ),
+                                  IconButton(
+                                    tooltip: '退出当前应用，不注销单点登录',
+                                    onPressed: logout,
+                                    icon: const Icon(Icons.logout),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (showBottom)
+                      Positioned(
+                        left: 28,
+                        right: 28,
+                        bottom: 16 + padding.bottom,
+                        child: Align(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 430),
+                            child: glass,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Scaffold(
       body: Column(
         children: [

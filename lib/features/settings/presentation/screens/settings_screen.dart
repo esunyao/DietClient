@@ -44,7 +44,7 @@ class SettingsScreen extends ConsumerWidget {
               Text(
                 prefs.glassMode == GlassMode.enhanced &&
                         !GlassSurface.supportsEnhanced
-                    ? '当前平台使用标准磨砂回退；增强折射需支持的 Android 渲染器。'
+                    ? '当前平台使用标准磨砂回退；增强需支持的渲染器或 Windows 背景捕获。'
                     : '标准使用轻量磨砂。增强加载失败时自动回退。',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
@@ -193,32 +193,35 @@ class _GlassChoice extends StatelessWidget {
                 color: AppColors.greenSoft,
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: Stack(
-                children: [
-                  const Align(
+              child: GlassBackdrop(
+                mode: mode,
+                reduceTransparency: reduceTransparency,
+                background: const ColoredBox(
+                  color: AppColors.greenSoft,
+                  child: Align(
                     alignment: Alignment.topRight,
                     child: PlateIllustration(size: 54),
                   ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: GlassSurface(
-                      mode: mode,
-                      reduceTransparency: reduceTransparency,
-                      radius: 14,
-                      child: const Padding(
-                        padding: EdgeInsets.all(9),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Icon(Icons.home_outlined, size: 17),
-                            Icon(Icons.restaurant_outlined, size: 17),
-                            Icon(Icons.person_outline, size: 17),
-                          ],
-                        ),
+                ),
+                overlay: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: GlassSurface(
+                    mode: mode,
+                    reduceTransparency: reduceTransparency,
+                    radius: 14,
+                    child: const Padding(
+                      padding: EdgeInsets.all(9),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Icon(Icons.home_outlined, size: 17),
+                          Icon(Icons.restaurant_outlined, size: 17),
+                          Icon(Icons.person_outline, size: 17),
+                        ],
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 10),
