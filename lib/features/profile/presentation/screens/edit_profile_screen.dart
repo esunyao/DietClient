@@ -71,13 +71,33 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return null;
   }
 
+  void _save() {
+    if (!_form.currentState!.validate()) return;
+    ref
+        .read(demoProvider.notifier)
+        .updateProfile(
+          _original.copyWith(
+            name: _fields['昵称']!.text.trim(),
+            birthday: _fields['出生日期']!.text.trim(),
+            gender: _gender,
+            height: double.parse(_fields['身高（cm）']!.text),
+            activity: _activity,
+            waterGoal: int.parse(_fields['每日饮水目标（ml）']!.text),
+          ),
+        );
+    FocusScope.of(context).unfocus();
+    setState(() => _dirty = false);
+    showDemoMessage(context, '基础资料已用于本次演示，重启后恢复样例。');
+  }
+
   @override
   Widget build(BuildContext context) => UnsavedForm(
     dirty: _dirty,
     child: AppPage(
       title: '编辑基础资料',
-      subtitle: '用于本次演示，不会上传或持久保存',
+      subtitle: '仅用于本次演示，不会上传或持久保存',
       showBack: true,
+      footer: AppButton(label: '保留本次演示修改', onPressed: _save),
       children: [
         Form(
           key: _form,
@@ -131,27 +151,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
           ),
         ),
-        const InfoBanner(text: '身体测量请在健康档案中单独添加，修改基础资料不会覆盖测量记录。'),
-        AppButton(
-          label: '保留本次演示修改',
-          onPressed: () {
-            if (!_form.currentState!.validate()) return;
-            ref
-                .read(demoProvider.notifier)
-                .updateProfile(
-                  _original.copyWith(
-                    name: _fields['昵称']!.text.trim(),
-                    birthday: _fields['出生日期']!.text.trim(),
-                    gender: _gender,
-                    height: double.parse(_fields['身高（cm）']!.text),
-                    activity: _activity,
-                    waterGoal: int.parse(_fields['每日饮水目标（ml）']!.text),
-                  ),
-                );
-            FocusScope.of(context).unfocus();
-            setState(() => _dirty = false);
-            showDemoMessage(context, '基础资料已用于本次演示，重启后恢复样例。');
-          },
+        const Text(
+          '身体测量请在健康档案中单独添加。修改基础资料不会覆盖测量记录；饮水目标为用户设置，不是统一医学建议。',
+          style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.7),
         ),
       ],
     ),

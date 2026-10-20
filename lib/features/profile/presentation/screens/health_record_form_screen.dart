@@ -75,6 +75,33 @@ class _HealthRecordFormScreenState
       ),
     ),
   );
+  void _save() {
+    if (!_form.currentState!.validate()) return;
+    final id = 'health-${DateTime.now().microsecondsSinceEpoch}';
+    final measurement = widget.kind == 'measurement';
+    final unit = measurement
+        ? RegExp(r'（(.+)）').firstMatch(_measurement!)?.group(1)
+        : null;
+    ref
+        .read(demoProvider.notifier)
+        .saveHealthRecord(
+          HealthRecordPreview(
+            id: id,
+            kind: widget.kind,
+            title: measurement ? _measurement! : _name.text.trim(),
+            value: '${_value.text.trim()}${unit == null ? '' : ' $unit'}',
+            note: _note.text.trim(),
+            date: _date.text.trim(),
+          ),
+        );
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _dirty = false;
+      _savedId = id;
+    });
+    showDemoMessage(context, '记录已加入本次演示，返回健康档案可查看。');
+  }
+
   @override
   Widget build(BuildContext context) {
     final label = healthKinds[widget.kind];
@@ -92,6 +119,10 @@ class _HealthRecordFormScreenState
         title: '添加$label',
         subtitle: '新记录为空白，仅保留至本次演示',
         showBack: true,
+        footer: AppButton(
+          label: _savedId == null ? '保留演示记录' : '本次记录已保留',
+          onPressed: _savedId != null ? null : _save,
+        ),
         children: [
           Form(
             key: _form,
@@ -167,40 +198,9 @@ class _HealthRecordFormScreenState
               ),
             ),
           ),
-          const InfoBanner(text: '请用虚构信息体验。记录不替代专业判断；不清楚的情况请写明待确认。'),
-          AppButton(
-            label: _savedId == null ? '保留演示记录' : '本次记录已保留',
-            onPressed: _savedId != null
-                ? null
-                : () {
-                    if (!_form.currentState!.validate()) return;
-                    final id =
-                        'health-${DateTime.now().microsecondsSinceEpoch}';
-                    final unit = measurement
-                        ? RegExp(r'（(.+)）').firstMatch(_measurement!)?.group(1)
-                        : null;
-                    ref
-                        .read(demoProvider.notifier)
-                        .saveHealthRecord(
-                          HealthRecordPreview(
-                            id: id,
-                            kind: widget.kind,
-                            title: measurement
-                                ? _measurement!
-                                : _name.text.trim(),
-                            value:
-                                '${_value.text.trim()}${unit == null ? '' : ' $unit'}',
-                            note: _note.text.trim(),
-                            date: _date.text.trim(),
-                          ),
-                        );
-                    FocusScope.of(context).unfocus();
-                    setState(() {
-                      _dirty = false;
-                      _savedId = id;
-                    });
-                    showDemoMessage(context, '记录已加入本次演示，返回健康档案可查看。');
-                  },
+          const Text(
+            '请用虚构信息体验。记录不替代专业判断；不清楚的情况请写明待确认。',
+            style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.7),
           ),
         ],
       ),
