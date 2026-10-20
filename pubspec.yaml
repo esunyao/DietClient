@@ -17,6 +17,9 @@ dependencies:
   diet_models: any
   diet_ui: any
   diet_auth: any
+  dio: 5.11.1
+  image_picker: 1.2.4
+  image: 4.12.0
   go_router: 18.1.0
   flutter_riverpod: 3.4.3
 dev_dependencies:
