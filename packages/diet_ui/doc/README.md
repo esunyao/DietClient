@@ -18,6 +18,8 @@ AppCard 以圆角 Material 承载底色与边框，支持 ListTile、AppListRow 
 
 AppListRow 仍薄封装标准 ListTile，可用 dense 和 contentPadding 控制列表密度。SectionHeading 使用19号标题与至少44高操作。AppBadge 使用圆角8，默认13号字，compact 对应手机紧凑状态。按钮保持标准 FilledButton/OutlinedButton 的语义、禁用和至少44高触控行为，不固定文字高度。AppSegmented 默认保留 ChoiceChip；equalWidth 使用浅绿轨道与白色选中，selectedFilled 改为深绿选中；窄屏或大字时按实际文字宽度换行。
 
+[showSquareImageCrop](../lib/src/widgets/square_image_crop.dart) 使用 crop_your_image 2.0.1 提供方形交互裁剪，公开入口只传递图片字节，取消返回 null，异步回调在离开页面后丢弃。库类型和裁剪算法留在组件内；格式、像素限制、方向归一化和最终 512×512 PNG 由 profile/data 处理，选图和服务器上传不进入设计系统。
+
 NutritionBarChart 沿用 fl_chart，height 默认210，highlightLast、showValueLabels、missingLabels 均为可选增强。缺失标识可区分“未记录”和“待补充”，不补零；柱顶数字放不下时隐藏，tooltip 与整段语义仍提供数值，页面保留逐日表。图表高度随字体增长，不裁掉日期与缺失文字。
 
 ## 玻璃效果

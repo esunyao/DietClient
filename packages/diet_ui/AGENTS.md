@@ -12,6 +12,7 @@
 - [营养图表](lib/src/widgets/nutrition_bar_chart.dart)：fl_chart 薄封装、可选高度/末柱强调/缺失标识；数值不补零
 - [玻璃背景](lib/src/widgets/glass_backdrop.dart) / [镜片](lib/src/widgets/glass_surface.dart)：平台后端与能力回退；[聚焦回归](../../test/glass_backdrop_test.dart)
 - [图标](lib/src/widgets/app_icons.dart)、[包声明](pubspec.yaml)、[Phosphor 许可](PHOSPHOR-LICENSE.txt)
+- [方形图片裁剪](lib/src/widgets/square_image_crop.dart)：crop_your_image 薄封装，输入/输出字节，取消返回 null；图片选择与上传归 profile
 - 应用展示偏好入口：[core](../../lib/core/AGENTS.md)；导航装配：[app](../../lib/app/AGENTS.md)
 
 库选型与来源见 [library](../../doc/library.md)。
