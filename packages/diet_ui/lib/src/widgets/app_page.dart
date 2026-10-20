@@ -122,9 +122,10 @@ class AppPage extends StatelessWidget {
         if (showBack) ...[_backButton(context), const SizedBox(width: 8)],
         Expanded(child: _titleBlock(wide: wide)),
         if (wide && (demoLabel != null || trailing != null))
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 24, top: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 24, top: 4),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
