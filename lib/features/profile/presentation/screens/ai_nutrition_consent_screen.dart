@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../demo/demo_store.dart';
+import '../../../../core/config/ui_preview_config.dart';
+import 'real_consent_screen.dart';
 
 class AiNutritionConsentScreen extends ConsumerWidget {
   const AiNutritionConsentScreen({super.key});
@@ -43,6 +45,7 @@ class AiNutritionConsentScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(uiPreviewProvider)) return const RealConsentScreen();
     final enabled = ref.watch(demoProvider.select((s) => s.aiConsent));
     return AppPage(
       title: 'AI 数据与隐私',
