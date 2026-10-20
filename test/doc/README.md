@@ -16,3 +16,5 @@
 [ui_layout_test.dart](../ui_layout_test.dart) 使用 430×960 手机、1194×834 平板和 320×720 大字视口，聚焦一级/二级标题对齐、固定标题与底部操作、末项可达、受实际父约束控制的双栏、导航高度/大字增长/选中语义/路由点击，以及个人和机构首页的信息顺序。另用配餐 430、饮食历史 1194、我的 360 与文字缩放 1.3 做三处代表性首帧/短滚动检查，不扩展全页矩阵。补充844×390、键盘底部遮挡200的真实 AppShell 手工记录页，检查84顶部导航避让、字段完整可见与输入、滚动触达并点击保存，以及键盘关闭再打开后的值和焦点；另以无外部控制器的内部 Form 检查1194常规布局与短视口切换时 Form、字段及 Scrollable 状态身份保留，并确认恢复常规高度后标题和 footer 仍固定。页面通过 `demoProvider` 替换实例读取本地演示数据，不连接业务网络，不修改生产登录门控。
 
 可由集成验证统一执行：`bash tool/flutter.sh test --no-pub test/ui_layout_test.dart test/glass_backdrop_test.dart test/app_card_material_test.dart test/authentication_gate_test.dart`。本节说明覆盖范围，不声明命令已经运行或测试通过；实际执行结果记录在[根说明](../../README.md)。这些几何与交互断言不是逐页截图/golden 矩阵，也不代表 Android 真机、视觉还原或性能验收。
+
+[导航交互回归](../navigation_interaction_test.dart) 覆盖拖跨多项只在抬起提交、取消复位、三态/迷你首击/随后键盘选择、真实 AppShell 用户与程序化滚动隔离、主体状态和滚动位置、营养未知/超额；布局回归另检查390快捷横排与营养紧凑高度。

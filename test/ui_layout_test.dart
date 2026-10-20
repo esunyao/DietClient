@@ -4,6 +4,7 @@ import 'package:diet_client/app/app_shell.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_client/features/home/presentation/screens/home_screen.dart';
+import 'package:diet_client/features/home/presentation/widgets/home_summary.dart';
 import 'package:diet_client/features/meal/presentation/screens/meal_correction_screen.dart';
 import 'package:diet_client/features/meal/presentation/screens/meal_history_screen.dart';
 import 'package:diet_client/features/meal_plan/presentation/screens/meal_plan_screen.dart';
@@ -333,18 +334,18 @@ void main() {
     expect(asideRect.top, greaterThanOrEqualTo(mainRect.bottom));
     expect(tester.takeException(), isNull);
   });
-  testWidgets('手机导航为 62 高且无常驻退出行并保留选中语义与路由', (tester) async {
+  testWidgets('手机导航为 58 高且无常驻退出行并保留选中语义与路由', (tester) async {
     _setViewport(tester, const Size(430, 960));
     final semantics = tester.ensureSemantics();
     try {
       final router = await _pumpShell(tester);
       final navigationRect = tester.getRect(find.byType(AppBottomNavigation));
-      expect(navigationRect.height, 62);
-      expect(navigationRect.left, 24);
-      expect(navigationRect.right, 430 - 24);
+      expect(navigationRect.height, 58);
+      expect(navigationRect.left, 45);
+      expect(navigationRect.right, 430 - 45);
       expect(find.byType(AppTopNavigation), findsNothing);
       for (final label in ['首页', '配餐', '趋势', '我的']) {
-        expect(tester.widget<Text>(find.text(label)).style?.fontSize, 12);
+        expect(tester.widget<Text>(find.text(label)).style?.fontSize, 11);
       }
       expect(
         tester
@@ -406,7 +407,7 @@ void main() {
     _setViewport(tester, const Size(320, 720));
     final router = await _pumpShell(tester, textScale: 1.6);
     final navigationRect = tester.getRect(find.byType(AppBottomNavigation));
-    expect(navigationRect.height, greaterThan(62));
+    expect(navigationRect.height, greaterThan(58));
     expect(
       MediaQuery.textScalerOf(tester.element(find.text('我的'))).scale(12),
       closeTo(19.2, .01),
@@ -439,15 +440,15 @@ void main() {
       find.ancestor(of: find.text('拍照记一餐'), matching: find.byType(AppCard)),
     );
     final manualRect = tester.getRect(find.text('手工记录'));
-    final historyRect = tester.getRect(find.text('饮食历史'));
+    final historyRect = tester.getRect(find.text('历史记录'));
     final recordsRect = tester.getRect(find.text('健康档案'));
     final nutritionRect = tester.getRect(
-      find.ancestor(of: find.text('今日已记录营养'), matching: find.byType(AppCard)),
+      find.ancestor(of: find.text('今日营养'), matching: find.byType(AppCard)),
     );
     final mealsRect = tester.getRect(find.text('今天吃了什么'));
     expect(titleRect.bottom, lessThan(recordRect.top));
-    expect(recordRect.left, 24);
-    expect(recordRect.width, 382);
+    expect(recordRect.left, 20);
+    expect(recordRect.width, 390);
     expect(recordRect.height, inInclusiveRange(140, 160));
     expect(recordRect.bottom, lessThan(manualRect.top));
     expect(manualRect.top, historyRect.top);
@@ -455,7 +456,7 @@ void main() {
     expect(manualRect.right, lessThan(historyRect.left));
     expect(historyRect.right, lessThan(recordsRect.left));
     expect(recordsRect.bottom, lessThan(nutritionRect.top));
-    expect(nutritionRect.height, inInclusiveRange(220, 240));
+    expect(nutritionRect.height, inInclusiveRange(230, 270));
     expect(nutritionRect.bottom, lessThan(mealsRect.top));
     expect(find.text('1,100'), findsOneWidget);
     expect(find.text('拍照记录').hitTestable(), findsOneWidget);
@@ -463,6 +464,23 @@ void main() {
     expect(find.text('机构晚餐'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('390个人首页快捷横排且营养保持紧凑，餐食保留24边距', (tester) async {
+    _setViewport(tester, const Size(390, 900));
+    await _pumpShell(tester, home: true);
+    final quick = tester.getRect(find.text('手工记录'));
+    final icon = tester.getRect(find.byIcon(AppIcons.edit));
+    expect((quick.center.dy - icon.center.dy).abs(), lessThan(2));
+    final nutrition = tester.getRect(
+      find.ancestor(of: find.text('今日营养'), matching: find.byType(AppCard)),
+    );
+    expect(nutrition.height, inInclusiveRange(230, 270));
+    final meals = tester.getRect(
+      find.ancestor(of: find.text('今天吃了什么'), matching: find.byType(HomeMeals)),
+    );
+    expect(meals.left, 24);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('平板机构首页将待确认晚餐放在营养与餐食右侧', (tester) async {
