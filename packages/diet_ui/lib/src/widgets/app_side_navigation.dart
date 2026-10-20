@@ -26,7 +26,7 @@ class AppSideNavigation extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final VoidCallback onSettings;
-  final Widget Function(bool expanded) accountBuilder;
+  final Widget Function(double expansion) accountBuilder;
   final bool menuOpen;
   final GlassMode glassMode;
   final bool reduceTransparency;
@@ -276,7 +276,7 @@ class _AppSideNavigationState extends State<AppSideNavigation>
                               widget.onSettings,
                               progress: _progress,
                             ),
-                            widget.accountBuilder(_progress > .65),
+                            widget.accountBuilder(_progress),
                           ],
                         ),
                       ),

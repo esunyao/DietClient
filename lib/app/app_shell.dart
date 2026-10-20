@@ -153,7 +153,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       glassMode: prefs.glassMode,
                       reduceTransparency: prefs.reduceTransparency,
                       menuOpen: _menuOpen,
-                      accountBuilder: (expanded) =>
+                      accountBuilder: (expansion) =>
                           PopupMenuButton<_AccountAction>(
                             tooltip: '个人菜单',
                             onOpened: () => setState(() => _menuOpen = true),
@@ -186,20 +186,60 @@ class _AppShellState extends ConsumerState<AppShell> {
                             ],
                             child: Padding(
                               padding: const EdgeInsets.all(8),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const AvatarIllustration(size: 36),
-                                  if (expanded) ...[
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        demo.profile.name,
-                                        style: AppTypography.body,
+                              child: ClipRect(
+                                child: SizedBox(
+                                  height: math.max(
+                                    36,
+                                    MediaQuery.textScalerOf(context).scale(14) *
+                                        1.5,
+                                  ),
+                                  width: double.infinity,
+                                  child: Stack(
+                                    children: [
+                                      Positioned.directional(
+                                        textDirection: Directionality.of(
+                                          context,
+                                        ),
+                                        start: 10 * (1 - expansion),
+                                        top: 0,
+                                        bottom: 0,
+                                        child: const Center(
+                                          child: AvatarIllustration(size: 36),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ],
+                                      Positioned.directional(
+                                        textDirection: Directionality.of(
+                                          context,
+                                        ),
+                                        start: 46,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: 130,
+                                        child: Align(
+                                          alignment:
+                                              AlignmentDirectional.centerStart,
+                                          child: ExcludeSemantics(
+                                            excluding: expansion <= .3,
+                                            child: Opacity(
+                                              opacity: ((expansion - .3) / .5)
+                                                  .clamp(0.0, 1.0),
+                                              child: SizedBox(
+                                                width: 130,
+                                                child: Text(
+                                                  demo.profile.name,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: AppTypography.body,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),

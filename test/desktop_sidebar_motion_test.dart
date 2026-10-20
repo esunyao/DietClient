@@ -1,7 +1,11 @@
 import 'dart:ui';
 
+import 'package:diet_client/app/app_shell.dart';
+import 'package:diet_client/core/presentation/ui_preferences.dart';
+import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _items = [
@@ -47,6 +51,118 @@ double _width(WidgetTester tester) =>
     tester.getSize(find.byType(AppSideNavigation)).width;
 
 void main() {
+  testWidgets('真实账户区中间帧连续且菜单在移出后保持展开', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1100, 800);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    container.read(uiPreferencesProvider.notifier).setGlassMode(GlassMode.off);
+    final name = container.read(demoProvider).profile.name;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const AppShell(location: '/home', child: SizedBox()),
+        ),
+      ),
+    );
+    final avatar = find.descendant(
+      of: find.byType(AppSideNavigation),
+      matching: find.byType(AvatarIllustration),
+    );
+    final account = find.byTooltip('个人菜单');
+    final accountElement = tester.element(account);
+    final avatarElement = tester.element(avatar);
+    expect(find.text(name), findsOneWidget);
+    final labelWidth = tester.getSize(find.text(name)).width;
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: const Offset(500, 100));
+    await mouse.moveTo(const Offset(40, 100));
+    await tester.pump(const Duration(milliseconds: 120));
+    var previous = tester.getCenter(avatar);
+    for (var i = 0; i < 15; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      final center = tester.getCenter(avatar);
+      expect((center - previous).distance, lessThan(8));
+      expect(tester.element(account), same(accountElement));
+      expect(tester.element(avatar), same(avatarElement));
+      expect(tester.getSize(find.text(name)).width, labelWidth);
+      expect(tester.takeException(), isNull);
+      previous = center;
+    }
+    await tester.tap(account);
+    await tester.pumpAndSettle();
+    expect(find.text('外观与演示设置'), findsOneWidget);
+    await mouse.moveTo(const Offset(500, 100));
+    await tester.pump(const Duration(milliseconds: 180));
+    await tester.pump(const Duration(milliseconds: 240));
+    expect(_width(tester), 216);
+    expect(tester.element(account), same(accountElement));
+    await tester.tapAt(const Offset(600, 300));
+    await tester.pumpAndSettle();
+    expect(_width(tester), 96);
+    await mouse.removePointer();
+    await tester.pumpWidget(const SizedBox());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('真实账户区长名称与大字短窗口保持可达', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1000, 420);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    container.read(uiPreferencesProvider.notifier).setGlassMode(GlassMode.off);
+    const name = '用于验证侧栏连续动画的长演示名称';
+    final profile = container.read(demoProvider).profile;
+    container
+        .read(demoProvider.notifier)
+        .updateProfile(profile.copyWith(name: name));
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: const AppShell(location: '/home', child: SizedBox()),
+          ),
+        ),
+      ),
+    );
+    final scroll = find.descendant(
+      of: find.byType(AppSideNavigation),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.byTooltip('个人菜单'),
+      100,
+      scrollable: scroll,
+    );
+    final account = find.byTooltip('个人菜单');
+    await tester.tap(account);
+    await tester.pump();
+    for (var i = 0; i < 15; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(tester.takeException(), isNull);
+    }
+    expect(_width(tester), 216);
+    expect(find.text('外观与演示设置'), findsOneWidget);
+    final label = tester.widget<Text>(find.text(name));
+    expect(label.maxLines, 1);
+    expect(label.overflow, TextOverflow.ellipsis);
+    expect(tester.getSize(find.text(name)).height, greaterThanOrEqualTo(42));
+    await tester.tapAt(const Offset(600, 200));
+    await tester.pumpAndSettle();
+    expect(account.hitTestable(), findsOneWidget);
+    expect(find.text('设置').first.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('单份图标和稳定文字槽位在中间帧连续移动', (tester) async {
     await tester.pumpWidget(_sidebar());
     final icon = find.byIcon(Icons.home);
