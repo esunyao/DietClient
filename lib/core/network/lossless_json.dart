@@ -9,6 +9,9 @@ Object? decodeApiJson(String raw) {
     'conditionId',
     'restrictionId',
     'consentId',
+    'mealId',
+    'itemId',
+    'imageId',
   };
   final out = StringBuffer();
   var i = 0;
