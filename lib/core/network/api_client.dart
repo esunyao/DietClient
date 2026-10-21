@@ -132,8 +132,9 @@ class ApiClient {
           }
           final currentToken = currentAccessToken?.call();
           // A late rejection for a rotated token must not clear its successor.
-          if (currentToken == null || currentToken == usedToken)
+          if (currentToken == null || currentToken == usedToken) {
             onUnauthorized();
+          }
         }
         throw ApiFailure(
           status == 401 ? '登录已失效，请重新登录' : '请求失败，请检查网络后重试',
