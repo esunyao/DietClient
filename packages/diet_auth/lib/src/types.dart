@@ -6,6 +6,8 @@ class AuthentikConfig {
     required this.clientId,
     required this.redirectUri,
     required this.webRedirectUri,
+    this.enrollmentFlowSlug,
+    this.emailVerificationResendFlowSlug,
     this.scopes = const ['openid', 'profile', 'email'],
   }) {
     final loopback = const [
@@ -27,6 +29,8 @@ class AuthentikConfig {
     }
   }
 
+  final String? enrollmentFlowSlug;
+  final String? emailVerificationResendFlowSlug;
   final Uri baseUri;
   final String providerSlug;
   final String authenticationFlowSlug;
@@ -56,4 +60,12 @@ class AuthFailure implements Exception {
 
   @override
   String toString() => 'AuthFailure($code): $message';
+}
+
+/// Only field validation errors are exposed; cookies and protocol data stay private.
+class AuthFieldFailure extends AuthFailure {
+  AuthFieldFailure(Map<String, String> errors)
+    : fields = Map.unmodifiable(errors),
+      super('field_error', '请检查表单中的提示后重试。');
+  final Map<String, String> fields;
 }
