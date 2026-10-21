@@ -6,6 +6,8 @@ import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/demo/demo_store.dart';
 
 import '../widgets/trend_widgets.dart';
+import '../../../../core/config/ui_preview_config.dart';
+import 'native_trends_screen.dart';
 
 class TrendsScreen extends ConsumerStatefulWidget {
   const TrendsScreen({super.key});
@@ -25,6 +27,9 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return const NativeTrendsScreen();
+    }
     final state = ref.watch(demoProvider);
     final days = [7, 30, 90][_range];
     final points = state.trend(days);
