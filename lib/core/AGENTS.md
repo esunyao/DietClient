@@ -11,3 +11,5 @@
 Web 预览开关：[ui_preview_config.dart](config/ui_preview_config.dart)，不建立登录身份。
 
 业务请求：[network/AGENTS](network/AGENTS.md)；共享真实身份与头像：[account_identity.dart](presentation/account_identity.dart)，供 app/home/profile 复用。
+
+真实膳食：[nutrition/AGENTS](nutrition/AGENTS.md)；图片选择与恢复：[media/AGENTS](media/AGENTS.md)；跨页面 AI 同意：[privacy/AGENTS](privacy/AGENTS.md)。上述业务适配不放入 diet_ui，feature 不横向导入。

@@ -6,4 +6,6 @@
 
 [ui_preview_config.dart](ui_preview_config.dart) 提供纯平台/编译标志判定与 Provider；`WEB_UI_PREVIEW` 默认关闭且只对 Web 生效，路由和 UI 装配见 [app](../../app/AGENTS.md)。
 
+同文件的 `nativeNutritionEnabledProvider` 将本轮真实膳食能力限定为 Android/Windows 非预览模式；不以是否配置了地址来推断登录身份。
+
 [api_config.dart](api_config.dart) 校验 API_BASE_URL；独立业务客户端见 [network](../network/AGENTS.md)，真实资料入口见 [profile](../../features/profile/AGENTS.md)。
