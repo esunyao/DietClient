@@ -6,6 +6,8 @@ import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
 
 import '../widgets/meal_widgets.dart';
+import '../../../../core/config/ui_preview_config.dart';
+import 'native_meal_detail_screen.dart';
 
 class MealDetailScreen extends ConsumerWidget {
   const MealDetailScreen({super.key, required this.mealId});
@@ -13,6 +15,9 @@ class MealDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return NativeMealDetailScreen(mealId: mealId);
+    }
     final meal = ref.watch(demoProvider).meal(mealId);
     if (meal == null) {
       return const AppPage(

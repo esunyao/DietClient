@@ -6,6 +6,8 @@ import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/demo/demo_store.dart';
 
 import '../widgets/meal_widgets.dart';
+import '../../../../core/config/ui_preview_config.dart';
+import 'native_meal_correction_screen.dart';
 
 class MealCorrectionScreen extends ConsumerStatefulWidget {
   const MealCorrectionScreen({super.key, this.mealId});
@@ -344,6 +346,9 @@ class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return NativeMealCorrectionScreen(mealId: widget.mealId);
+    }
     if (!_isNew && _original == null) {
       return const AppPage(
         title: '修正本餐',

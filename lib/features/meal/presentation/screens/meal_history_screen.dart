@@ -6,6 +6,8 @@ import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
 
 import '../widgets/meal_widgets.dart';
+import '../../../../core/config/ui_preview_config.dart';
+import 'native_meal_history_screen.dart';
 
 class MealHistoryScreen extends ConsumerStatefulWidget {
   const MealHistoryScreen({super.key});
@@ -74,6 +76,9 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return const NativeMealHistoryScreen();
+    }
     final state = ref.watch(demoProvider);
     final meals =
         state.meals
