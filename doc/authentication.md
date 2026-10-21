@@ -1,6 +1,6 @@
 # 登录接入
 
-应用已接入 Authentik/OIDC 登录与启动门控；本轮保留认证协议和内存会话，将「我的」个人资料、头像、五类健康档案与 AI 同意接入独立业务客户端。膳食、机构和报告仍使用演示样例。真实注册、邮箱验证、MFA、令牌刷新与持久化不在范围内，资料行为见 [profile](../lib/features/profile/AGENTS.md)。
+应用保留 Authentik/OIDC 登录，并扩展 Android/Windows 注册、邮件重发、会话刷新及可选记住登录。资料与餐食使用独立业务客户端；无接口能力显示暂未支持。Web 新功能留待下轮，保持原登录、资料和独立预览。MFA、全局 SSO 注销与推送不在本轮范围。
 
 ## 包与应用边界
 
@@ -9,9 +9,9 @@
 | [diet_oidc](../packages/diet_oidc/AGENTS.md) | 纯 Dart 通用 discovery、PKCE S256、state/nonce、授权码交换、ID Token/JWKS 校验；条件导出的 Web popup 与 BroadcastChannel |
 | [diet_auth](../packages/diet_auth/AGENTS.md) | 纯 Dart Authentik Flow Executor、Dio 内存 Cookie；依赖 diet_oidc |
 | [core/config](../lib/core/config/AGENTS.md) | 将编译配置装配为包配置，按平台选择回调 |
-| [core/session](../lib/core/session/AGENTS.md) | 仅驻留内存的已验证登录会话 |
+| [core/session](../lib/core/session/AGENTS.md) | 已验证内存会话、单次并发刷新、启动恢复和系统安全存储适配 |
 | [auth/application](../lib/features/auth/application/AGENTS.md) | 控制登录、同意提示、取消和错误反馈 |
-| auth/presentation | 复用绿色表单；注册与邮件页保留演示说明 |
+| auth/presentation | 绿色登录与注册表单、邮件重发、默认关闭的记住登录；Web 保持原边界 |
 
 通用 OIDC 包不依赖 Authentik、Flutter、Riverpod 或 Cookie。Authentik 包不依赖 Flutter/Riverpod。业务 demoProvider 不承载真实会话。
 
@@ -32,12 +32,22 @@ Web 使用弹窗访问身份提供方，经 [静态回调](../web/auth-callback.
 | AUTHENTIK_BASE_URL | 身份提供方根地址 |
 | AUTHENTIK_PROVIDER_SLUG | 组成 discovery 路径 |
 | AUTHENTIK_AUTHENTICATION_FLOW_SLUG | 原生账号密码执行器的流程 |
+| AUTHENTIK_ENROLLMENT_FLOW_SLUG | Android/Windows 注册流程 |
+| AUTHENTIK_EMAIL_VERIFICATION_RESEND_FLOW_SLUG | Android/Windows 邮件重发流程 |
 | AUTHENTIK_CLIENT_ID | 公开客户端 ID，example 留空 |
 | AUTHENTIK_REDIRECT_URI | Android/Windows 授权响应目标 |
 | AUTHENTIK_WEB_REDIRECT_URI | Web 同源静态回调 |
 | AUTHENTIK_SCOPES | 空格分隔，必须含 openid |
 
-example 保留用户样例中的 offline_access；返回的 refresh_token 不进入 OidcSession，不使用也不持久化，当前没有刷新能力。注册与邮件配置键不表示已接入相应流程。API_BASE_URL 现用于资料接口，独立客户端不复用登录 Cookie。
+Android/Windows 请求 offline_access，部署方也需在 Authentik provider 中启用对应 scope mapping；未返回 refresh_token 时，提示无法自动续期但保留当前有效登录。API_BASE_URL 指向部署网关，业务客户端不复用登录 Cookie。Web 本轮不启用记住登录和新增续期能力。
+
+## Android / Windows 会话与邮件
+
+登录默认不记住，仅在内存续期。用户勾选后，刷新令牌及必要身份校验上下文写入系统安全存储，并绑定当前身份提供方、客户端与 API 配置；不保存密码、业务健康资料、图片或签名 URL。普通偏好库仅保存外观。Android 关闭应用自动备份以避免安全存储密钥与密文错配，不调整 SDK。
+
+启动恢复成功前使用独立恢复页，失败可重试或清除本机记录重新登录。刷新按当前登录实例合并；令牌轮换不重建账户页面，退出/换号才清空旧状态与请求。GET 的 401 至多续期重试一次，写操作不自动重发。安全存储失败不降级为明文保存；网络错误不冒充续期成功。
+
+注册和重发只在服务端进入有效邮件阶段后确认请求已受理。验证链接由邮件网页完成，用户手动返回重新登录；访问结果页面本身不代表验证成功或已登录。未知认证阶段明确报错。当前应用退出清除本机登录信息，不宣称注销其他 SSO 应用。
 
 业务 API_BASE_URL 应设为部署网关 HTTPS 基址，通过同一 `--dart-define-from-file` 注入；`.env.example` 的 `.invalid` 地址只用于构建，不能连接。HTTP 仅允许 loopback 开发地址。客户端按固定路径发送当前会话 Bearer，禁用重定向；无会话或 Web 预览不请求。Web 需部署方为 API 配置应用源、Authorization 与 JSON 请求所需的 CORS，同时为对象存储允许应用源的预签名 PUT、Content-Type 和头像读取。上传客户端独立且不附 Bearer/Cookie；不要将凭据放入 URL 或公开配置。
 
