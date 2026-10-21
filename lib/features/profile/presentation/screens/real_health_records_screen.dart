@@ -36,7 +36,7 @@ class _CategoryState extends ConsumerState<_Category> {
   bool _removing = false;
   String? _error;
   Future<void> _remove(Json record) async {
-    final session = ref.read(sessionProvider);
+    final session = ref.read(sessionEpochProvider);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
@@ -55,7 +55,7 @@ class _CategoryState extends ConsumerState<_Category> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    if (!identical(session, ref.read(sessionProvider))) {
+    if (session != ref.read(sessionEpochProvider)) {
       setState(() => _error = '账户已切换，请重新打开记录。');
       return;
     }

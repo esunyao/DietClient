@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/object_upload.dart';
+import '../../../core/privacy/ai_consent.dart';
 
 typedef Json = Map<String, dynamic>;
 const healthPaths = {
@@ -23,11 +25,9 @@ const healthIdKeys = {
 
 class ProfileApi {
   ProfileApi(this.client, {Dio? uploadClient})
-    : _upload =
-          uploadClient ??
-          Dio(BaseOptions(connectTimeout: const Duration(seconds: 30)));
+    : _upload = ObjectUploader(dio: uploadClient);
   final ApiClient client;
-  final Dio _upload;
+  final ObjectUploader _upload;
   Future<Json> profile() async => Map<String, dynamic>.from(
     await client.request('v1/users/self/profile') as Map,
   );
@@ -95,17 +95,14 @@ class ProfileApi {
     }
     if (!client.isCurrent()) throw const ApiFailure('会话已更换');
     try {
-      await _upload.putUri<void>(
-        uri,
-        data: bytes,
+      await _upload.put(
+        url: uri.toString(),
+        bytes: bytes,
         cancelToken: cancel,
-        onSendProgress: onProgress,
-        options: Options(
-          headers: {'Content-Type': 'image/png'},
-          followRedirects: false,
-          sendTimeout: const Duration(seconds: 60),
-          receiveTimeout: const Duration(seconds: 30),
-        ),
+        onProgress: onProgress,
+        requiredHeaders: presign['requiredHeaders'] == null
+            ? {'Content-Type': 'image/png'}
+            : Map<String, String>.from(presign['requiredHeaders'] as Map),
       );
     } catch (_) {
       throw const ApiFailure('头像上传失败，请重试');
@@ -119,22 +116,11 @@ class ProfileApi {
     return confirmed['avatarUrl'] as String?;
   }
 
-  void close() => _upload.close(force: true);
+  void close() => _upload.close();
 }
 
 Json? latestConsent(List<Json> records) {
-  final items = records
-      .where((e) => e['consentType'] == 'ai_nutrition_analysis')
-      .toList();
-  items.sort((a, b) {
-    final time = DateTime.parse(b['recordedAt'] as String)
-        .compareTo(DateTime.parse(a['recordedAt'] as String));
-    return time != 0
-        ? time
-        : BigInt.parse('${b['consentId']}')
-              .compareTo(BigInt.parse('${a['consentId']}'));
-  });
-  return items.isEmpty ? null : items.first;
+  return latestAiConsent(records);
 }
 
 String consentStatus(List<Json> records) {

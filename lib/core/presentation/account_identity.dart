@@ -43,7 +43,7 @@ final confirmedAvatarProvider = NotifierProvider<ConfirmedAvatar, String?>(
 class ConfirmedAvatar extends Notifier<String?> {
   @override
   String? build() {
-    ref.watch(sessionProvider);
+    ref.watch(sessionEpochProvider);
     return null;
   }
 

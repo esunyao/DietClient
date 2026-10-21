@@ -27,7 +27,7 @@ class _RealHealthFormState extends ConsumerState<RealHealthFormScreen> {
   @override
   void initState() {
     super.initState();
-    _session = ref.read(sessionProvider);
+    _session = ref.read(sessionEpochProvider);
     for (final field in fieldsByKind[widget.kind] ?? <HealthField>[]) {
       final value = widget.record?[field.key];
       if (field.options != null) {
@@ -59,7 +59,7 @@ class _RealHealthFormState extends ConsumerState<RealHealthFormScreen> {
   }
 
   Future<void> _save() async {
-    if (!identical(_session, ref.read(sessionProvider))) {
+    if (_session != ref.read(sessionEpochProvider)) {
       setState(() => _error = '账户已切换，请返回重新打开表单。');
       return;
     }

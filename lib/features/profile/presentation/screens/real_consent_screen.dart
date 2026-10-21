@@ -18,7 +18,7 @@ class _RealConsentState extends ConsumerState<RealConsentScreen> {
   bool _saving = false;
   String? _error;
   Future<void> _save(bool granted) async {
-    final session = ref.read(sessionProvider);
+    final session = ref.read(sessionEpochProvider);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
@@ -39,7 +39,7 @@ class _RealConsentState extends ConsumerState<RealConsentScreen> {
       ),
     );
     if (confirm != true || !mounted) return;
-    if (!identical(session, ref.read(sessionProvider))) {
+    if (session != ref.read(sessionEpochProvider)) {
       setState(() => _error = '账户已切换，请重新确认。');
       return;
     }

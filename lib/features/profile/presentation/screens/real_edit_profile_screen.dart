@@ -50,7 +50,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
   @override
   void initState() {
     super.initState();
-    _session = ref.read(sessionProvider);
+    _session = ref.read(sessionEpochProvider);
     _fields = {
       for (final key in ['birthDate', 'heightCm', 'dailyWaterTargetMl'])
         key: TextEditingController(
@@ -70,7 +70,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
   }
 
   Future<void> _save() async {
-    if (!identical(_session, ref.read(sessionProvider))) {
+    if (_session != ref.read(sessionEpochProvider)) {
       setState(() => _error = '账户已切换，请返回重新打开表单。');
       return;
     }
@@ -98,7 +98,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
       if (api == null) throw StateError('会话不可用');
       final saved = await api.saveProfile(data);
       if (!mounted ||
-          !identical(_session, ref.read(sessionProvider)) ||
+          _session != ref.read(sessionEpochProvider) ||
           !identical(api, ref.read(profileApiProvider))) {
         return;
       }
