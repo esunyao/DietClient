@@ -7,6 +7,7 @@ import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/presentation/account_identity.dart';
 import '../../../../core/session/session_controller.dart';
+import '../../../../core/media/media_coordinator.dart';
 import '../../application/profile_state.dart';
 import '../../data/avatar_image.dart';
 
@@ -17,7 +18,6 @@ class AvatarEditor extends ConsumerStatefulWidget {
 }
 
 class _AvatarEditorState extends ConsumerState<AvatarEditor> {
-  final _picker = ImagePicker();
   Uint8List? _pending;
   CancelToken? _cancel;
   bool _busy = false;
@@ -39,12 +39,12 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
 
   Future<void> _recover() async {
     try {
-      final response = await _picker.retrieveLostData();
+      final files = await ref
+          .read(mediaCoordinatorProvider)
+          .recover(purpose: MediaPurpose.avatar);
       if (!mounted) return;
-      if (response.files?.isNotEmpty == true) {
-        await _crop(response.files!.first);
-      } else if (response.exception != null) {
-        setState(() => _error = '未能恢复所选图片，请重新选择。');
+      if (files.isNotEmpty) {
+        await _crop(files.first);
       }
     } catch (_) {
       if (mounted) setState(() => _error = '未能恢复所选图片，请重新选择。');
@@ -53,7 +53,9 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
 
   Future<void> _choose(ImageSource source) async {
     try {
-      final file = await _picker.pickImage(source: source);
+      final file = await ref
+          .read(mediaCoordinatorProvider)
+          .pick(purpose: MediaPurpose.avatar, source: source);
       if (file == null || !mounted) return;
       await _crop(file);
     } catch (_) {
@@ -62,7 +64,7 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
   }
 
   Future<void> _crop(XFile file) async {
-    final session = ref.read(sessionProvider);
+    final session = ref.read(sessionEpochProvider);
     setState(() {
       _busy = true;
       _error = null;
@@ -72,15 +74,15 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
         throw const FormatException('图片不能超过 5 MiB');
       }
       final prepared = await compute(prepareAvatar, await file.readAsBytes());
-      if (!mounted || !identical(session, ref.read(sessionProvider))) return;
+      if (!mounted || session != ref.read(sessionEpochProvider)) return;
       final cropped = await showSquareImageCrop(context, prepared);
       if (cropped == null ||
           !mounted ||
-          !identical(session, ref.read(sessionProvider))) {
+          session != ref.read(sessionEpochProvider)) {
         return;
       }
       final result = await compute(finishAvatar, cropped);
-      if (mounted && identical(session, ref.read(sessionProvider))) {
+      if (mounted && session == ref.read(sessionEpochProvider)) {
         setState(() => _pending = result);
       }
     } on FormatException catch (e) {
@@ -125,7 +127,7 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(sessionProvider, (_, next) {
+    ref.listen(sessionEpochProvider, (_, next) {
       _cancel?.cancel();
       setState(() {
         _pending = null;
