@@ -12,7 +12,7 @@
 | 记住登录 | flutter_secure_storage 11.2.0 | core/session，系统安全存储薄适配；Web 本轮不启用 |
 | 设备时区 | flutter_timezone 5.1.1 | core/nutrition；IANA 时区，不用显示缩写代替 |
 | UUID / MIME | uuid 4.6.0、mime 2.1.0 | 采集创建幂等键和实际图片格式检查 |
-| 图片选择 | image_picker 1.2.4 | profile 头像；Android 系统相机/相册与恢复，Windows/Web 选择 |
+| 图片选择 | image_picker 1.2.4 | core/media 统一头像与餐食选择、用途和恢复；Android 系统相机/相册，Windows 选图，Web 保留原头像能力 |
 | 方形裁剪 | crop_your_image 2.0.1 | diet_ui 字节组件，不暴露第三方类型 |
 | 图片处理 | image 4.12.0 | profile/data 方向归一化、尺寸限制和 512 PNG |
 | 图标 | [phosphor_flutter](https://pub.dev/packages/phosphor_flutter) 2.1.0 | diet_ui 图标入口 |
