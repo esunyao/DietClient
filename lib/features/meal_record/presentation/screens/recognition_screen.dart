@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/demo/demo_store.dart';
+import 'package:diet_client/core/config/ui_preview_config.dart';
+
+import 'native_recognition_screen.dart';
 
 class RecognitionScreen extends ConsumerStatefulWidget {
   const RecognitionScreen({super.key});
@@ -134,6 +137,9 @@ class _RecognitionScreenState extends ConsumerState<RecognitionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return const NativeRecognitionScreen();
+    }
     final consent = ref.watch(demoProvider).aiConsent;
     return AppPage(
       title: '记录这一餐',
