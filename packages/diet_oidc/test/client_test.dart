@@ -112,6 +112,167 @@ void main() {
     query: query ?? 'code=test-code&state=${tx.state}',
   );
 
+  test('refresh rotates credentials without ID token and uses public same-origin grant', () async {
+    final requests = <http.Request>[];
+    final client = OidcClient(
+      config(),
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        if (request.url == config().discoveryUri) {
+          return jsonResponse(metadata());
+        }
+        expect(request.url.toString(), 'https://id.example.test/token');
+        expect(request.bodyFields, {
+          'grant_type': 'refresh_token',
+          'refresh_token': 'refresh-one',
+          'client_id': 'public-client',
+        });
+        expect(request.followRedirects, false);
+        return jsonResponse({
+          'access_token': 'new-access',
+          'token_type': 'Bearer',
+          'expires_in': 300,
+          'refresh_token': 'refresh-two',
+        });
+      }),
+    );
+    addTearDown(client.dispose);
+    final previous = OidcSession(
+      accessToken: 'old',
+      tokenType: 'Bearer',
+      expiresAt: DateTime.now(),
+      refreshToken: 'refresh-one',
+      identity: const OidcIdentity(
+        issuer: 'https://id.example.test/',
+        subject: 'alice',
+        clientId: 'public-client',
+      ),
+    );
+    final fresh = await client.refresh(previous);
+    expect(fresh.refreshToken, 'refresh-two');
+    expect(fresh.identity, previous.identity);
+    expect(fresh.accessToken, 'new-access');
+    expect(requests.length, 2);
+    expect(fresh.toString(), isNot(contains('refresh-two')));
+  });
+  for (final mismatch in [
+    'sub',
+    'aud',
+    'nonce',
+    'auth_time',
+    'azp',
+    'signature',
+    'duplicate_aud',
+    'omitted_auth_time',
+  ]) {
+    test('refresh rejects changed verified identity: $mismatch', () async {
+      final client = OidcClient(
+        config(),
+        httpClient: MockClient((request) async {
+          if (request.url == config().discoveryUri) {
+            return jsonResponse(metadata());
+          }
+          if (request.url.path == '/jwks') {
+            return jsonResponse({
+              'keys': [
+                JsonWebKey.fromCryptoKeys(
+                  publicKey: signingKey.cryptoKeyPair.publicKey,
+                ).toJson(),
+              ],
+            });
+          }
+          final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+          final claims = <String, dynamic>{
+            'iss': 'https://id.example.test/',
+            'sub': 'alice',
+            'aud': 'public-client',
+            'iat': now,
+            'exp': now + 300,
+            'nonce': 'original',
+            'auth_time': 1,
+          };
+          if (mismatch == 'omitted_auth_time') {
+            claims.remove('auth_time');
+          } else if (mismatch == 'duplicate_aud') {
+            claims['aud'] = ['public-client', 'public-client'];
+          } else if (mismatch != 'signature') {
+            claims[mismatch] = mismatch == 'auth_time' ? 2 : 'different';
+          }
+          final builder = JsonWebSignatureBuilder()
+            ..jsonContent = claims
+            ..addRecipient(
+              mismatch == 'signature' ? wrongKey : signingKey,
+              algorithm: 'RS256',
+            );
+          return jsonResponse({
+            'access_token': 'new',
+            'token_type': 'Bearer',
+            'expires_in': 300,
+            'id_token': builder.build().toCompactSerialization(),
+          });
+        }),
+      );
+      addTearDown(client.dispose);
+      final refreshed = client.refresh(
+        OidcSession(
+          accessToken: 'old',
+          tokenType: 'Bearer',
+          expiresAt: DateTime.now(),
+          refreshToken: 'refresh',
+          identity: OidcIdentity(
+            issuer: 'https://id.example.test/',
+            subject: 'alice',
+            clientId: 'public-client',
+            nonce: 'original',
+            authTime: 1,
+            audience: mismatch == 'duplicate_aud'
+                ? ['public-client', 'another-audience']
+                : ['public-client'],
+          ),
+        ),
+      );
+      if (mismatch == 'omitted_auth_time') {
+        expect((await refreshed).identity?.authTime, 1);
+      } else {
+        await expectLater(refreshed, throwsA(isA<OidcFailure>()));
+      }
+    });
+  }
+  test('refresh rejects issuer drift before sending credentials', () async {
+    var tokenRequests = 0;
+    final client = OidcClient(
+      config(),
+      httpClient: MockClient((request) async {
+        if (request.url == config().discoveryUri) {
+          return jsonResponse({
+            ...metadata(),
+            'token_endpoint': 'https://evil.test/token',
+          });
+        }
+        tokenRequests++;
+        return jsonResponse({});
+      }),
+    );
+    addTearDown(client.dispose);
+    await expectLater(
+      client.refresh(
+        OidcSession(
+          accessToken: 'old',
+          tokenType: 'Bearer',
+          expiresAt: DateTime.now(),
+          refreshToken: 'refresh',
+          identity: const OidcIdentity(
+            issuer: 'https://id.example.test/',
+            subject: 'alice',
+            clientId: 'public-client',
+          ),
+        ),
+      ),
+      throwsA(isA<OidcFailure>()),
+    );
+    expect(tokenRequests, 0);
+  });
+
   test(
     'PKCE S256 authorization is public code flow with unique state and nonce',
     () async {

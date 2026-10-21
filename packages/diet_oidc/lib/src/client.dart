@@ -43,16 +43,42 @@ final class OidcFailure implements Exception {
   String toString() => 'OidcFailure($code): $message';
 }
 
+/// Identity established by a verified ID token.
+final class OidcIdentity {
+  const OidcIdentity({
+    required this.issuer,
+    required this.subject,
+    required this.clientId,
+    this.nonce,
+    this.authTime,
+    this.audience = const [],
+    this.authorizedParty,
+  });
+  final String issuer;
+  final String subject;
+  final String clientId;
+  final String? nonce;
+  final int? authTime;
+  final List<String> audience;
+  final String? authorizedParty;
+  @override
+  String toString() => 'OidcIdentity([redacted])';
+}
+
 final class OidcSession {
   final String accessToken;
   final String tokenType;
   final String? idToken;
   final DateTime expiresAt;
+  final String? refreshToken;
+  final OidcIdentity? identity;
   const OidcSession({
     required this.accessToken,
     required this.tokenType,
     required this.expiresAt,
     this.idToken,
+    this.refreshToken,
+    this.identity,
   });
   @override
   String toString() =>
@@ -318,6 +344,18 @@ final class OidcClient {
         accessToken: accessToken,
         tokenType: tokenType,
         idToken: rawId,
+        refreshToken: response['refresh_token'] as String?,
+        identity: OidcIdentity(
+          issuer: json['iss'] as String,
+          subject: json['sub'] as String,
+          clientId: config.clientId,
+          nonce: tx._nonce,
+          authTime: (json['auth_time'] as num?)?.toInt(),
+          audience: json['aud'] is String
+              ? [json['aud'] as String]
+              : List<String>.from(json['aud'] as List),
+          authorizedParty: json['azp'] as String?,
+        ),
         expiresAt: expiresAt,
       );
     } on OidcFailure {
@@ -330,6 +368,137 @@ final class OidcClient {
     } finally {
       cancel(tx);
     }
+  }
+
+  /// Refresh is bound to trusted discovery and the previously verified subject.
+  Future<OidcSession> refresh(OidcSession previous) async {
+    try {
+      return await _refresh(previous);
+    } on OidcFailure {
+      rethrow;
+    } catch (_) {
+      throw const OidcFailure(
+        'invalid_token',
+        'Refresh response validation failed.',
+      );
+    }
+  }
+
+  Future<OidcSession> _refresh(OidcSession previous) async {
+    _checkAlive();
+    final identity = previous.identity;
+    if (identity == null ||
+        identity.clientId != config.clientId ||
+        previous.refreshToken?.isNotEmpty != true) {
+      throw const OidcFailure(
+        'invalid_refresh_context',
+        'Refresh identity is unavailable.',
+      );
+    }
+    final cancelled = _pendingCancellation.future;
+    final metadata = oidc.OpenIdProviderMetadata.fromJson(
+      _json(await _request(_http.get(config.discoveryUri), cancelled)),
+    );
+    if (metadata.issuer.toString() != identity.issuer ||
+        [metadata.issuer, metadata.tokenEndpoint, metadata.jwksUri].any(
+          (u) =>
+              u == null || !_https(u) || !_sameOrigin(u, config.discoveryUri),
+        )) {
+      throw const OidcFailure(
+        'invalid_metadata',
+        'Refresh provider is not trusted.',
+      );
+    }
+    final result = await _request(
+      _http.post(
+        metadata.tokenEndpoint!,
+        body: {
+          'grant_type': 'refresh_token',
+          'refresh_token': previous.refreshToken!,
+          'client_id': config.clientId,
+        },
+      ),
+      cancelled,
+    );
+    if (result.statusCode == 400 || result.statusCode == 401) {
+      throw const OidcFailure(
+        'refresh_rejected',
+        'Refresh authorization was rejected.',
+      );
+    }
+    final data = _json(result);
+    final access = data['access_token'];
+    final seconds = int.tryParse('${data['expires_in']}');
+    if (access is! String ||
+        access.isEmpty ||
+        data['token_type'] is! String ||
+        (data['token_type'] as String).toLowerCase() != 'bearer' ||
+        seconds == null ||
+        seconds <= 0 ||
+        (data.containsKey('refresh_token') &&
+            (data['refresh_token'] is! String ||
+                (data['refresh_token'] as String).isEmpty))) {
+      throw const OidcFailure('invalid_token', 'Invalid refresh response.');
+    }
+    final rawId = data['id_token'];
+    if (rawId != null) {
+      if (rawId is! String || rawId.isEmpty) {
+        throw const OidcFailure('invalid_token', 'Invalid refreshed ID token.');
+      }
+      final token = oidc.IdToken.unverified(rawId);
+      final keys = JsonWebKeyStore()
+        ..addKeySet(
+          JsonWebKeySet.fromJson(
+            _json(await _request(_http.get(metadata.jwksUri!), cancelled)),
+          ),
+        );
+      final claims = token.claims;
+      final json = claims.toJson();
+      final audiences = json['aud'] is String
+          ? [json['aud'] as String]
+          : json['aud'] is List
+          ? List<String>.from(json['aud'] as List)
+          : <String>[];
+      if (!await token.verify(
+            keys,
+            allowedArguments: metadata.idTokenSigningAlgValuesSupported
+                .where(_safeAlgorithm)
+                .toList(),
+          ) ||
+          json['sub'] != identity.subject ||
+          json['iss'] != identity.issuer ||
+          json['exp'] is! num ||
+          json['iat'] is! num ||
+          (json['nonce'] != null && json['nonce'] != identity.nonce) ||
+          (json.containsKey('auth_time') &&
+              json['auth_time'] != identity.authTime) ||
+          (identity.authorizedParty != json['azp']) ||
+          (identity.audience.isNotEmpty &&
+              (audiences.toSet().length != identity.audience.toSet().length ||
+                  !audiences.toSet().containsAll(identity.audience.toSet()))) ||
+          claims
+              .validate(issuer: metadata.issuer, clientId: config.clientId)
+              .isNotEmpty ||
+          claims.issuedAt.isAfter(
+            DateTime.now().toUtc().add(const Duration(seconds: 30)),
+          ) ||
+          (claims.notBefore != null &&
+              claims.notBefore!.isAfter(DateTime.now().toUtc()))) {
+        throw const OidcFailure(
+          'invalid_claims',
+          'Refreshed identity did not match.',
+        );
+      }
+    }
+    _checkAlive();
+    return OidcSession(
+      accessToken: access,
+      tokenType: 'Bearer',
+      expiresAt: DateTime.now().toUtc().add(Duration(seconds: seconds)),
+      refreshToken: data['refresh_token'] as String? ?? previous.refreshToken,
+      identity: identity,
+      idToken: rawId as String?,
+    );
   }
 
   // This method must remain non-async: the browser window is opened on the
