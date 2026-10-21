@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -20,6 +22,13 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    Future.microtask(() {
+      if (mounted &&
+          !ref.read(uiPreviewProvider) &&
+          ref.read(sessionStatusProvider) == SessionStatus.booting) {
+        unawaited(ref.read(sessionProvider.notifier).restore());
+      }
+    });
   }
 
   @override
@@ -51,7 +60,7 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
           demoProvider.select((s) => s.isInstitution && s.privacyHidden),
         );
     return MaterialApp.router(
-      title: '膳食健康 · UI演示',
+      title: uiPreview ? '膳食健康 · UI预览' : '膳食健康',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: ref.watch(appRouterProvider),

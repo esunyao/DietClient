@@ -27,6 +27,28 @@ import '../features/profile/presentation/screens/health_records_screen.dart';
 import '../features/profile/presentation/screens/health_record_form_screen.dart';
 import '../features/profile/presentation/screens/ai_nutrition_consent_screen.dart';
 import 'app_shell.dart';
+import 'session_restore_screen.dart';
+
+const sessionRestorePath = '/session/restore';
+
+/// 只允许站内目标；恢复页自身和认证页在成功后回首页。
+String sessionRestoredLocation(String? from) {
+  final uri = from == null ? null : Uri.tryParse(from);
+  if (uri == null ||
+      uri.hasScheme ||
+      uri.hasAuthority ||
+      !uri.path.startsWith('/') ||
+      {
+        sessionRestorePath,
+        AppRoutes.login,
+        AppRoutes.register,
+        AppRoutes.verifyEmail,
+        AppRoutes.emailVerified,
+      }.contains(uri.path)) {
+    return AppRoutes.home;
+  }
+  return uri.toString();
+}
 
 String? authenticationRedirect(
   String path, {
@@ -53,15 +75,38 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final uiPreview = ref.watch(uiPreviewProvider);
   final refresh = _RouterRefresh();
   ref.listen(sessionProvider, (_, next) => refresh.refresh());
+  ref.listen(sessionStatusProvider, (_, next) => refresh.refresh());
   final router = GoRouter(
     initialLocation: uiPreview ? AppRoutes.home : AppRoutes.login,
     refreshListenable: refresh,
-    redirect: (context, state) => authenticationRedirect(
-      state.uri.path,
-      uiPreview: uiPreview,
-      authenticated: hasActiveSession(ref.read(sessionProvider)),
-    ),
+    redirect: (context, state) {
+      final status = ref.read(sessionStatusProvider);
+      final recovering =
+          !kIsWeb &&
+          !uiPreview &&
+          (status == SessionStatus.booting ||
+              status == SessionStatus.retryRequired);
+      if (recovering) {
+        return state.uri.path == sessionRestorePath
+            ? null
+            : '$sessionRestorePath?from=${Uri.encodeComponent(state.uri.toString())}';
+      }
+      if (state.uri.path == sessionRestorePath) {
+        return hasActiveSession(ref.read(sessionProvider))
+            ? sessionRestoredLocation(state.uri.queryParameters['from'])
+            : AppRoutes.login;
+      }
+      return authenticationRedirect(
+        state.uri.path,
+        uiPreview: uiPreview,
+        authenticated: hasActiveSession(ref.read(sessionProvider)),
+      );
+    },
     routes: [
+      GoRoute(
+        path: sessionRestorePath,
+        builder: (context, state) => const SessionRestoreScreen(),
+      ),
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),

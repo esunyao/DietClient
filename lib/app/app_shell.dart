@@ -25,6 +25,19 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual<String?>(sessionNoticeProvider, (_, notice) {
+      if (notice == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(notice)));
+      });
+    }, fireImmediately: true);
+  }
+
   final _collapse = NavigationCollapseController();
   bool _menuOpen = false;
   @override
@@ -180,7 +193,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                               ),
                               const PopupMenuItem(
                                 value: _AccountAction.settings,
-                                child: Text('外观与演示设置'),
+                                child: Text('应用设置'),
                               ),
                               if (!uiPreview)
                                 const PopupMenuItem(
@@ -317,7 +330,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                   ],
                                   const SizedBox(width: 8),
                                   IconButton(
-                                    tooltip: '外观与演示设置',
+                                    tooltip: '应用设置',
                                     onPressed: () =>
                                         context.push(AppRoutes.settings),
                                     icon: const Icon(AppIcons.settings),
@@ -341,7 +354,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                       ),
                                       PopupMenuItem(
                                         value: _AccountAction.settings,
-                                        child: Text('外观与演示设置'),
+                                        child: Text('应用设置'),
                                       ),
                                       if (!uiPreview) const PopupMenuDivider(),
                                       if (!uiPreview)

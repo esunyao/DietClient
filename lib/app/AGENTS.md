@@ -3,6 +3,7 @@
 [根规范](../../AGENTS.md) · [上级](../AGENTS.md) · [说明](doc/README.md)
 
 - 启动、语言、无障碍与隐私遮罩：[diet_app.dart](diet_app.dart)
+- 启动恢复与失败重试：[session_restore_screen.dart](session_restore_screen.dart) → [session](../core/session/AGENTS.md)；站内恢复目标校验在 [router.dart](router.dart)。
 - 路由注册、登录门控与未知路径恢复：[router.dart](router.dart)，路径协议见 [core](../core/AGENTS.md)，会话见 [session](../core/session/AGENTS.md)
 - 手机悬浮岛、Windows/Web 侧栏与其他平台宽屏横向文字导航：[app_shell.dart](app_shell.dart)；真实姓名/头像来自 [共享身份](../core/presentation/account_identity.dart)，Web 预览使用演示身份，保留设置/个人菜单与当前应用退出
 - 具体页面见 [features](../features/AGENTS.md)，共享视觉与导航展示见 [diet_ui](../../packages/diet_ui/AGENTS.md)
