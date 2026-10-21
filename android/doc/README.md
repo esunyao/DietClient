@@ -1,8 +1,8 @@
 # Android 宿主
 
-承载同一套 Flutter 演示界面，Android 为本轮优先编译目标。绿色组件与玻璃由共享 Flutter UI 包绘制，没有迁移 RN 原生玻璃、真实采集或权限流程。
+承载同一套 Flutter 界面，Android 为优先功能目标。绿色组件与玻璃由共享 Flutter UI 包绘制；系统相机/选图、安全存储和时区使用成熟插件，不迁移 RN 原生玻璃或编写自定义桥接。
 
-本轮新增账号密码登录实现，使用 Dart 直连和内存会话，无原生桥接或 WebView；其余业务保持演示。主清单已声明 INTERNET 网络访问，登录边界和验证状态见 [登录说明](../../doc/authentication.md)。SDK 由用户自行管理。
+账号密码、注册和邮件重发使用 Dart Authentik 执行器，无 WebView。真实餐食与营养通过网关接入，资料继续使用 Orion。可选记住登录由系统安全存储提供，主清单禁用自动备份，避免安全密钥与备份密文错配；保留 INTERNET 网络访问。边界见 [登录说明](../../doc/authentication.md)，SDK 由用户自行管理，不因插件接入自行更换。
 
 仓库根目录离线构建入口为 `bash tool/flutter.sh build apk --debug --no-pub --dart-define-from-file=.env.example`；前置环境见 [构建导航](../../tool/AGENTS.md)。
 
