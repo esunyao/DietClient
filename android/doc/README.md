@@ -14,13 +14,12 @@
 
 ```powershell
 ./tool/flutter.ps1 build apk --release --target-platform android-arm64 --no-pub --dart-define-from-file=.env.example
-./tool/check-android-release.ps1
 ```
 
-检查入口读取本次构建的 R8 mapping，要求六个类型都存在且保持原名。缺失产物或改名均以非零退出；该检查不启动设备、清除数据或调用真实服务。APK 位于 `build/app/outputs/flutter-apk/app-release.apk`，示例配置只用于基础编译，不能用于真实登录。实际执行结果见 [根说明](../../README.md)。
+APK 位于 `build/app/outputs/flutter-apk/app-release.apk`，示例配置只用于基础编译，不能用于真实登录。需要排查混淆时，查看 `build/app/outputs/mapping/release/mapping.txt`，核对上述六个类型保持原名。实际执行结果见 [根说明](../../README.md)。
 
 真机验证需用真实公开配置重新构建，由用户核对：外观切换并重启后保留，勾选记住登录后无保存警告、重启可恢复、退出后不恢复旧记录。同一安装的持久化应使用相同 applicationId 和兼容签名；包名变更会隔离应用数据，本轮不迁移旧包存储。构建和 mapping 通过不替代上述验收。
 
-2026-10-20 实际结果：只读预检发现缺少 platforms/android-36/android.jar、build-tools/36.0.0/aapt2.exe，以及 ndk/28.2.13676358 下的 source.properties 和 toolchains/llvm/prebuilt/windows-x86_64/bin/clang.exe。未启动 Android 构建、下载或修改 SDK；verify.sh 在此场景最终返回 2。Android 编译、真机体验与真实登录均未验证，其他结果见 [根说明](../../README.md)。
+2026-10-20 实际结果：只读预检发现缺少 platforms/android-36/android.jar、build-tools/36.0.0/aapt2.exe，以及 ndk/28.2.13676358 下的 source.properties 和 toolchains/llvm/prebuilt/windows-x86_64/bin/clang.exe。未启动 Android 构建、下载或修改 SDK；当时的 Android 预检流程返回非零退出码，该步骤现已移除。该阶段 Android 编译、真机体验与真实登录均未验证，其他结果见 [根说明](../../README.md)。
 
 [宿主导航](../AGENTS.md) · [根规范](../../AGENTS.md)

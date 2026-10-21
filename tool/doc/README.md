@@ -1,6 +1,6 @@
 # 本地工具
 
-flutter.sh 与 dart.sh 使用同一 SDK，将缓存与临时目录指向仓库内。verify.sh 执行格式、静态检查、协议包与应用门控的离线测试，以及可用平台编译；构建注入 .env.example 占位配置，不请求真实登录服务。当前执行内容以脚本为准，命令及实际结果由根说明记录。
+flutter.sh 与 dart.sh 使用同一 SDK，将缓存与临时目录指向仓库内。verify.sh 执行格式、静态检查、协议包与应用门控的离线测试，以及 Web/Windows 编译；构建注入 .env.example 占位配置，不请求真实登录服务。当前执行内容以脚本为准，命令及实际结果由根说明记录。
 
 PowerShell 可使用 `./tool/flutter.ps1` 替代 `bash tool/flutter.sh`，例如 `./tool/flutter.ps1 build windows --release --dart-define-from-file=.env`。该入口使用 PATH 中已有的 Flutter，将参数和原始退出码转交；Pub、Gradle 和临时目录仍隔离在项目内，执行结束后恢复调用者的目录与环境变量，不自动读取 `.env` 或安装、切换 SDK。独立调用可写为 `pwsh -NoProfile -File ./tool/flutter.ps1 --version`。
 
@@ -24,25 +24,10 @@ oh-my-posh 集成使用官方 `config export` 和 `init pwsh --config` 接口，
 
 oh-my-posh 29.26.1 已验证真实主题导出与色块渲染、原引擎保留、重复激活、默认主题及含空格路径的自定义主题恢复和临时文件清理；普通 PowerShell 回退回归通过。
 
-android-ready.sh 只探测现有 SDK/构建条件，条件缺失时 verify 跳过 Android 编译并说明原因，不自动安装。verify.sh 完成其余平台步骤后以 2 退出，保留部分完成状态，不将全部平台标记为成功。真实登录运行使用被忽略的本地 .env，与离线构建配置分开。
+Android 构建由用户通过现有 Flutter 入口单独执行，命令见 [Android 说明](../../android/doc/README.md)。真实登录运行使用被忽略的本地 .env，与离线构建配置分开。
 
 2026-10-20 实际结果：pub get、65 个 Dart 文件格式检查、4 个 Bash 脚本语法检查及 flutter analyze 均退出 0；24 项包测试和 6 项应用离线测试通过；Web release 与 Windows debug 的 example 配置构建退出 0。Android 只读预检未通过，未启动构建或 SDK 下载/修改。命令、缺失组件及产物见 [根说明](../../README.md)。
 
 Android 为优先编译目标，Web/Windows 次之；iOS 不在本轮范围。基础编译不替代用户的功能、视觉或性能验收。
-
-## Android release 产物检查
-
-在已有 SDK 与签名配置下，使用 `.env.example` 构建 Android arm64 release 后执行：
-
-```powershell
-./tool/flutter.ps1 build apk --release --target-platform android-arm64 --no-pub --dart-define-from-file=.env.example
-./tool/check-android-release.ps1
-# 可指定另一份 mapping；相对参数以调用者当前目录解析，含空格路径须加引号。
-./tool/check-android-release.ps1 -MappingPath "./build/app/outputs/mapping/release/mapping.txt"
-```
-
-默认 mapping 相对于脚本所在项目根目录解析，允许从其他目录使用脚本绝对路径调用。检查要求六个 JNI Kotlin 类型均有顶层映射记录且目标名不变，缺少文件、类型或出现改名均非零退出。脚本不构建、不修改映射、工作目录或环境，也不访问设备与登录配置。规则与原理见 [Android 说明](../../android/doc/README.md)，检查结果见 [根说明](../../README.md)。
-
-该入口检查实际 release 混淆结果，弥补内存替身回归无法发现 JNI 类型改名的缺口；不证明真实安全存储、登录恢复或偏好跨进程保留已验收。
 
 [工具导航](../AGENTS.md) · [运行说明](../../README.md) · [根规范](../../AGENTS.md)

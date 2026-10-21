@@ -65,7 +65,7 @@ bash tool/flutter.sh run -d chrome --web-port 7357 --dart-define-from-file=.env
 
 2026-10-20，前序登录接入的协议包、执行器与应用集成源码已完成基础验证：依赖解析、65 个 Dart 文件格式检查、4 个 Bash 脚本语法检查及 flutter analyze 均退出 0；24 项协议/执行器和 6 项应用门控、过期、配置、取消离线测试通过。使用 .env.example 的 Web release 与 Windows debug 构建均退出 0，Web 产物包含两个静态回调文件。完整命令和产物见 [根说明](../README.md)。
 
-Android API 36、Build Tools 36.0.0 与 NDK 28.2 的关键文件不完整，预检未通过，未启动 Android 构建、下载或修改 SDK。verify.sh 对此保留部分完成的非零退出码 2，SDK 由用户自行管理。
+Android API 36、Build Tools 36.0.0 与 NDK 28.2 的关键文件不完整，预检未通过，未启动 Android 构建、下载或修改 SDK。当时的 Android 预检步骤报告部分完成，SDK 由用户自行管理；该步骤现已移除，Android 改为单独构建。
 
 [.gitignore](../.gitignore) 已忽略 `.env` 与 `.env.*`，单独允许 `.env.example`。client ID 为空，真实登录尚未验证。先前公开探测曾返回 502，该历史记录不代表当前部署状态；离线通过不能证明真实 discovery、授权码交换或浏览器流程已联通。功能和体验仍由用户验收。
 

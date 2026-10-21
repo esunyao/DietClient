@@ -13,7 +13,7 @@ bash tool/flutter.sh run -d chrome --web-port 7357 --dart-define-from-file=.env
 bash tool/verify.sh
 ```
 
-verify 是完整验证入口，本轮不默认执行全矩阵，仅做格式、静态检查、相关回归和一次 Windows debug 编译。Android 构建、真实服务、真机、视觉与性能交给用户，不因验证下载或更换 SDK。编译使用 .env.example 占位配置；离线测试或编译不代表真实登录或端到端验收。项目缓存与临时文件隔离在仓库内。
+verify 执行格式、静态检查、离线测试及 Web/Windows 示例编译；Android 通过 Flutter 单独构建。本轮不默认执行全矩阵，仅做格式、静态检查、相关回归和一次 Windows debug 编译。Android 构建、真实服务、真机、视觉与性能交给用户，不因验证下载或更换 SDK。编译使用 .env.example 占位配置；离线测试或编译不代表真实登录或端到端验收。项目缓存与临时文件隔离在仓库内。
 
 登录配置使用被忽略的本地 .env，经 --dart-define-from-file 注入；公开 [.env.example](.env.example) 只保留不可连接占位符与空 client ID。Web 回调为同源静态页面，本地固定 http://localhost:7357/auth-callback.html，通过 AUTHENTIK_WEB_REDIRECT_URI 配置。Web 登录关闭弹窗后可在主页面取消，或等待五分钟超时。配置与平台限制详见 [登录说明](doc/authentication.md)。
 
@@ -92,17 +92,17 @@ bash tool/flutter.sh build appbundle --release --dart-define-from-file=.env
 
 ## Android release 持久化修复验证（2026-10-21）
 
-本次针对 release 下启动恢复、记住登录与外观设置同时失败，增加 [六项 JNI 类型保留规则](android/app/proguard-rules.pro) 和 [实际 mapping 检查入口](tool/check-android-release.ps1)。沿用现有依赖、安全存储与 SharedPreferencesAsync；规则由当前 Flutter Gradle 插件自动加载，保持其余混淆和资源压缩。
+本次针对 release 下启动恢复、记住登录与外观设置同时失败，增加 [六项 JNI 类型保留规则](android/app/proguard-rules.pro) 并检查实际 R8 mapping。沿用现有依赖、安全存储与 SharedPreferencesAsync；规则由当前 Flutter Gradle 插件自动加载，保持其余混淆和资源压缩。
 
 | 检查 | 本次实际结果 |
 |---|---|
 | 原产物问题复现 | 原有真实 R8 mapping 的六项均未满足原名保留要求；检查脚本退出 1，原 mapping 文件哈希保持不变 |
-| 检查脚本 | Windows PowerShell 5.1 下 15 项通过，涵盖原名、改名、缺类、嵌套 `$Failure`、重复/伪条目、不可读文件、空格路径及跨目录调用 |
+| 当时的检查脚本（现已删除） | Windows PowerShell 5.1 下 15 项通过，涵盖原名、改名、缺类、嵌套 `$Failure`、重复/伪条目、不可读文件、空格路径及跨目录调用 |
 | 会话与外观回归 | `full_foundation`、`auth_auxiliary_functional`、`preferences_functional`、`session_restore_ui` 共 42 项通过 |
 | 格式与分析 | 139 个 Dart 文件、0 处格式变更；`flutter analyze --no-pub` 无问题，101.5s |
 | 文档 | 本轮文件严格 UTF-8 解码和相对链接检查通过，私有规划保持忽略 |
 | Android release | 构建由用户接手；AI 未执行本次 release 编译，也未下载或调整 SDK |
-| 修复后产物检查 | 用户提供 `check-android-release.ps1` 实际输出，六个类型全部 PASS |
+| 修复后产物检查 | 用户提供实际 R8 mapping 检查输出，六个类型全部 PASS |
 | 真机结果 | 2026-10-21 用户确认 Android release 登录与外观持久化问题已解决；验收由用户完成 |
 
 构建与检查命令、用户验收步骤见 [Android 宿主说明](android/doc/README.md)。本轮没有读取真实 `.env` 或签名文件内容，没有安装、卸载或清除设备数据。用户当前的包名、依赖与源码未提交修改单独保留，不夹带提交。日志位于本地忽略的 `.local/android-release-persistence-*.log`。
@@ -188,7 +188,7 @@ bash tool/flutter.sh run -d <android-device-id> --dart-define-from-file=.env
 | Windows debug | .env.example 构建通过，退出 0；产物 build/windows/x64/runner/Debug/diet_client.exe |
 | Android | 关键文件预检未通过，未启动构建、下载或修改 SDK |
 
-Android 缺少 API 36 的 android.jar、Build Tools 36.0.0 的 aapt2.exe，以及 NDK 28.2.13676358 的 source.properties 和 clang.exe。SDK 由用户自行配置；缺失时 verify.sh 保留退出码 2，不能把已完成的 Web/Windows 编译当作全部平台通过。
+Android 缺少 API 36 的 android.jar、Build Tools 36.0.0 的 aapt2.exe，以及 NDK 28.2.13676358 的 source.properties 和 clang.exe。SDK 由用户自行配置；当时的 Android 预检步骤报告部分完成，不能把已完成的 Web/Windows 编译当作全部平台通过。该步骤现已移除，Android 改为单独构建。
 
 真实登录仍未验证，client ID 为空。先前公开探测曾返回 502，该历史结果不表示当前部署仍返回 502。以上离线测试和构建没有完成真实认证，也不替代用户的功能、视觉、真机性能验收。
 
