@@ -133,6 +133,49 @@ Future<void> _pump(
 }
 
 void main() {
+  testWidgets('detail polling waits for slow GET before refreshing again', (
+    tester,
+  ) async {
+    final slow = Completer<ResponseBody>();
+    var reads = 0;
+    final adapter = _Adapter((request) {
+      reads++;
+      if (reads == 2) return slow.future;
+      return _response({
+        ...mealJson(),
+        'analysisStatus': reads < 4 ? 'queued' : 'completed',
+      });
+    });
+    await _pump(
+      tester,
+      const MealDetailScreen(mealId: '9007199254740993'),
+      _api(adapter),
+    );
+    expect(reads, 1);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(reads, 2);
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump();
+    }
+    expect(reads, 2);
+    slow.complete(
+      _response({...mealJson(), 'notes': '慢响应已显示', 'analysisStatus': 'queued'}),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('慢响应已显示'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    expect(reads, 3);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    final finishedReads = reads;
+    await tester.pump(const Duration(minutes: 3));
+    await tester.pumpAndSettle();
+    expect(reads, finishedReads);
+  });
+
   test('item correction preserves IDs, unknown codes and values without scaling by weight', () {
     final original = Meal.fromJson(mealJson());
     final draft = MealItemEdit(original: original.items.single)..weight = '120';

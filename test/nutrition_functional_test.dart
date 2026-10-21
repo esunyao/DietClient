@@ -67,6 +67,52 @@ void main() {
     await tester.pump(const Duration(seconds: 30));
     expect(calls, 1);
   });
+  testWidgets('changing query starts an independent visible polling window', (
+    tester,
+  ) async {
+    var calls = 0;
+    late StateSetter update;
+    var query = 'first';
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return NutritionPolling(
+                refreshKey: query,
+                pending: true,
+                onRefresh: () => calls++,
+                child: const Text('pending'),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(minutes: 2));
+    await tester.pump();
+    expect(calls, 40);
+    expect(find.text('分析仍未结束，点击手动刷新'), findsOneWidget);
+    update(() => query = 'second');
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('分析仍未结束，点击手动刷新'), findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump(const Duration(minutes: 3));
+    expect(calls, 40);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(seconds: 3));
+    expect(calls, 41);
+    await tester.pump(const Duration(seconds: 117));
+    await tester.pump();
+    expect(calls, 80);
+    expect(find.text('分析仍未结束，点击手动刷新'), findsOneWidget);
+    await tester.pump(const Duration(minutes: 1));
+    expect(calls, 80);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets(
     'widget lease pauses in app background and cancels when disposed',
     (tester) async {
