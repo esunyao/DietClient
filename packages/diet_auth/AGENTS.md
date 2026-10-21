@@ -7,3 +7,5 @@
 - [流程测试](test/flow_executor_test.dart)、[包依赖](pubspec.yaml)
 
 协议依赖见 [diet_oidc](../diet_oidc/AGENTS.md)，应用控制器见 [auth/application](../../lib/features/auth/application/AGENTS.md)，配置与平台边界见 [登录说明](../../doc/authentication.md)。
+
+注册与邮件重发：[auxiliary_native.dart](lib/src/auxiliary_native.dart) / [Web stub](lib/src/auxiliary_stub.dart)；字段错误类型见 types。辅助回归见 [auth_auxiliary_functional_test.dart](../../test/auth_auxiliary_functional_test.dart)。
