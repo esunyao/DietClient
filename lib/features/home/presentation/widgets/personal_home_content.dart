@@ -23,9 +23,9 @@ class PersonalHomeContent extends StatelessWidget {
       final main = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _RecordEntry(),
+          const HomeRecordEntry(),
           const SizedBox(height: 20),
-          const _QuickActions(),
+          const HomeQuickActions(),
           const SizedBox(height: 20),
           PersonalNutritionSummary(data: data),
           const SizedBox(height: 12),
@@ -94,8 +94,8 @@ class PersonalHomeContent extends StatelessWidget {
   );
 }
 
-class _RecordEntry extends StatelessWidget {
-  const _RecordEntry();
+class HomeRecordEntry extends StatelessWidget {
+  const HomeRecordEntry({super.key});
 
   @override
   Widget build(BuildContext context) => AppCard(
@@ -169,8 +169,8 @@ class _RecordEntry extends StatelessWidget {
   );
 }
 
-class _QuickActions extends StatelessWidget {
-  const _QuickActions();
+class HomeQuickActions extends StatelessWidget {
+  const HomeQuickActions({super.key});
 
   @override
   Widget build(BuildContext context) => Row(

@@ -6,12 +6,17 @@ import '../../../../demo/demo_store.dart';
 import '../../../../core/presentation/account_identity.dart';
 import '../widgets/institution_home_content.dart';
 import '../widgets/personal_home_content.dart';
+import '../../../../core/config/ui_preview_config.dart';
+import 'native_home_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return const NativeHomeScreen();
+    }
     final data = ref.watch(demoProvider);
     final institution = data.isInstitution;
     final date =

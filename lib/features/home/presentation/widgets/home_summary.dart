@@ -278,9 +278,17 @@ class _NutrientDivider extends StatelessWidget {
 }
 
 class HomeMeals extends StatelessWidget {
-  const HomeMeals({super.key, required this.meals, this.wide = false});
+  const HomeMeals({
+    super.key,
+    required this.meals,
+    this.wide = false,
+    this.sourceLabel,
+    this.statusLabels,
+  });
   final List<MealEntry> meals;
   final bool wide;
+  final String? sourceLabel;
+  final Map<String, String>? statusLabels;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -333,7 +341,12 @@ class HomeMeals extends StatelessWidget {
                     padding: EdgeInsets.only(left: 68),
                     child: Divider(height: 1),
                   ),
-                _MealTile(meal: meals[i], wide: true),
+                _MealTile(
+                  meal: meals[i],
+                  wide: true,
+                  sourceLabel: sourceLabel,
+                  statusLabel: statusLabels?[meals[i].id],
+                ),
               ],
             ],
           ),
@@ -344,7 +357,11 @@ class HomeMeals extends StatelessWidget {
           AppCard(
             radius: 16,
             padding: EdgeInsets.zero,
-            child: _MealTile(meal: meals[i]),
+            child: _MealTile(
+              meal: meals[i],
+              sourceLabel: sourceLabel,
+              statusLabel: statusLabels?[meals[i].id],
+            ),
           ),
         ],
     ],
@@ -352,9 +369,15 @@ class HomeMeals extends StatelessWidget {
 }
 
 class _MealTile extends StatelessWidget {
-  const _MealTile({required this.meal, this.wide = false});
+  const _MealTile({
+    required this.meal,
+    this.wide = false,
+    this.sourceLabel,
+    this.statusLabel,
+  });
   final MealEntry meal;
   final bool wide;
+  final String? sourceLabel, statusLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -367,7 +390,7 @@ class _MealTile extends StatelessWidget {
         ? '待补充'
         : '待分析';
     final status = AppBadge(
-      label: !meal.confirmed ? '待确认' : meal.status.label,
+      label: !meal.confirmed ? '待确认' : statusLabel ?? meal.status.label,
       color: !meal.confirmed || !ready ? AppColors.amber : AppColors.green,
       compact: true,
     );
@@ -381,7 +404,7 @@ class _MealTile extends StatelessWidget {
       ),
     );
     final source = Text(
-      meal.source.label,
+      sourceLabel ?? meal.source.label,
       style: TextStyle(
         color: AppColors.muted,
         fontSize: wide ? 12 : 11,
