@@ -32,3 +32,5 @@
 - [preferences_functional_test.dart](preferences_functional_test.dart)：外观新容器恢复、存储失败与重试、Web 内存边界和仅重置外观。
 
 协议包回归仍从各包导航进入；这些离线回归不证明真实服务、邮件投递、对象存储或真机表现。
+
+Android release 的 JNI 类型保留另用 [check-android-release.ps1](../tool/check-android-release.ps1) 检查实际 R8 mapping；[Android 说明](../android/doc/README.md) 提供构建与真机验收入口。上述存储替身回归不覆盖 Java/Kotlin 混淆结果。

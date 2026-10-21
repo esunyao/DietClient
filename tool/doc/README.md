@@ -30,4 +30,19 @@ android-ready.sh 只探测现有 SDK/构建条件，条件缺失时 verify 跳�
 
 Android 为优先编译目标，Web/Windows 次之；iOS 不在本轮范围。基础编译不替代用户的功能、视觉或性能验收。
 
+## Android release 产物检查
+
+在已有 SDK 与签名配置下，使用 `.env.example` 构建 Android arm64 release 后执行：
+
+```powershell
+./tool/flutter.ps1 build apk --release --target-platform android-arm64 --no-pub --dart-define-from-file=.env.example
+./tool/check-android-release.ps1
+# 可指定另一份 mapping；相对参数以调用者当前目录解析，含空格路径须加引号。
+./tool/check-android-release.ps1 -MappingPath "./build/app/outputs/mapping/release/mapping.txt"
+```
+
+默认 mapping 相对于脚本所在项目根目录解析，允许从其他目录使用脚本绝对路径调用。检查要求六个 JNI Kotlin 类型均有顶层映射记录且目标名不变，缺少文件、类型或出现改名均非零退出。脚本不构建、不修改映射、工作目录或环境，也不访问设备与登录配置。规则与原理见 [Android 说明](../../android/doc/README.md)，检查结果见 [根说明](../../README.md)。
+
+该入口检查实际 release 混淆结果，弥补内存替身回归无法发现 JNI 类型改名的缺口；不证明真实安全存储、登录恢复或偏好跨进程保留已验收。
+
 [工具导航](../AGENTS.md) · [运行说明](../../README.md) · [根规范](../../AGENTS.md)

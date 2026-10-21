@@ -87,8 +87,25 @@ bash tool/flutter.sh build appbundle --release --dart-define-from-file=.env
 - 使用 Android SDK Build Tools 的 `apksigner` 校验 APK：`apksigner verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk`；工具不在 PATH 时使用其完整路径，并将签名证书 SHA-256 指纹与自己的证书核对。
 - 升级已安装应用须保持相同 `applicationId` 和兼容的应用签名证书，并递增版本号；项目版本来自 `pubspec.yaml`，也可通过 Flutter 的 `--build-name`、`--build-number` 指定。
 - 启用 Google Play App Signing 时，构建上传包使用已登记的上传密钥，最终分发应用由 Play 使用应用签名密钥签署，不混淆两类密钥。
-- `applicationId` 目前为 `com.example.diet_client`；首次正式发布前确认包名，已发布应用不要随意更改。
+- `applicationId` 以 [应用构建配置](android/app/build.gradle.kts) 为准；首次正式发布前确认包名，变更后 Android 会使用独立的应用存储，旧包的登录与外观不会自动迁移。
 - 签名成功不代表登录、头像直传或 UI 已验收，仍需使用 release 包完成 Android 真机验证。
+
+## Android release 持久化修复验证（2026-10-21）
+
+本次针对 release 下启动恢复、记住登录与外观设置同时失败，增加 [六项 JNI 类型保留规则](android/app/proguard-rules.pro) 和 [实际 mapping 检查入口](tool/check-android-release.ps1)。沿用现有依赖、安全存储与 SharedPreferencesAsync；规则由当前 Flutter Gradle 插件自动加载，保持其余混淆和资源压缩。
+
+| 检查 | 本次实际结果 |
+|---|---|
+| 原产物问题复现 | 原有真实 R8 mapping 的六项均未满足原名保留要求；检查脚本退出 1，原 mapping 文件哈希保持不变 |
+| 检查脚本 | Windows PowerShell 5.1 下 15 项通过，涵盖原名、改名、缺类、嵌套 `$Failure`、重复/伪条目、不可读文件、空格路径及跨目录调用 |
+| 会话与外观回归 | `full_foundation`、`auth_auxiliary_functional`、`preferences_functional`、`session_restore_ui` 共 42 项通过 |
+| 格式与分析 | 139 个 Dart 文件、0 处格式变更；`flutter analyze --no-pub` 无问题，101.5s |
+| 文档 | 本轮文件严格 UTF-8 解码和相对链接检查通过，私有规划保持忽略 |
+| Android release | 构建由用户接手；AI 未执行本次 release 编译，也未下载或调整 SDK |
+| 修复后产物检查 | 用户提供 `check-android-release.ps1` 实际输出，六个类型全部 PASS |
+| 真机结果 | 2026-10-21 用户确认 Android release 登录与外观持久化问题已解决；验收由用户完成 |
+
+构建与检查命令、用户验收步骤见 [Android 宿主说明](android/doc/README.md)。本轮没有读取真实 `.env` 或签名文件内容，没有安装、卸载或清除设备数据。用户当前的包名、依赖与源码未提交修改单独保留，不夹带提交。日志位于本地忽略的 `.local/android-release-persistence-*.log`。
 
 ## Android / Windows 全页面功能迁移验证（2026-10-21）
 
