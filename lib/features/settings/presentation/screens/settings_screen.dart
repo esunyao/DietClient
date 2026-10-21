@@ -4,17 +4,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/presentation/ui_preferences.dart';
 import '../../../../demo/demo_store.dart';
+import '../../../../core/config/ui_preview_config.dart';
 import '../widgets/glass_choice.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   Future<void> _reset(BuildContext context, WidgetRef ref) async {
+    final native = ref.read(nativeNutritionEnabledProvider);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('恢复初始演示？'),
-        content: const Text('本次尚未持久化的演示修改与外观偏好将清除。不会退出真实登录会话。'),
+        title: Text(native ? '恢复默认外观？' : '恢复初始演示？'),
+        content: Text(
+          native
+              ? '仅恢复玻璃、透明度和动态效果；餐食、健康资料、授权和登录会话保持不变。'
+              : '本次尚未持久化的演示修改与外观偏好将清除。不会退出真实登录会话。',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -28,13 +34,19 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    ref.read(demoProvider.notifier).reset();
-    ref.read(uiPreferencesProvider.notifier).reset();
-    showDemoMessage(context, '内存演示已恢复初始样例');
+    if (!native) ref.read(demoProvider.notifier).reset();
+    await ref.read(uiPreferencesProvider.notifier).reset();
+    if (!context.mounted) return;
+    final result = ref.read(uiPreferencesProvider);
+    showDemoMessage(
+      context,
+      result.error ?? (native ? '已恢复默认外观' : '内存演示已恢复初始样例'),
+    );
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final native = ref.watch(nativeNutritionEnabledProvider);
     final prefs = ref.watch(uiPreferencesProvider);
     final controller = ref.read(uiPreferencesProvider.notifier);
     final demo = ref.watch(demoProvider);
@@ -138,12 +150,17 @@ class SettingsScreen extends ConsumerWidget {
                         ? ExperienceMode.personal
                         : ExperienceMode.institution,
                   );
-              showDemoMessage(context, '已切换演示模式，内存数据恢复初始样例');
+              showDemoMessage(
+                context,
+                native ? '已切换显示模式，不代表机构身份或机构授权' : '已切换演示模式，内存数据恢复初始样例',
+              );
             },
           ),
           const SizedBox(height: 12),
-          const Text(
-            '模式由你选择。窗口大小只改变布局；机构模式依然只显示本人信息。切换后内存数据恢复初始样例。',
+          Text(
+            native
+                ? '模式由你选择，仅改变本机显示，不赋予机构身份；个人信息遮罩为临时显示设置。'
+                : '模式由你选择。窗口大小只改变布局；机构模式依然只显示本人信息。切换后内存数据恢复初始样例。',
             style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.7),
           ),
           if (demo.isInstitution) ...[
@@ -165,31 +182,48 @@ class SettingsScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionHeading(title: '重置演示'),
+          SectionHeading(title: native ? '重置外观' : '重置演示'),
           const SizedBox(height: 12),
-          const Text(
-            '清除本次内存里的编辑、计划、授权预览与报告版本，恢复初始样例。',
+          Text(
+            native
+                ? '恢复默认玻璃、透明度和动态效果，不清除餐食、健康资料、授权或会话。'
+                : '清除本次内存里的编辑、计划、授权预览与报告版本，恢复初始样例。',
             style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.7),
           ),
           const SizedBox(height: 16),
           AppButton(
-            label: '恢复初始演示',
+            label: native ? '恢复默认外观' : '恢复初始演示',
             secondary: true,
-            onPressed: () => _reset(context, ref),
+            onPressed: prefs.loading || prefs.saving
+                ? null
+                : () => _reset(context, ref),
           ),
         ],
       ),
     );
     return AppPage(
-      title: '外观与演示设置',
+      title: native ? '外观设置' : '外观与演示设置',
       showBack: true,
       children: [
-        AdaptiveColumns(
-          main: [glass, accessibility],
-          aside: [experience, reset],
+        if (prefs.loading || prefs.saving) const LinearProgressIndicator(),
+        if (prefs.error != null) ...[
+          InfoBanner(text: prefs.error!, color: AppColors.red),
+          TextButton(
+            onPressed: controller.reload,
+            child: const Text('重新读取外观设置'),
+          ),
+        ],
+        AbsorbPointer(
+          absorbing: prefs.loading || prefs.saving,
+          child: AdaptiveColumns(
+            main: [glass, accessibility],
+            aside: [experience, reset],
+          ),
         ),
-        const Text(
-          '外观偏好与业务样例仅保留在内存，不修改真实账户、登录会话或授权。',
+        Text(
+          native
+              ? '外观偏好保存在本机；模式选择和信息遮罩为临时显示，不修改账户、登录会话或授权。'
+              : '外观偏好与业务样例仅保留在内存，不修改真实账户、登录会话或授权。',
           style: TextStyle(color: AppColors.muted, fontSize: 12, height: 1.7),
         ),
       ],
