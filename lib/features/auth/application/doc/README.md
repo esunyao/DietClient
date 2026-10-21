@@ -1,7 +1,7 @@
-# 登录控制
+# 登录与邮件控制
 
-组合配置、Authentik 执行器与内存会话，为登录页面提供提交、同意确认、取消和错误反馈。真实会话与业务演示状态分开，启动阶段先登录。
+LoginController 通过既有 AuthGateway 组合配置、执行器与安全会话；登录默认 `rememberMe=false`，等待 `SessionController.establish` 完成，并保留取消与同意反馈。Web 弹窗不保存原生续期凭据。
 
-账号密码流程和 Web 弹窗使用各自的平台路径；未知阶段显式提示，不将未完成事务标记为成功。[LoginController](../login_controller.dart) 防止重复提交，以尝试标识丢弃取消后的旧结果，并通过 AuthGateway 接口提供离线替换边界。2026-10-20 应用门控、过期、配置、取消等 6 项离线测试通过。注册与邮件页面继续演示，真实登录与用户交互体验尚未验收。
+AuxiliaryController 通过独立的 AuxiliaryGateway 创建每次注册/重发的短会话，防重复提交，以尝试标识丢弃取消后的旧响应；单次返回值决定该次页面导航。重发只在受理后启动 60 秒冷却，失败保留邮箱并回写字段错误。网页验证不构造登录状态。
 
 [目录导航](../AGENTS.md) · [登录说明](../../../../../doc/authentication.md) · [根规范](../../../../../AGENTS.md)
