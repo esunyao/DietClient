@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/presentation/account_identity.dart';
+import '../../../../core/config/ui_preview_config.dart';
 import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 import '../../application/profile_state.dart';
@@ -84,6 +85,7 @@ class RealProfileScreen extends ConsumerWidget {
   const RealProfileScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final native = ref.watch(nativeNutritionEnabledProvider);
     final wide = MediaQuery.sizeOf(context).width >= 1024;
     final institution = ref.watch(demoProvider.select((s) => s.isInstitution));
     final data =
@@ -209,13 +211,16 @@ class RealProfileScreen extends ConsumerWidget {
                 child: health,
               ),
               ProfileSection(
-                title: '常用入口（报告、饮食与机构仍演示）',
-                child: ProfileServiceEntries(institution: institution),
+                title: native ? '常用入口' : '常用入口（报告、饮食与机构仍演示）',
+                child: ProfileServiceEntries(
+                  institution: institution,
+                  real: native,
+                ),
               ),
               basics,
             ],
             aside: [
-              if (institution) const ProfileInstitutionCard(),
+              if (institution) ProfileInstitutionCard(demo: !native),
               if (institution) const ProfilePrivacyCard(),
               privacy,
               const ProfileAccountCard(),
@@ -239,15 +244,17 @@ class RealProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               privacy,
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(20, 12, 20, 20),
                 child: Text(
-                  '资料录入不等于授权；报告与饮食历史仍为演示',
+                  native
+                      ? '资料录入不等于授权；餐食分析前需单独确认 AI 数据同意。'
+                      : '资料录入不等于授权；报告与饮食历史仍为演示',
                   style: TextStyle(color: AppColors.muted, fontSize: 13),
                 ),
               ),
               if (institution) ...[
-                const ProfileInstitutionCard(),
+                ProfileInstitutionCard(demo: !native),
                 const SizedBox(height: 16),
                 const ProfilePrivacyCard(),
                 const SizedBox(height: 16),
@@ -268,8 +275,10 @@ class RealProfileScreen extends ConsumerWidget {
           },
           child: const Text('刷新资料'),
         ),
-        const Text(
-          '资料未填写，不等于已确认无相关健康限制。机构服务仍为演示。',
+        Text(
+          native
+              ? '资料未填写，不等于已确认无相关健康限制。机构服务暂未支持。'
+              : '资料未填写，不等于已确认无相关健康限制。机构服务仍为演示。',
           style: TextStyle(color: AppColors.muted, fontSize: 12, height: 1.8),
         ),
       ],

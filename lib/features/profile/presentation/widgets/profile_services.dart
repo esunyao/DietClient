@@ -8,42 +8,53 @@ import '../../../../demo/demo_store.dart';
 import 'health_kind.dart';
 
 class ProfileInstitutionCard extends StatelessWidget {
-  const ProfileInstitutionCard({super.key});
+  const ProfileInstitutionCard({super.key, this.demo = true});
+
+  final bool demo;
 
   @override
-  Widget build(BuildContext context) => AppCard(
-    radius: 16,
-    color: AppColors.greenSoft,
-    padding: const EdgeInsets.all(24),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionHeading(title: '机构服务'),
-        const SizedBox(height: 16),
-        const Text(
-          '医疗院',
-          style: TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          '一号食堂 · 个人成员（虚构机构）',
-          style: TextStyle(color: AppColors.muted),
-        ),
-        const SizedBox(height: 16),
-        const Text('仅用于菜单与餐食关联', style: TextStyle(color: AppColors.muted)),
-        const Divider(height: 32),
-        const Text(
-          '机构成员身份不自动开放你的病史、过敏或个人报告。',
-          style: TextStyle(color: AppColors.ink, fontSize: 14, height: 1.7),
-        ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: () => context.push(AppRoutes.institutionMenu),
-          child: const Text('查看食堂菜单'),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) => !demo
+      ? const InfoBanner(text: '机构成员信息、菜单与餐食同步暂未支持。')
+      : AppCard(
+          radius: 16,
+          color: AppColors.greenSoft,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionHeading(title: '机构服务'),
+              const SizedBox(height: 16),
+              const Text(
+                '医疗院',
+                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '一号食堂 · 个人成员（虚构机构）',
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '仅用于菜单与餐食关联',
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const Divider(height: 32),
+              const Text(
+                '机构成员身份不自动开放你的病史、过敏或个人报告。',
+                style: TextStyle(
+                  color: AppColors.ink,
+                  fontSize: 14,
+                  height: 1.7,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => context.push(AppRoutes.institutionMenu),
+                child: const Text('查看食堂菜单'),
+              ),
+            ],
+          ),
+        );
 }
 
 class ProfilePrivacyCard extends ConsumerWidget {
@@ -87,9 +98,14 @@ class ProfilePrivacyCard extends ConsumerWidget {
 }
 
 class ProfileServiceEntries extends StatelessWidget {
-  const ProfileServiceEntries({super.key, required this.institution});
+  const ProfileServiceEntries({
+    super.key,
+    required this.institution,
+    this.real = false,
+  });
 
   final bool institution;
+  final bool real;
 
   @override
   Widget build(BuildContext context) => AppCard(
@@ -103,7 +119,7 @@ class ProfileServiceEntries extends StatelessWidget {
             Expanded(
               child: ProfileEntryRow(
                 title: '我的报告',
-                subtitle: '查看周期摘要与历史版本',
+                subtitle: real ? '报告生成暂未支持' : '查看周期摘要与历史版本',
                 icon: AppIcons.reports,
                 onTap: () => context.push(AppRoutes.reports),
               ),
@@ -126,7 +142,7 @@ class ProfileServiceEntries extends StatelessWidget {
             Expanded(
               child: ProfileEntryRow(
                 title: 'AI 数据与隐私',
-                subtitle: '查看用途与演示开关',
+                subtitle: real ? '查看数据用途与同意记录' : '查看用途与演示开关',
                 icon: AppIcons.shield,
                 onTap: () => context.push(AppRoutes.aiConsent),
               ),
@@ -136,7 +152,7 @@ class ProfileServiceEntries extends StatelessWidget {
               Expanded(
                 child: ProfileEntryRow(
                   title: '机构餐食同步',
-                  subtitle: '核对待确认的机构餐食',
+                  subtitle: real ? '暂未支持' : '核对待确认的机构餐食',
                   icon: AppIcons.sync,
                   onTap: () => context.push(AppRoutes.institutionSync),
                 ),
@@ -159,7 +175,7 @@ class ProfileAccountCard extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('退出当前应用？'),
         content: const Text(
-          '退出将清除当前应用的内存登录会话，返回真实登录入口。不会注销身份服务中的 SSO 会话，也不会向身份服务发起全局注销。',
+          '退出将清除当前应用的登录状态及已保存的记住登录信息，返回登录入口。不会注销身份服务中的 SSO 会话，也不会向身份服务发起全局注销。',
         ),
         actions: [
           TextButton(
