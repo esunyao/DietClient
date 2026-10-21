@@ -14,4 +14,4 @@
 真实数据入口：[data](data/AGENTS.md) → [application](application/AGENTS.md) → presentation/screens/real_* 页面。
 Web 预览保留原演示页面，真实页面不回退样例。姓名只读；头像使用 [头像编辑](presentation/widgets/avatar_editor.dart) 与 diet_ui 方形裁剪组件。
 
-未登录 Web 预览通过 AppPageScope.uiPreview 隐藏退出入口，真实登录退出范围保持原有行为。
+未登录 Web 预览通过 AppPageScope.uiPreview 隐藏退出入口。真实模式的 [服务入口](presentation/widgets/profile_services.dart) 区分真实饮食记录和暂未支持的报告/机构能力，不展示虚构成员身份；退出范围见 [会话](../../core/session/AGENTS.md)。
