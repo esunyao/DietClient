@@ -5,3 +5,5 @@
 入口：[settings_screen.dart](presentation/screens/settings_screen.dart)，有界玻璃示例见 [glass_choice.dart](presentation/widgets/glass_choice.dart)。外观状态见 [core](../../core/AGENTS.md)，模式、隐私与重置见 [demo](../../demo/AGENTS.md)，玻璃绘制见 [diet_ui](../../../packages/diet_ui/AGENTS.md)。
 
 预览使用有界的实体插画背景和独立镜片；Windows 后端由共享 GlassBackdrop 承载。[聚焦回归](../../../test/glass_backdrop_test.dart)。
+
+Android/Windows 外观持久化入口：[ui_preferences.dart](../../core/presentation/ui_preferences.dart)；真实重置只恢复外观。[偏好回归](../../../test/preferences_functional_test.dart)。
