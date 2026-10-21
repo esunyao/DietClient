@@ -11,6 +11,7 @@ export '../data/nutri_models.dart';
 
 final deviceTimezoneProvider = FutureProvider<String>(
   (ref) async => (await FlutterTimezone.getLocalTimezone()).identifier,
+  retry: (count, error) => null,
 );
 final nutritionApiProvider = Provider<NutriApi?>((ref) {
   if (kIsWeb || ref.watch(uiPreviewProvider)) return null;
@@ -24,23 +25,34 @@ NutriApi _api(Ref ref) =>
     ref.watch(nutritionApiProvider) ?? (throw const ApiFailure('请先登录'));
 final capturePolicyProvider = FutureProvider<CapturePolicy>(
   (ref) => _api(ref).capturePolicy(),
+  retry: (count, error) => null,
 );
 final draftsProvider = FutureProvider<CaptureDraftPage>(
   (ref) => _api(ref).drafts(),
+  retry: (count, error) => null,
 );
 final captureSessionProvider = FutureProvider.autoDispose
-    .family<CaptureSession, String>((ref, id) => _api(ref).captureSession(id));
+    .family<CaptureSession, String>(
+      (ref, id) => _api(ref).captureSession(id),
+      retry: (count, error) => null,
+    );
 final mealsProvider = FutureProvider.autoDispose.family<MealPage, MealQuery>(
   (ref, query) => _api(ref).meals(query),
+  retry: (count, error) => null,
 );
 final mealProvider = FutureProvider.autoDispose.family<Meal, String>(
   (ref, id) => _api(ref).meal(id),
+  retry: (count, error) => null,
 );
 final dailySummaryProvider = FutureProvider.autoDispose
-    .family<DailySummary, String>((ref, date) => _api(ref).dailySummary(date));
+    .family<DailySummary, String>(
+      (ref, date) => _api(ref).dailySummary(date),
+      retry: (count, error) => null,
+    );
 final dailyTrendProvider = FutureProvider.autoDispose
     .family<DailyTrend, TrendQuery>(
       (ref, query) => _api(ref).dailyTrend(query),
+      retry: (count, error) => null,
     );
 
 /// Call after successful create/submit/retry/correction/delete; invalidates all query keys.
