@@ -114,8 +114,65 @@ OidcSession session(
     clientId: identity.clientId,
   ),
 );
+
+final _consentCheckProvider = Provider<Future<void> Function()>(
+  (ref) =>
+      () => requireAiNutritionConsent(ref),
+);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'real consent read failure returns immediately without implicit retries',
+    () async {
+      final adapter = Adapter((_) => response(null, status: 500));
+      final container = ProviderContainer(
+        overrides: [
+          sessionStorageProvider.overrideWithValue(MemoryStorage()),
+          apiConfigProvider.overrideWithValue(ApiConfig('https://api.test/')),
+          apiDioFactoryProvider.overrideWithValue(
+            () => Dio()..httpClientAdapter = adapter,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).establish(session('one'));
+      await expectLater(
+        container
+            .read(_consentCheckProvider)()
+            .timeout(const Duration(seconds: 2)),
+        throwsA(isA<ApiFailure>()),
+      );
+      expect(adapter.requests.length, 1);
+    },
+  );
+  test(
+    'late write 401 never replays or clears an already rotated token',
+    () async {
+      var token = 'old';
+      var unauthorized = 0;
+      final adapter = Adapter((_) {
+        token = 'rotated';
+        return response(null, status: 401);
+      });
+      final api = ApiClient(
+        config: ApiConfig('https://api.test/'),
+        session: session('old'),
+        isCurrent: () => true,
+        onUnauthorized: () => unauthorized++,
+        freshToken: ({bool force = false}) async => token,
+        currentAccessToken: () => token,
+        dio: Dio()..httpClientAdapter = adapter,
+      );
+      addTearDown(api.close);
+      await expectLater(
+        api.request('v1/nutri/meals/1', method: 'DELETE'),
+        throwsA(isA<ApiFailure>()),
+      );
+      expect(adapter.requests.length, 1);
+      expect(unauthorized, 0);
+    },
+  );
   for (final code in ['invalid_response', 'untrusted_endpoint']) {
     test(
       'refresh $code clears saved credentials instead of retrying validation',
