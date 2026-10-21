@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/demo/demo_store.dart';
+import 'package:diet_client/core/config/ui_preview_config.dart';
+import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
 class InstitutionSyncScreen extends ConsumerStatefulWidget {
   const InstitutionSyncScreen({super.key});
@@ -16,6 +18,12 @@ class _InstitutionSyncScreenState extends ConsumerState<InstitutionSyncScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return const UnsupportedFeaturePage(
+        title: '机构餐食同步',
+        description: '机构餐食同步与摄入确认暂未支持。不会将机构样例计入个人真实摄入。',
+      );
+    }
     final state = ref.watch(demoProvider);
     final plan = demoPlans.first;
     final canConfirm =

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/demo/demo_store.dart';
+import 'package:diet_client/core/config/ui_preview_config.dart';
+import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
 import '../widgets/meal_plan_widgets.dart';
 
@@ -47,6 +49,13 @@ class MealPlanScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return const UnsupportedFeaturePage(
+        title: '下一餐怎么吃',
+        description: '配餐方案与计划保存暂未支持。可以先记录实际餐食，查看真实营养汇总。',
+        showBack: false,
+      );
+    }
     final state = ref.watch(demoProvider);
     final plan = state.selectedPlan;
     final analyzing = state.todayMeals

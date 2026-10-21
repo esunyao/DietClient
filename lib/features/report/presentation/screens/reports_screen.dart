@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/demo/demo_store.dart';
+import 'package:diet_client/core/config/ui_preview_config.dart';
+import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
 import '../widgets/report_widgets.dart';
 
@@ -56,6 +58,12 @@ class ReportsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return const UnsupportedFeaturePage(
+        title: '报告中心',
+        description: '报告生成、历史版本与导出暂未支持。真实每日营养汇总已在首页和趋势中提供。',
+      );
+    }
     final state = ref.watch(demoProvider);
     final latest = state.reports.first;
     final history = state.reports.skip(1).toList();

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/demo/demo_store.dart';
+import 'package:diet_client/core/config/ui_preview_config.dart';
+import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
 class InstitutionMenuScreen extends ConsumerStatefulWidget {
   const InstitutionMenuScreen({super.key});
@@ -19,6 +21,12 @@ class _InstitutionMenuScreenState extends ConsumerState<InstitutionMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(nativeNutritionEnabledProvider)) {
+      return const UnsupportedFeaturePage(
+        title: '机构菜单',
+        description: '机构菜单、选餐和过敏核对暂未支持。此处不会创建计划或餐食记录。',
+      );
+    }
     final state = ref.watch(demoProvider);
     final plan = demoPlans.firstWhere((p) => p.id == _selection);
     return AppPage(

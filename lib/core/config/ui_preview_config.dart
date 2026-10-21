@@ -11,3 +11,12 @@ final uiPreviewProvider = Provider<bool>(
     enabled: const bool.fromEnvironment('WEB_UI_PREVIEW'),
   ),
 );
+
+/// 本轮真实膳食功能只装配 Android/Windows；Web 保留原有页面。
+final nativeNutritionEnabledProvider = Provider<bool>(
+  (ref) =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.windows) &&
+      !ref.watch(uiPreviewProvider),
+);
