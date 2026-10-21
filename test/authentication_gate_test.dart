@@ -27,6 +27,15 @@ OidcSession session() => OidcSession(
   expiresAt: DateTime.now().add(const Duration(minutes: 5)),
 );
 
+class _EmptySessionStorage implements SessionStorage {
+  @override
+  Future<String?> read() async => null;
+  @override
+  Future<void> write(String value) async {}
+  @override
+  Future<void> delete() async {}
+}
+
 class FakeGateway implements AuthGateway {
   final result = Completer<OidcSession>();
   bool consent = false;
@@ -201,6 +210,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         authConfigProvider.overrideWithValue(AppAuthConfig.fromValues({})),
+        sessionStorageProvider.overrideWithValue(_EmptySessionStorage()),
       ],
     );
     await tester.pumpWidget(

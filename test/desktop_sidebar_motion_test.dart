@@ -102,7 +102,7 @@ void main() {
     }
     await tester.tap(account);
     await tester.pumpAndSettle();
-    expect(find.text('外观与演示设置'), findsOneWidget);
+    expect(find.text('应用设置'), findsOneWidget);
     await mouse.moveTo(const Offset(500, 100));
     await tester.pump(const Duration(milliseconds: 180));
     await tester.pump(const Duration(milliseconds: 240));
@@ -160,7 +160,7 @@ void main() {
       expect(tester.takeException(), isNull);
     }
     expect(_width(tester), 216);
-    expect(find.text('外观与演示设置'), findsOneWidget);
+    expect(find.text('应用设置'), findsOneWidget);
     final label = tester.widget<Text>(find.text(name));
     expect(label.maxLines, 1);
     expect(label.overflow, TextOverflow.ellipsis);
