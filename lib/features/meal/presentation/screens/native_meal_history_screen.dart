@@ -149,7 +149,11 @@ class _HistoryState extends ConsumerState<NativeMealHistoryScreen> {
         if (page != null)
           NutritionPolling(
             refreshKey: query,
-            onRefresh: () => ref.invalidate(mealsProvider(query)),
+            onRefresh: () {
+              if (!ref.read(mealsProvider(query)).isLoading) {
+                ref.invalidate(mealsProvider(query));
+              }
+            },
             pending: page.items.any((m) => analysisPending(m.analysisStatus)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

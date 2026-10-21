@@ -41,8 +41,12 @@ class NativeHomeScreen extends ConsumerWidget {
         NutritionPolling(
           refreshKey: query,
           onRefresh: () {
-            ref.invalidate(mealsProvider(query));
-            ref.invalidate(dailySummaryProvider(today));
+            if (!ref.read(mealsProvider(query)).isLoading) {
+              ref.invalidate(mealsProvider(query));
+            }
+            if (!ref.read(dailySummaryProvider(today)).isLoading) {
+              ref.invalidate(dailySummaryProvider(today));
+            }
           },
           pending: entries.any((m) => analysisPending(m.analysisStatus)),
           child: Column(

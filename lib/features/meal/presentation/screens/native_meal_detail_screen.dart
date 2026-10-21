@@ -131,7 +131,11 @@ class _DetailState extends ConsumerState<NativeMealDetailScreen> {
         if (meal != null)
           NutritionPolling(
             refreshKey: widget.mealId,
-            onRefresh: () => ref.invalidate(mealProvider(widget.mealId)),
+            onRefresh: () {
+              if (!ref.read(mealProvider(widget.mealId)).isLoading) {
+                ref.invalidate(mealProvider(widget.mealId));
+              }
+            },
             pending: analysisPending(meal.analysisStatus),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

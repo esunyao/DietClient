@@ -154,6 +154,10 @@ class _NutritionPollingState extends ConsumerState<NutritionPolling>
   @override
   void didUpdateWidget(NutritionPolling oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshKey != widget.refreshKey) {
+      _controller?.remove(_lease);
+      _expired = false;
+    }
     if (!widget.pending) _expired = false;
     if (oldWidget.pending && !widget.pending) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
