@@ -2,9 +2,9 @@
 
 基于新版绿色 C/B 端样板的 Flutter 客户端。四个入口为首页、配餐、趋势、我的；个人/机构内个人模式在设置中明确选择，宽度只控制布局。
 
-本轮接入「我的」真实姓名/邮箱/头像、基础资料、五类健康档案与 AI 营养同意记录；姓名只读。保留绿色 UI、四导航、玻璃和现有 Authentik/OIDC 登录。记录/草稿、饮食历史、配餐、机构与报告仍为内存演示。不新增注册、令牌刷新、持久化或 AI 分析请求。Web 显式预览保持零会话零业务请求，编辑只作本地演示。
+Android/Windows 在「我的」真实资料基础上接入采集草稿、图片上传与识别提交、饮食历史、餐食修正删除、首页及趋势，并扩展注册、邮件重发、会话续期和本机外观设置。姓名只读；营养目标未配置时显示未设置。无公开接口的配餐生成、报告生成、机构菜单同步和独立手工新建显示暂未支持，不模拟真实保存。Web 新功能留到下轮，保留现有登录、资料和独立零请求 UI 预览。
 
-使用 Flutter 3.47.7 / Dart 3.13.5。依赖见 [pubspec](pubspec.yaml)，Pub workspace 包含 diet_oidc、diet_auth、diet_models 与 diet_ui。Android 优先，Web/Windows 次之，SDK 由用户自行管理。
+使用 Flutter 3.47.7 / Dart 3.13.5。依赖见 [pubspec](pubspec.yaml)，Pub workspace 包含 diet_oidc、diet_auth、diet_models 与 diet_ui。Android 优先，Windows 同步，本轮不验收 Web 新能力，SDK 由用户自行管理。
 
 ```bash
 bash tool/flutter.sh pub get
@@ -13,11 +13,11 @@ bash tool/flutter.sh run -d chrome --web-port 7357 --dart-define-from-file=.env
 bash tool/verify.sh
 ```
 
-verify 是完整验证入口；本轮 UI 校准不默认执行全矩阵，仅按改动做格式、静态检查、少量聚焦回归和必要的一次 Web 或 Windows 编译。Android 构建、真机、视觉与性能交给用户，不因验证下载或更换 SDK。构建使用 .env.example 占位配置，不进行真实认证请求；离线测试或编译不代表真实登录、视觉或性能验收。项目缓存与临时文件隔离在仓库内。
+verify 是完整验证入口，本轮不默认执行全矩阵，仅做格式、静态检查、相关回归和一次 Windows debug 编译。Android 构建、真实服务、真机、视觉与性能交给用户，不因验证下载或更换 SDK。编译使用 .env.example 占位配置；离线测试或编译不代表真实登录或端到端验收。项目缓存与临时文件隔离在仓库内。
 
 登录配置使用被忽略的本地 .env，经 --dart-define-from-file 注入；公开 [.env.example](.env.example) 只保留不可连接占位符与空 client ID。Web 回调为同源静态页面，本地固定 http://localhost:7357/auth-callback.html，通过 AUTHENTIK_WEB_REDIRECT_URI 配置。Web 登录关闭弹窗后可在主页面取消，或等待五分钟超时。配置与平台限制详见 [登录说明](doc/authentication.md)。
 
-真实资料需在本地 `.env` 配置 API_BASE_URL 为部署网关的 HTTPS 基址；`.invalid` 示例会被拒绝，缺失或无效配置显示资料加载错误。客户端不保存凭据或健康资料到磁盘；无会话、Web 显式预览不发送业务请求。Web 部署需允许应用源访问 API，以及对象存储的预签名 PUT/Content-Type 和头像读取，详见 [网络说明](lib/core/network/doc/README.md)。
+真实功能需在本地 `.env` 配置 API_BASE_URL 为部署网关的 HTTPS 基址；`.invalid` 示例会被拒绝。注册使用 example 中的 enrollment 和 resend flow 配置。登录默认不记住，仅在内存续期；勾选后才把刷新令牌和必要身份上下文写入系统安全存储，不保存密码、健康资料、图片或签名 URL。部署方需启用 offline_access 及对应 scope mapping，否则只能使用本次有效会话。无会话或 Web 显式预览不发送业务请求，见 [网络说明](lib/core/network/doc/README.md) 与 [登录说明](doc/authentication.md)。
 
 Windows 使用用户现有 SDK 验证，不下载、更换或升级 SDK。本机关闭 Developer Mode 导致插件 symlink 权限不足时，当前工作区为忽略的 `windows/flutter/ephemeral/.plugin_symlinks` 和 `linux/flutter/ephemeral/.plugin_symlinks` 创建指向本仓库 `.pub-cache` 的目录 junction；Flutter 的 Windows 构建也检查已启用平台的插件链接。这是当前机器缓存处理，不要求全局修改系统设置，不提交这些缓存链接。
 
@@ -89,6 +89,26 @@ bash tool/flutter.sh build appbundle --release --dart-define-from-file=.env
 - 启用 Google Play App Signing 时，构建上传包使用已登记的上传密钥，最终分发应用由 Play 使用应用签名密钥签署，不混淆两类密钥。
 - `applicationId` 目前为 `com.example.diet_client`；首次正式发布前确认包名，已发布应用不要随意更改。
 - 签名成功不代表登录、头像直传或 UI 已验收，仍需使用 release 包完成 Android 真机验证。
+
+## Android / Windows 全页面功能迁移验证（2026-10-21）
+
+在中断前的会话、网络、采集、餐食、首页与趋势实现上，已集成注册、邮件重发、记住登录入口及本机外观持久化；沿用已完成的「我的」。另修复慢 GET 被轮询反复作废、切换筛选继承旧超时，以及注册取消后的迟到回调影响新输入的问题。旧演示几何回归显式绑定演示分支，保留原有断言。
+
+| 检查 | 本次实际结果 |
+|---|---|
+| 格式 | `bash tool/dart.sh format --output=none --set-exit-if-changed lib packages test`，139 文件、0 处变更 |
+| 静态分析 | `bash tool/flutter.sh analyze --no-pub`，No issues found，14.5s |
+| 应用回归 | `bash tool/flutter.sh test --no-pub`，133 项通过，含既有资料、导航、裁剪及本轮真实功能 |
+| 协议与执行器 | `bash tool/dart.sh test packages/diet_oidc/test packages/diet_auth/test`，34 项通过 |
+| Windows debug | `bash tool/flutter.sh build windows --debug --no-pub --dart-define-from-file=.env.example`，成功，63.6s；产物 `build/windows/x64/runner/Debug/diet_client.exe` |
+| 依赖边界 | 对比本轮开始前的锁定文件，既有依赖版本无变化；仅增加批准依赖及其传递依赖 |
+| 导航与编码 | 本次续做 40 个变更文件严格 UTF-8 解码通过，150 条公开相对链接无缺失；根阅读说明保持原文，私有规划未跟踪 |
+
+第一轮应用检查为119项通过、4项旧演示fixture失败；明确演示/真实装配分支后最终133项全部通过。第一轮静态问题亦已修复。测试使用离线替换边界，不读取真实 `.env`、不调用部署端点；构建成功不证明实际 Authentik、邮件、对象存储或系统安全存储联通。Android 构建、真机、视觉及性能由用户验收；本轮没有追加 Web 或 iOS 构建。
+
+真实运行继续使用本地 `.env` 的 API 和 Authentik 公开配置；注册另需 enrollment 与 resend flow。登录默认不勾选“记住登录”，只有勾选才保存刷新凭据；不能获取刷新令牌时保留当前有效会话并提示。外观自动保存在本机；“恢复默认外观”不清除健康资料、餐食、同意或会话。无公开接口的配餐、报告、机构同步和独立手工新建保持暂未支持。Web 继续原功能与独立显式 UI 预览。
+
+日志位于忽略的 `.local/resume-all-test.log`、`.local/resume-auth-test.log`、`.local/resume-analyze.log`、`.local/resume-windows-debug.log`。模块及测试入口见 [迁移对照](doc/migration.md)、[认证说明](doc/authentication.md)、[测试导航](test/AGENTS.md)。
 
 ## 我的页面功能迁移验证（2026-10-20）
 
