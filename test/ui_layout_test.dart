@@ -1,6 +1,7 @@
 import 'dart:ui' show Tristate;
 
 import 'package:diet_client/app/app_shell.dart';
+import 'package:diet_client/core/config/ui_preview_config.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_client/features/home/presentation/screens/home_screen.dart';
@@ -84,7 +85,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('横屏键盘下真实手工记录可编辑且保存操作可达', (tester) async {
+  testWidgets('横屏键盘下演示手工记录可编辑且保存操作可达', (tester) async {
     _setViewport(tester, const Size(844, 390));
     addTearDown(tester.view.resetViewInsets);
     await _pumpShell(
@@ -432,7 +433,7 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
-  testWidgets('个人首页按记录、三快捷、营养、餐食顺序展示', (tester) async {
+  testWidgets('演示个人首页按记录、三快捷、营养、餐食顺序展示', (tester) async {
     _setViewport(tester, const Size(430, 960));
     await _pumpShell(tester, home: true);
     final titleRect = tester.getRect(find.text('今天，好好吃饭'));
@@ -466,7 +467,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('390个人首页快捷横排且营养保持紧凑，餐食保留24边距', (tester) async {
+  testWidgets('390演示个人首页快捷横排且营养保持紧凑，餐食保留24边距', (tester) async {
     _setViewport(tester, const Size(390, 900));
     await _pumpShell(tester, home: true);
     final quick = tester.getRect(find.text('手工记录'));
@@ -483,7 +484,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('平板机构首页将待确认晚餐放在营养与餐食右侧', (tester) async {
+  testWidgets('演示平板机构首页将待确认晚餐放在营养与餐食右侧', (tester) async {
     _setViewport(tester, const Size(1194, 834));
     await _pumpShell(tester, home: true, mode: ExperienceMode.institution);
     expect(find.byType(AppBottomNavigation), findsNothing);
@@ -631,7 +632,11 @@ Future<GoRouter> _pumpShell(
   addTearDown(router.dispose);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [demoProvider.overrideWith(() => _LayoutDemoController(mode))],
+      // 这些几何与键盘回归使用演示页面，真实数据与未支持边界由各自测试覆盖。
+      overrides: [
+        nativeNutritionEnabledProvider.overrideWithValue(false),
+        demoProvider.overrideWith(() => _LayoutDemoController(mode)),
+      ],
       child: MaterialApp.router(
         theme: AppTheme.light,
         routerConfig: router,
