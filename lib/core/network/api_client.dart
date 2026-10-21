@@ -34,6 +34,8 @@ final apiClientProvider = Provider<ApiClient?>((ref) {
     isCurrent: () => ref.mounted && ref.read(sessionEpochProvider) == epoch,
     freshToken: ({bool force = false}) =>
         ref.read(sessionProvider.notifier).ensureFreshAccessToken(force: force),
+    currentAccessToken: () =>
+        ref.mounted ? ref.read(sessionProvider)?.accessToken : null,
     onUnauthorized: () {
       if (ref.mounted && ref.read(sessionEpochProvider) == epoch) {
         ref.read(sessionProvider.notifier).clear();
@@ -52,6 +54,7 @@ class ApiClient {
     required this.onUnauthorized,
     Dio? dio,
     this.freshToken,
+    this.currentAccessToken,
   }) : _dio =
            dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 30)));
   final ApiConfig config;
@@ -60,6 +63,7 @@ class ApiClient {
   final void Function() onUnauthorized;
   final Dio _dio;
   final Future<String> Function({bool force})? freshToken;
+  final String? Function()? currentAccessToken;
   void close() => _dio.close(force: true);
   Future<Object?> request(
     String path, {
@@ -126,7 +130,10 @@ class ApiClient {
             final current = await freshToken!(force: false);
             return send(true, forceRefresh: current == usedToken);
           }
-          onUnauthorized();
+          final currentToken = currentAccessToken?.call();
+          // A late rejection for a rotated token must not clear its successor.
+          if (currentToken == null || currentToken == usedToken)
+            onUnauthorized();
         }
         throw ApiFailure(
           status == 401 ? '登录已失效，请重新登录' : '请求失败，请检查网络后重试',
