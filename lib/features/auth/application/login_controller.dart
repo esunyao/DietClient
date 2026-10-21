@@ -75,6 +75,7 @@ class LoginController extends Notifier<LoginState> {
     String? username,
     String? password,
     required bool popup,
+    bool rememberMe = false,
     Future<bool> Function(AuthentikConsent)? onConsent,
   }) async {
     if (state.busy) return;
@@ -116,7 +117,10 @@ class LoginController extends Notifier<LoginState> {
         state = const LoginState(error: '服务器返回的会话已过期，请重新登录。');
         return;
       }
-      ref.read(sessionProvider.notifier).establish(session);
+      await ref
+          .read(sessionProvider.notifier)
+          .establish(session, rememberMe: !popup && rememberMe);
+      if (!ref.mounted || attempt != _attempt) return;
       state = const LoginState();
     } on AuthFailure catch (failure) {
       if (attempt != _attempt) return;

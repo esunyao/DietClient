@@ -9,7 +9,9 @@ class AuthField extends StatefulWidget {
     this.password = false,
     this.email = false,
     this.validator,
+    this.serverError,
   });
+  final String? serverError;
   final String label;
   final TextEditingController controller;
   final bool password;
@@ -43,6 +45,7 @@ class _AuthFieldState extends State<AuthField> {
               : null,
       decoration: InputDecoration(
         labelText: widget.label,
+        errorText: widget.serverError,
         errorMaxLines: 3,
         suffixIcon: widget.password
             ? IconButton(

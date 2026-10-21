@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/config/auth_config.dart';
 import '../../../../core/presentation/app_routes.dart';
 import '../../application/login_controller.dart';
+import '../../../../core/config/ui_preview_config.dart';
 import '../widgets/auth_field.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _username = TextEditingController();
   final _password = TextEditingController();
   BuildContext? _consentContext;
+  bool _rememberMe = false;
   @override
   void dispose() {
     _username.dispose();
@@ -93,6 +95,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           username: _username.text,
           password: _password.text,
           popup: kIsWeb,
+          rememberMe: _rememberMe,
           onConsent: _confirmConsent,
         );
     if (mounted) _password.clear();
@@ -193,6 +196,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ],
                                   ),
                                 ),
+                              ),
+                            if (ref.watch(nativeNutritionEnabledProvider))
+                              CheckboxListTile(
+                                value: _rememberMe,
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('记住登录'),
+                                subtitle: const Text('仅在本机安全存储续期凭据'),
+                                onChanged: login.busy
+                                    ? null
+                                    : (value) => setState(
+                                        () => _rememberMe = value ?? false,
+                                      ),
                               ),
                             AppButton(
                               label: login.busy

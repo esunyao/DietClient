@@ -80,6 +80,9 @@ class AppAuthConfig {
       try {
         authentik = AuthentikConfig(
           baseUri: base!,
+          enrollmentFlowSlug: values['AUTHENTIK_ENROLLMENT_FLOW_SLUG']?.trim(),
+          emailVerificationResendFlowSlug:
+              values['AUTHENTIK_EMAIL_VERIFICATION_RESEND_FLOW_SLUG']?.trim(),
           providerSlug: provider,
           authenticationFlowSlug: flow,
           clientId: client,
@@ -101,6 +104,12 @@ class AppAuthConfig {
       ),
       'AUTHENTIK_AUTHENTICATION_FLOW_SLUG': String.fromEnvironment(
         'AUTHENTIK_AUTHENTICATION_FLOW_SLUG',
+      ),
+      'AUTHENTIK_ENROLLMENT_FLOW_SLUG': String.fromEnvironment(
+        'AUTHENTIK_ENROLLMENT_FLOW_SLUG',
+      ),
+      'AUTHENTIK_EMAIL_VERIFICATION_RESEND_FLOW_SLUG': String.fromEnvironment(
+        'AUTHENTIK_EMAIL_VERIFICATION_RESEND_FLOW_SLUG',
       ),
       'AUTHENTIK_CLIENT_ID': String.fromEnvironment('AUTHENTIK_CLIENT_ID'),
       'AUTHENTIK_REDIRECT_URI': String.fromEnvironment(
