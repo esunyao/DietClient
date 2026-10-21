@@ -2,6 +2,8 @@
 
 [根规范](../../AGENTS.md) · [上级](../AGENTS.md) · [公开概览](doc/README.md)
 
+刷新入口与身份连续性：[client.dart](lib/src/client.dart) 的 `OidcClient.refresh`、`OidcIdentity`；平台安全存储由 [应用会话](../../lib/core/session/AGENTS.md) 负责，不放入纯 Dart 协议包。
+
 - [公共导出](lib/diet_oidc.dart) → [协议客户端、配置、事务、会话与错误](lib/src/client.dart)
 - Web 条件导出：[popup_web.dart](lib/src/popup_web.dart)、[popup_stub.dart](lib/src/popup_stub.dart)
 - 应用同源回调：[HTML](../../web/auth-callback.html) 与 [通信脚本](../../web/auth-callback.js)
