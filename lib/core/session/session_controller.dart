@@ -301,6 +301,8 @@ class SessionController extends Notifier<OidcSession?> {
               'invalid_refresh_context',
               'invalid_token',
               'invalid_metadata',
+              'invalid_response',
+              'untrusted_endpoint',
             ].contains(e.code)) {
           await clear();
         } else {

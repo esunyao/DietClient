@@ -420,6 +420,7 @@ final class OidcClient {
       ),
       cancelled,
     );
+    final tokenReceivedAt = DateTime.now().toUtc();
     if (result.statusCode == 400 || result.statusCode == 401) {
       throw const OidcFailure(
         'refresh_rejected',
@@ -494,7 +495,7 @@ final class OidcClient {
     return OidcSession(
       accessToken: access,
       tokenType: 'Bearer',
-      expiresAt: DateTime.now().toUtc().add(Duration(seconds: seconds)),
+      expiresAt: tokenReceivedAt.add(Duration(seconds: seconds)),
       refreshToken: data['refresh_token'] as String? ?? previous.refreshToken,
       identity: identity,
       idToken: rawId as String?,

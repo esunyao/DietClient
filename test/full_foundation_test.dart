@@ -116,6 +116,32 @@ OidcSession session(
 );
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  for (final code in ['invalid_response', 'untrusted_endpoint']) {
+    test(
+      'refresh $code clears saved credentials instead of retrying validation',
+      () async {
+        final storage = MemoryStorage();
+        final container = ProviderContainer(
+          overrides: [
+            sessionStorageProvider.overrideWithValue(storage),
+            refreshSessionProvider.overrideWithValue(
+              (_) async => throw OidcFailure(code, 'test'),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final controller = container.read(sessionProvider.notifier);
+        await controller.establish(session('one'), rememberMe: true);
+        await expectLater(
+          controller.ensureFreshAccessToken(force: true),
+          throwsA(isA<OidcFailure>()),
+        );
+        expect(container.read(sessionProvider), isNull);
+        expect(container.read(sessionStatusProvider), SessionStatus.signedOut);
+        expect(storage.value, isNull);
+      },
+    );
+  }
   test(
     'valid session without refresh remains usable during its last 30 seconds',
     () async {
