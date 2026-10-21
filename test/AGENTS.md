@@ -11,6 +11,8 @@
 
 测试使用本地替换边界，不代表真实身份提供方联通；执行结果见根说明。
 
+- [unsupported_feature_test.dart](unsupported_feature_test.dart)：真实模式未支持入口不显示虚构数据、不修改演示状态，也不提供模拟写操作。
+
 - [profile_api_test.dart](profile_api_test.dart)：无损 ID、网络目的地、五类 CRUD、头像顺序与认证隔离、同意排序、配置与会话切换。
 - [profile_widget_test.dart](profile_widget_test.dart)：真实资料空态、预览零请求、配置错误、保存失败留存、原 ID/编码编辑和裁剪。
 
