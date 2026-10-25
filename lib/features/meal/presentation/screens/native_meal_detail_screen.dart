@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/unsaved_form.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/session/session_controller.dart';
 import '../../../../core/privacy/ai_consent.dart';
@@ -88,7 +89,9 @@ class _DetailState extends ConsumerState<NativeMealDetailScreen> {
       await api.deleteMeal(meal.mealId);
       if (!mounted || ref.read(sessionEpochProvider) != epoch) return;
       refreshNutrition(ref);
-      context.pop();
+      if (ModalRoute.of(context)?.isCurrent != false) {
+        returnOrGo(context, AppRoutes.mealHistory);
+      }
     } catch (e) {
       if (mounted && ref.read(sessionEpochProvider) == epoch) {
         setState(() => _error = '$e');

@@ -158,6 +158,7 @@ class HealthRecordsScreen extends ConsumerWidget {
       ),
     );
     return AppPage(
+      demoLabel: '设计样例 · 演示数据',
       title: wide ? '让建议建立在真实资料上' : '健康档案',
       subtitle: wide ? '基础身份与历史健康记录分开保留，未填写的信息保持未知。' : null,
       showBack: true,

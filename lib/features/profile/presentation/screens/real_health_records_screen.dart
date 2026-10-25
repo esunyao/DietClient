@@ -6,6 +6,7 @@ import '../../application/profile_state.dart';
 import '../../data/profile_api.dart';
 import '../../data/health_fields.dart';
 import '../../../../core/session/session_controller.dart';
+import '../../../../core/network/api_client.dart';
 import '../widgets/health_kind.dart';
 import '../widgets/remote_state.dart';
 import 'real_health_form_screen.dart';
@@ -73,8 +74,12 @@ class _CategoryState extends ConsumerState<_Category> {
       if (mounted && identical(api, ref.read(profileApiProvider))) {
         ref.invalidate(healthRecordsProvider(widget.kind));
       }
-    } catch (_) {
-      if (mounted) setState(() => _error = '删除失败，请重试。');
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = error is ApiFailure ? error.message : '删除失败，请重试。',
+        );
+      }
     } finally {
       if (mounted) setState(() => _removing = false);
     }

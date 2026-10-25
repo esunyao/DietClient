@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../../core/nutrition/application/analysis_polling.dart';
 import '../../../../core/presentation/account_identity.dart';
+import '../../../../core/presentation/current_date.dart';
 import '../widgets/personal_home_content.dart';
 import '../widgets/home_summary.dart';
 
@@ -16,7 +17,8 @@ class NativeHomeScreen extends ConsumerWidget {
   const NativeHomeScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final today = _date(DateTime.now());
+    final date = ref.watch(currentDateProvider);
+    final today = _date(date);
     final query = (
       dateFrom: today,
       dateTo: today,
@@ -34,8 +36,7 @@ class NativeHomeScreen extends ConsumerWidget {
       title: '今天，好好吃饭',
       titleStyle: AppTypography.pageTitle.copyWith(fontSize: 24),
       mobileGutter: 20,
-      eyebrow:
-          '${DateTime.now().month}月${DateTime.now().day}日，星期${'一二三四五六日'[DateTime.now().weekday - 1]}',
+      eyebrow: '${date.month}月${date.day}日，星期${'一二三四五六日'[date.weekday - 1]}',
       trailing: const AccountAvatar(size: 48),
       children: [
         NutritionPolling(

@@ -13,3 +13,5 @@ config 另提供默认关闭且仅 Web 生效的 WEB_UI_PREVIEW 展示开关；�
 资料业务请求使用独立的 [network](../network/AGENTS.md)；共享真实姓名、邮箱与头像见 [account_identity](../presentation/account_identity.dart)，与预览演示身份分开。登录 Cookie 客户端不承载资料请求。
 
 共享 [nutrition](../nutrition/AGENTS.md) 提供膳食契约与查询，[media](../media/AGENTS.md) 分发选图和恢复结果，[privacy](../privacy/AGENTS.md) 核对真实 AI 同意。具体页面仅组合状态与展示，不复制跨页面网络或账户隔离逻辑。
+
+共享表单保护统一系统返回与路由替换的未保存确认，保存中阻止返回及打开设置；没有返回栈时转往明确的业务目标。真实模式和隐私遮罩只保留于独立 display_state，不修改演示业务。current_date 按下一次本地午夜更新，恢复前台时复核日期；无订阅时停止计时。

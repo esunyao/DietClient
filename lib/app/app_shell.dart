@@ -11,6 +11,8 @@ import '../core/config/ui_preview_config.dart';
 import '../core/presentation/app_routes.dart';
 import '../core/presentation/account_identity.dart';
 import '../core/presentation/ui_preferences.dart';
+import '../core/presentation/display_state.dart';
+import '../core/presentation/unsaved_form.dart';
 import '../core/session/session_controller.dart';
 import '../demo/demo_store.dart';
 import '../features/auth/application/login_controller.dart';
@@ -70,10 +72,19 @@ class _AppShellState extends ConsumerState<AppShell> {
     final location = widget.location;
     final prefs = ref.watch(uiPreferencesProvider);
     final uiPreview = ref.watch(uiPreviewProvider);
-    final demo = ref.watch(demoProvider);
+    final demo = uiPreview ? ref.watch(demoProvider) : null;
+    final institution = uiPreview
+        ? demo!.isInstitution
+        : ref.watch(displayStateProvider).isInstitution;
     final accountName = uiPreview
-        ? demo.profile.name
+        ? demo!.profile.name
         : ref.watch(accountIdentityProvider).asData?.value.name ?? '当前账户';
+    void openSettings() {
+      if (!ref.read(routeLeaveRegistryProvider).busy) {
+        context.push(AppRoutes.settings);
+      }
+    }
+
     void logout() {
       ref.invalidate(authGatewayProvider);
       ref.read(sessionProvider.notifier).clear();
@@ -166,7 +177,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       destinations: _destinations,
                       selectedIndex: index,
                       onSelected: select,
-                      onSettings: () => context.push(AppRoutes.settings),
+                      onSettings: openSettings,
                       glassMode: prefs.glassMode,
                       reduceTransparency: prefs.reduceTransparency,
                       menuOpen: _menuOpen,
@@ -181,7 +192,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                 case _AccountAction.profile:
                                   context.go(AppRoutes.profile);
                                 case _AccountAction.settings:
-                                  context.push(AppRoutes.settings);
+                                  openSettings();
                                 case _AccountAction.logout:
                                   logout();
                               }
@@ -313,14 +324,24 @@ class _AppShellState extends ConsumerState<AppShell> {
                                   if (constraints.maxWidth >= 1100) ...[
                                     const SizedBox(width: 16),
                                     TextButton(
-                                      onPressed: () => context.push(
-                                        demo.isInstitution
-                                            ? AppRoutes.institutionMenu
-                                            : AppRoutes.settings,
-                                      ),
+                                      onPressed: () {
+                                        if (institution) {
+                                          if (!ref
+                                              .read(routeLeaveRegistryProvider)
+                                              .busy) {
+                                            context.push(
+                                              AppRoutes.institutionMenu,
+                                            );
+                                          }
+                                        } else {
+                                          openSettings();
+                                        }
+                                      },
                                       child: Text(
-                                        demo.isInstitution
-                                            ? '医疗院 · 一号食堂'
+                                        institution
+                                            ? (uiPreview
+                                                  ? '医疗院 · 一号食堂'
+                                                  : '机构内个人模式')
                                             : '个人模式',
                                         style: AppTypography.body.copyWith(
                                           color: AppColors.muted,
@@ -331,8 +352,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                   const SizedBox(width: 8),
                                   IconButton(
                                     tooltip: '应用设置',
-                                    onPressed: () =>
-                                        context.push(AppRoutes.settings),
+                                    onPressed: openSettings,
                                     icon: const Icon(AppIcons.settings),
                                   ),
                                   PopupMenuButton<_AccountAction>(
@@ -342,7 +362,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                         case _AccountAction.profile:
                                           context.go(AppRoutes.profile);
                                         case _AccountAction.settings:
-                                          context.push(AppRoutes.settings);
+                                          openSettings();
                                         case _AccountAction.logout:
                                           logout();
                                       }

@@ -12,3 +12,5 @@
 
 - Web 未登录预览开关：[core/config/ui_preview_config.dart](../core/config/ui_preview_config.dart) → [router.dart](router.dart)；预览与侧栏回归：[desktop_sidebar_preview_test.dart](../../test/desktop_sidebar_preview_test.dart)。
 - 侧栏账户连续进度装配与菜单实例保持：[app_shell.dart](app_shell.dart) → [展示契约](doc/README.md)；中间帧、长名大字与菜单保持：[desktop_sidebar_motion_test.dart](../../test/desktop_sidebar_motion_test.dart)。
+
+编辑与采集路由的 `onExit` 使用 [共享离开保护](../core/presentation/unsaved_form.dart)，认证门控不受表单阻挡。启动层订阅 [本地日期](../core/presentation/current_date.dart)，恢复前台复核日期与真实营养查询；临时模式和遮罩改由 [display_state](../core/presentation/display_state.dart) 管理。回归：[frontend_navigation_test](../../test/frontend_navigation_test.dart)。

@@ -13,3 +13,5 @@ Web 预览开关：[ui_preview_config.dart](config/ui_preview_config.dart)，不
 业务请求：[network/AGENTS](network/AGENTS.md)；共享真实身份与头像：[account_identity.dart](presentation/account_identity.dart)，供 app/home/profile 复用。
 
 真实膳食：[nutrition/AGENTS](nutrition/AGENTS.md)；图片选择与恢复：[media/AGENTS](media/AGENTS.md)；跨页面 AI 同意：[privacy/AGENTS](privacy/AGENTS.md)。上述业务适配不放入 diet_ui，feature 不横向导入。
+
+共享离开保护与无栈返回：[unsaved_form.dart](presentation/unsaved_form.dart)；真实临时模式与遮罩：[display_state.dart](presentation/display_state.dart)；本地日期时钟：[current_date.dart](presentation/current_date.dart)。应用级回归见 [frontend_navigation_test](../../test/frontend_navigation_test.dart)、[日期](../../test/current_date_test.dart)与[显示隔离](../../test/display_state_test.dart)。

@@ -30,6 +30,7 @@ class _InstitutionMenuScreenState extends ConsumerState<InstitutionMenuScreen> {
     final state = ref.watch(demoProvider);
     final plan = demoPlans.firstWhere((p) => p.id == _selection);
     return AppPage(
+      demoLabel: '设计样例 · 演示数据',
       title: '今晚，食堂有什么',
       subtitle: '青禾园区 · 一号食堂 · 10月2日菜单与点餐演示',
       showBack: true,

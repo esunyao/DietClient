@@ -8,9 +8,10 @@ import '../session/session_controller.dart';
 import 'lossless_json.dart';
 
 class ApiFailure implements Exception {
-  const ApiFailure(this.message, {this.status});
+  const ApiFailure(this.message, {this.status, this.code});
   final String message;
   final int? status;
+  final int? code;
   @override
   String toString() => message;
 }
@@ -120,10 +121,16 @@ class ApiClient {
             envelope['code'] != 201 &&
             envelope['code'] != 202 &&
             envelope['code'] != 204) {
-          throw const ApiFailure('操作未完成，请重试');
+          final code = envelope['code'];
+          throw ApiFailure(
+            _failureMessage(code is int ? code : null),
+            status: response.statusCode,
+            code: code is int ? code : null,
+          );
         }
         return envelope['data'];
       } on DioException catch (e) {
+        if (!isCurrent()) throw const ApiFailure('会话已更换');
         final status = e.response?.statusCode;
         if (status == 401 && isCurrent()) {
           if (method.toUpperCase() == 'GET' && !retry && freshToken != null) {
@@ -137,10 +144,20 @@ class ApiClient {
           }
         }
         throw ApiFailure(
-          status == 401 ? '登录已失效，请重新登录' : '请求失败，请检查网络后重试',
+          status == null ? _transportMessage(e.type) : _failureMessage(status),
           status: status,
         );
-      } on ApiFailure {
+      } on ApiFailure catch (e) {
+        if (e.code == 401 && isCurrent()) {
+          if (method.toUpperCase() == 'GET' && !retry && freshToken != null) {
+            final current = await freshToken!(force: false);
+            return send(true, forceRefresh: current == usedToken);
+          }
+          final currentToken = currentAccessToken?.call();
+          if (currentToken == null || currentToken == usedToken) {
+            onUnauthorized();
+          }
+        }
         rethrow;
       } catch (_) {
         throw const ApiFailure('服务响应不可用，请重试');
@@ -150,3 +167,28 @@ class ApiClient {
     return send(false);
   }
 }
+
+// 只使用本地提示；服务端 message 可能包含内部细节或用户输入。
+String _failureMessage(int? code) => switch (code ?? 0) {
+  400 || 422 => '提交内容不符合要求，请检查填写的信息后重试',
+  401 => '登录已失效，请重新登录',
+  403 => '当前账号无权进行此操作，请确认登录账号或联系管理员',
+  404 => '内容不存在或已被删除，请刷新页面后重试',
+  408 || 504 => '服务响应超时，请稍后重试',
+  409 => '内容状态已变化或记录已存在，请刷新查看后再操作',
+  410 => '内容已过期，请刷新页面或重新创建',
+  413 => '提交的文件过大，请选择较小的图片后重试',
+  415 => '文件格式不受支持，请选择 JPEG、PNG 或 WebP 图片',
+  429 => '操作过于频繁，请稍后再试',
+  >= 500 && <= 599 => '服务暂时不可用，请稍后重试',
+  _ => '操作未完成，请稍后重试',
+};
+
+String _transportMessage(DioExceptionType type) => switch (type) {
+  DioExceptionType.cancel => '请求已取消',
+  DioExceptionType.connectionTimeout ||
+  DioExceptionType.sendTimeout ||
+  DioExceptionType.receiveTimeout => '网络请求超时，请检查网络后重试',
+  DioExceptionType.badCertificate => '无法验证服务的安全连接，请检查设备时间或联系管理员',
+  _ => '无法连接服务，请检查网络后重试',
+};

@@ -6,6 +6,7 @@ import 'package:diet_client/app/router.dart';
 import 'package:diet_client/core/config/auth_config.dart';
 import 'package:diet_client/core/session/session_controller.dart';
 import 'package:diet_client/demo/demo_store.dart';
+import 'package:diet_client/core/presentation/display_state.dart';
 import 'package:diet_client/features/auth/application/login_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -226,15 +227,15 @@ void main() {
     container.read(sessionProvider.notifier).establish(session());
     await tester.pumpAndSettle();
     container
-        .read(demoProvider.notifier)
+        .read(displayStateProvider.notifier)
         .selectMode(ExperienceMode.institution);
-    container.read(demoProvider.notifier).setPrivacyHidden(true);
+    container.read(displayStateProvider.notifier).setPrivacyHidden(true);
     await tester.pumpAndSettle();
     expect(find.text('个人信息已暂时隐藏'), findsOneWidget);
     container.read(sessionProvider.notifier).clear();
     await tester.pumpAndSettle();
     expect(find.text('欢迎回来'), findsOneWidget);
-    expect(container.read(demoProvider).privacyHidden, isFalse);
+    expect(container.read(displayStateProvider).privacyHidden, isFalse);
     await tester.pumpWidget(const SizedBox.shrink());
     container.dispose();
   });

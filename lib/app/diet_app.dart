@@ -7,10 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config/ui_preview_config.dart';
 import '../core/presentation/ui_preferences.dart';
+import '../core/presentation/current_date.dart';
+import '../core/presentation/display_state.dart';
+import '../core/nutrition/application/nutrition_providers.dart';
 import '../core/session/session_controller.dart';
 import '../demo/demo_store.dart';
 import 'router.dart';
 
+// ConsumerStatefulWidget 是 StatefulWidget 与 Riverpod 状态读取/监听能力 的结合体
 class DietApp extends ConsumerStatefulWidget {
   const DietApp({super.key});
   @override
@@ -19,8 +23,10 @@ class DietApp extends ConsumerStatefulWidget {
 
 class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
   @override
+  // 启动恢复与生命周期监听注册
   void initState() {
     super.initState();
+    // 监听应用的切前后台等系统级生命周期事件。
     WidgetsBinding.instance.addObserver(this);
     Future.microtask(() {
       if (mounted &&
@@ -40,15 +46,22 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      ref.read(currentDateProvider.notifier).refresh();
       ref.read(sessionProvider.notifier).checkExpiry();
+      if (ref.read(nativeNutritionEnabledProvider) &&
+          ref.read(sessionStatusProvider) == SessionStatus.ready &&
+          hasActiveSession(ref.read(sessionProvider))) {
+        refreshNutrition(ref);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(currentDateProvider);
     ref.listen(sessionProvider, (previous, next) {
       if (previous != null && next == null) {
-        ref.read(demoProvider.notifier).setPrivacyHidden(false);
+        ref.read(displayStateProvider.notifier).setPrivacyHidden(false);
       }
     });
     final signedIn = hasActiveSession(ref.watch(sessionProvider));
@@ -56,9 +69,15 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
     final prefs = ref.watch(uiPreferencesProvider);
     final hidden =
         (signedIn || uiPreview) &&
-        ref.watch(
-          demoProvider.select((s) => s.isInstitution && s.privacyHidden),
-        );
+        (uiPreview
+            ? ref.watch(
+                demoProvider.select((s) => s.isInstitution && s.privacyHidden),
+              )
+            : ref.watch(
+                displayStateProvider.select(
+                  (s) => s.isInstitution && s.privacyHidden,
+                ),
+              ));
     return MaterialApp.router(
       title: uiPreview ? '膳食健康 · UI预览' : '膳食健康',
       debugShowCheckedModeBanner: false,
@@ -119,9 +138,17 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
                                 const SizedBox(height: 24),
                                 AppButton(
                                   label: uiPreview ? '恢复演示预览' : '恢复显示',
-                                  onPressed: () => ref
-                                      .read(demoProvider.notifier)
-                                      .setPrivacyHidden(false),
+                                  onPressed: () {
+                                    if (uiPreview) {
+                                      ref
+                                          .read(demoProvider.notifier)
+                                          .setPrivacyHidden(false);
+                                    } else {
+                                      ref
+                                          .read(displayStateProvider.notifier)
+                                          .setPrivacyHidden(false);
+                                    }
+                                  },
                                 ),
                               ],
                             ),

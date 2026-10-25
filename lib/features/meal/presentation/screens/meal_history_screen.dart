@@ -9,13 +9,23 @@ import '../widgets/meal_widgets.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_meal_history_screen.dart';
 
-class MealHistoryScreen extends ConsumerStatefulWidget {
+class MealHistoryScreen extends ConsumerWidget {
   const MealHistoryScreen({super.key});
   @override
-  ConsumerState<MealHistoryScreen> createState() => _MealHistoryScreenState();
+  Widget build(BuildContext context, WidgetRef ref) =>
+      ref.watch(nativeNutritionEnabledProvider)
+      ? const NativeMealHistoryScreen()
+      : const _DemoMealHistoryScreen();
 }
 
-class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
+class _DemoMealHistoryScreen extends ConsumerStatefulWidget {
+  const _DemoMealHistoryScreen();
+  @override
+  ConsumerState<_DemoMealHistoryScreen> createState() =>
+      _MealHistoryScreenState();
+}
+
+class _MealHistoryScreenState extends ConsumerState<_DemoMealHistoryScreen> {
   DateTime _from = demoDate.subtract(const Duration(days: 6));
   DateTime _to = demoDate;
   DateTime _appliedFrom = demoDate.subtract(const Duration(days: 6));
@@ -76,9 +86,6 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (ref.watch(nativeNutritionEnabledProvider)) {
-      return const NativeMealHistoryScreen();
-    }
     final state = ref.watch(demoProvider);
     final meals =
         state.meals
@@ -99,6 +106,7 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
     }
     selected ??= visible.isEmpty ? null : visible.first;
     return AppPage(
+      demoLabel: '设计样例 · 演示数据',
       title: '饮食历史',
       showBack: true,
       children: [

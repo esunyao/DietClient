@@ -8,13 +8,23 @@ import 'package:diet_client/core/config/ui_preview_config.dart';
 
 import 'native_recognition_screen.dart';
 
-class RecognitionScreen extends ConsumerStatefulWidget {
+class RecognitionScreen extends ConsumerWidget {
   const RecognitionScreen({super.key});
   @override
-  ConsumerState<RecognitionScreen> createState() => _RecognitionScreenState();
+  Widget build(BuildContext context, WidgetRef ref) =>
+      ref.watch(nativeNutritionEnabledProvider)
+      ? const NativeRecognitionScreen()
+      : const _DemoRecognitionScreen();
 }
 
-class _RecognitionScreenState extends ConsumerState<RecognitionScreen> {
+class _DemoRecognitionScreen extends ConsumerStatefulWidget {
+  const _DemoRecognitionScreen();
+  @override
+  ConsumerState<_DemoRecognitionScreen> createState() =>
+      _RecognitionScreenState();
+}
+
+class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
   int _mode = 0;
   int _images = 1;
   MealType _type = MealType.lunch;
@@ -137,11 +147,9 @@ class _RecognitionScreenState extends ConsumerState<RecognitionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (ref.watch(nativeNutritionEnabledProvider)) {
-      return const NativeRecognitionScreen();
-    }
     final consent = ref.watch(demoProvider).aiConsent;
     return AppPage(
+      demoLabel: '设计样例 · 演示数据',
       title: '记录这一餐',
       showBack: true,
       footer: _mode == 0

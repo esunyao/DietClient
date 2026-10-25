@@ -304,11 +304,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(adapter.requests, hasLength(1));
       await tester.scrollUntilVisible(
-        find.text('保存失败，输入已保留，请重试。'),
+        find.text('服务暂时不可用，请稍后重试，输入已保留。'),
         -80,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text('保存失败，输入已保留，请重试。').hitTestable(), findsOneWidget);
+      expect(find.text('服务暂时不可用，请稍后重试，输入已保留。').hitTestable(), findsOneWidget);
       expect(tester.widget<TextFormField>(height).controller!.text, '168');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
@@ -339,7 +339,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(adapter.requests, hasLength(1));
       expect(find.text('58.4'), findsOneWidget);
-      expect(find.text('保存失败，输入已保留，请重试。'), findsOneWidget);
+      expect(find.text('服务暂时不可用，请稍后重试，输入已保留。'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       container.dispose();

@@ -7,3 +7,5 @@ Riverpod demoProvider 统一持有个人/机构体验、餐食、档案、配餐
 `demo_nutrition_targets.dart` 单独提供个人首页的本地只读 UI 目标1800 kcal/90g/250g/60g；不表示用户保存的目标，不写入网络、持久化或给出营养建议。
 
 [演示导航](../AGENTS.md) · [共享模型](../../../packages/diet_models/AGENTS.md) · [架构](../../../doc/architecture.md) · [根规范](../../../AGENTS.md)
+
+真实界面切换模式或隐藏个人内容不会修改本演示状态；真实临时显示选择由 core/presentation/display_state 管理，演示样例的切换与重置保持独立。

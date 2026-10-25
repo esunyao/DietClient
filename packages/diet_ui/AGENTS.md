@@ -20,3 +20,5 @@
 - 连续三态、预览拖动与无障碍：[app_navigation.dart](lib/src/widgets/app_navigation.dart)；[交互回归](../../test/navigation_interaction_test.dart)
 
 - [桌面侧栏](lib/src/widgets/app_side_navigation.dart)：96/216 覆盖式玻璃导航、统一可逆进度、单图标与固定文字槽位、悬停/键盘/菜单展开、短视口滚动；应用通过 `accountBuilder(double expansion)` 注入账户展示和路由回调。[运动回归](../../test/desktop_sidebar_motion_test.dart)；AppPageScope.uiPreview 默认 false，只传预览展示状态。
+
+AppPage 的 demoLabel 默认 null，演示页面显式传入标识；共享 UI 组件不推断数据来源。

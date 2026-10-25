@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/nutrition/application/nutrition_providers.dart';
+import '../../../../core/presentation/current_date.dart';
 
 String _date(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -31,7 +32,7 @@ class _TrendsState extends ConsumerState<NativeTrendsScreen> {
   @override
   Widget build(BuildContext context) {
     final days = [7, 30, 90][_range];
-    final end = DateUtils.dateOnly(DateTime.now());
+    final end = ref.watch(currentDateProvider);
     final dates = List.generate(
       days,
       (i) => DateTime(end.year, end.month, end.day - days + i + 1),

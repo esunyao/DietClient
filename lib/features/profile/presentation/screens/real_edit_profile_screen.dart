@@ -6,6 +6,9 @@ import '../../application/profile_state.dart';
 import '../../data/profile_api.dart';
 import '../../data/health_fields.dart';
 import '../../../../core/session/session_controller.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/unsaved_form.dart' show returnOrGo;
 import '../widgets/remote_state.dart';
 import '../widgets/unsaved_form.dart';
 
@@ -108,9 +111,21 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
           .accept(saved, _session)) {
         return;
       }
-      if (mounted) Navigator.pop(context);
-    } catch (_) {
-      if (mounted) setState(() => _error = '保存失败，输入已保留，请重试。');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            _session == ref.read(sessionEpochProvider) &&
+            ModalRoute.of(context)?.isCurrent != false) {
+          returnOrGo(context, AppRoutes.profile);
+        }
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = error is ApiFailure
+              ? '${error.message}，输入已保留。'
+              : '保存失败，输入已保留，请重试。',
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -133,6 +148,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
   @override
   Widget build(BuildContext context) => UnsavedForm(
     dirty: _dirty,
+    busy: _saving,
     child: AppPage(
       title: '编辑基础资料',
       showBack: true,

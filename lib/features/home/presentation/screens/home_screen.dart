@@ -23,6 +23,7 @@ class HomeScreen extends ConsumerWidget {
         '${demoDate.month}月${demoDate.day}日，星期${'一二三四五六日'[demoDate.weekday - 1]}';
     return LayoutBuilder(
       builder: (context, pageConstraints) => AppPage(
+        demoLabel: '设计样例 · 演示数据',
         titleStyle: institution
             ? null
             : AppTypography.pageTitle.copyWith(fontSize: 24),

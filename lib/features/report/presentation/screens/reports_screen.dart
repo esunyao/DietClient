@@ -110,6 +110,7 @@ class ReportsScreen extends ConsumerWidget {
           wide: wide,
         );
         return AppPage(
+          demoLabel: '设计样例 · 演示数据',
           title: wide ? latest.title : '报告中心',
           subtitle: wide ? '${latest.period} · 参考报告，未经专业审核' : null,
           showBack: true,

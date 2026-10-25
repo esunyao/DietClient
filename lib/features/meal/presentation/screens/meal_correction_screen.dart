@@ -3,17 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/core/presentation/app_routes.dart';
+import 'package:diet_client/core/presentation/unsaved_form.dart';
 import 'package:diet_client/demo/demo_store.dart';
 
 import '../widgets/meal_widgets.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_meal_correction_screen.dart';
 
-class MealCorrectionScreen extends ConsumerStatefulWidget {
+class MealCorrectionScreen extends ConsumerWidget {
   const MealCorrectionScreen({super.key, this.mealId});
   final String? mealId;
   @override
-  ConsumerState<MealCorrectionScreen> createState() =>
+  Widget build(BuildContext context, WidgetRef ref) =>
+      ref.watch(nativeNutritionEnabledProvider)
+      ? NativeMealCorrectionScreen(mealId: mealId)
+      : _DemoMealCorrectionScreen(mealId: mealId);
+}
+
+class _DemoMealCorrectionScreen extends ConsumerStatefulWidget {
+  const _DemoMealCorrectionScreen({this.mealId});
+  final String? mealId;
+  @override
+  ConsumerState<_DemoMealCorrectionScreen> createState() =>
       _MealCorrectionScreenState();
 }
 
@@ -30,7 +41,8 @@ class _FoodDraft {
   }
 }
 
-class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
+class _MealCorrectionScreenState
+    extends ConsumerState<_DemoMealCorrectionScreen> {
   final _form = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _notes = TextEditingController();
@@ -43,7 +55,6 @@ class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
   MealType? _type;
   late DateTime _date;
   bool _dirty = false;
-  bool _leaving = false;
   bool _saving = false;
   bool _foodChanged = false;
   bool _extraNutrients = false;
@@ -132,32 +143,6 @@ class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
     });
   }
 
-  Future<void> _confirmLeave() async {
-    final discard = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('放弃未保存的修改？'),
-        content: const Text('此编辑草稿尚未更新记录，放弃后不会保存。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('继续编辑'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('放弃修改'),
-          ),
-        ],
-      ),
-    );
-    if (discard == true && mounted) {
-      setState(() => _leaving = true);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.pop();
-      });
-    }
-  }
-
   void _applySample() {
     setState(() {
       _foods.firstWhere((f) => f.id == 'fish').grams.text = '120';
@@ -237,7 +222,7 @@ class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
     ref.read(demoProvider.notifier).saveMeal(meal);
     setState(() {
       _dirty = false;
-      _leaving = true;
+      _saving = false;
     });
     showDemoMessage(context, '已保存到内存演示，关联统计已更新；重启后重置');
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -245,7 +230,7 @@ class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
       if (_isNew) {
         context.pushReplacement(AppRoutes.mealDetail(id));
       } else {
-        context.pop();
+        returnOrGo(context, AppRoutes.mealDetail(id));
       }
     });
   }
@@ -346,11 +331,9 @@ class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (ref.watch(nativeNutritionEnabledProvider)) {
-      return NativeMealCorrectionScreen(mealId: widget.mealId);
-    }
     if (!_isNew && _original == null) {
       return const AppPage(
+        demoLabel: '设计样例 · 演示数据',
         title: '修正本餐',
         showBack: true,
         children: [InfoBanner(text: '记录不存在，无法编辑。请返回饮食历史。')],
@@ -368,14 +351,14 @@ class _MealCorrectionScreenState extends ConsumerState<MealCorrectionScreen> {
             todayEnergy != null
         ? todayEnergy - originalEnergy + energy
         : null;
-    return PopScope(
-      canPop: !_dirty || _leaving,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && !_leaving) _confirmLeave();
-      },
+    return UnsavedForm(
+      dirty: _dirty,
+      busy: _saving,
+      fallbackLocation: AppRoutes.mealHistory,
       child: Form(
         key: _form,
         child: AppPage(
+          demoLabel: '设计样例 · 演示数据',
           title: _isNew ? '手工记录' : '修正${_original!.type.label}',
           showBack: true,
           footer: Column(

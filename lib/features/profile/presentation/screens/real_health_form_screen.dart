@@ -6,6 +6,9 @@ import '../../data/profile_api.dart';
 import '../../data/health_fields.dart';
 import '../../application/profile_state.dart';
 import '../../../../core/session/session_controller.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/unsaved_form.dart' show returnOrGo;
 import '../widgets/health_kind.dart';
 import '../widgets/unsaved_form.dart';
 
@@ -110,9 +113,21 @@ class _RealHealthFormState extends ConsumerState<RealHealthFormScreen> {
       if (!mounted || !identical(api, ref.read(profileApiProvider))) return;
       ref.invalidate(healthRecordsProvider(widget.kind));
       setState(() => _dirty = false);
-      if (mounted) Navigator.pop(context);
-    } catch (_) {
-      if (mounted) setState(() => _error = '保存失败，输入已保留，请重试。');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            _session == ref.read(sessionEpochProvider) &&
+            ModalRoute.of(context)?.isCurrent != false) {
+          returnOrGo(context, AppRoutes.healthRecords);
+        }
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = error is ApiFailure
+              ? '${error.message}，输入已保留。'
+              : '保存失败，输入已保留，请重试。',
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -149,6 +164,7 @@ class _RealHealthFormState extends ConsumerState<RealHealthFormScreen> {
   @override
   Widget build(BuildContext context) => UnsavedForm(
     dirty: _dirty,
+    busy: _saving,
     child: AppPage(
       title:
           '${widget.record == null ? '添加' : '编辑'}${healthKinds[widget.kind] ?? '健康记录'}',

@@ -7,3 +7,5 @@
 - [独立上传](object_upload.dart)：预签名 PUT、所需请求头、取消和进度，不附业务 Bearer/Cookie。
 - [配置](../config/api_config.dart)；[资料接口](../../features/profile/data/profile_api.dart)。
 - [膳食接口与共享查询](../nutrition/AGENTS.md)；[会话续期](../session/AGENTS.md)。
+
+- [错误回归](../../../test/api_error_test.dart)：HTTP/信封的本地提示、状态保留、网络取消、401 与账户隔离。

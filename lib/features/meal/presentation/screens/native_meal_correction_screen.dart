@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/unsaved_form.dart';
 import '../../../../core/session/session_controller.dart';
 import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../application/meal_edit.dart';
@@ -68,7 +69,7 @@ class _EditState extends ConsumerState<_MealEditForm> {
   late final List<MealItemEdit> _items = _original.items
       .map((i) => MealItemEdit(original: i))
       .toList();
-  bool _dirty = false, _itemsChanged = false, _busy = false, _leaving = false;
+  bool _dirty = false, _itemsChanged = false, _busy = false;
   String? _error;
   bool get _current =>
       mounted && ref.read(sessionEpochProvider) == widget.epoch;
@@ -99,32 +100,6 @@ class _EditState extends ConsumerState<_MealEditForm> {
       _date = DateTime(date.year, date.month, date.day, time.hour, time.minute);
       _dirty = true;
     });
-  }
-
-  Future<void> _leave() async {
-    if (_busy) return;
-    final leave = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('放弃未保存的修改？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('继续编辑'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('放弃修改'),
-          ),
-        ],
-      ),
-    );
-    if (leave == true && mounted) {
-      setState(() => _leaving = true);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.pop();
-      });
-    }
   }
 
   Future<void> _save() async {
@@ -171,10 +146,11 @@ class _EditState extends ConsumerState<_MealEditForm> {
       ref.read(mealProvider(saved.mealId));
       setState(() {
         _dirty = false;
-        _leaving = true;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_current) context.pop();
+        if (_current && ModalRoute.of(context)?.isCurrent != false) {
+          returnOrGo(context, AppRoutes.mealDetail(saved.mealId));
+        }
       });
     } catch (e) {
       if (_current) setState(() => _error = '$e');
@@ -264,11 +240,10 @@ class _EditState extends ConsumerState<_MealEditForm> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: (!_dirty && !_busy) || _leaving,
-    onPopInvokedWithResult: (didPop, result) {
-      if (!didPop && !_leaving) _leave();
-    },
+  Widget build(BuildContext context) => UnsavedForm(
+    dirty: _dirty,
+    busy: _busy,
+    fallbackLocation: AppRoutes.mealDetail(_original.mealId),
     child: AppPage(
       demoLabel: null,
       title: '修正${mealTypes[_type] ?? _type}',

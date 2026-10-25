@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/presentation/ui_preferences.dart';
+import '../../../../core/presentation/display_state.dart';
 import '../../../../demo/demo_store.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import '../widgets/glass_choice.dart';
@@ -11,7 +12,7 @@ class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   Future<void> _reset(BuildContext context, WidgetRef ref) async {
-    final native = ref.read(nativeNutritionEnabledProvider);
+    final native = !ref.read(uiPreviewProvider);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -34,7 +35,7 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    if (!native) ref.read(demoProvider.notifier).reset();
+    if (ref.read(uiPreviewProvider)) ref.read(demoProvider.notifier).reset();
     await ref.read(uiPreferencesProvider.notifier).reset();
     if (!context.mounted) return;
     final result = ref.read(uiPreferencesProvider);
@@ -46,10 +47,13 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final native = ref.watch(nativeNutritionEnabledProvider);
+    final native = !ref.watch(uiPreviewProvider);
     final prefs = ref.watch(uiPreferencesProvider);
     final controller = ref.read(uiPreferencesProvider.notifier);
-    final demo = ref.watch(demoProvider);
+    final preview = ref.watch(uiPreviewProvider);
+    final institution = preview
+        ? ref.watch(demoProvider.select((s) => s.isInstitution))
+        : ref.watch(displayStateProvider.select((s) => s.isInstitution));
     final wide = MediaQuery.sizeOf(context).width >= 1024;
     final glass = AppCard(
       radius: wide ? 16 : 20,
@@ -141,15 +145,16 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           AppSegmented(
             labels: const ['个人', '机构内个人'],
-            selected: demo.isInstitution ? 1 : 0,
+            selected: institution ? 1 : 0,
             onChanged: (index) {
-              ref
-                  .read(demoProvider.notifier)
-                  .selectMode(
-                    index == 0
-                        ? ExperienceMode.personal
-                        : ExperienceMode.institution,
-                  );
+              final mode = index == 0
+                  ? ExperienceMode.personal
+                  : ExperienceMode.institution;
+              if (preview) {
+                ref.read(demoProvider.notifier).selectMode(mode);
+              } else {
+                ref.read(displayStateProvider.notifier).selectMode(mode);
+              }
               showDemoMessage(
                 context,
                 native ? '已切换显示模式，不代表机构身份或机构授权' : '已切换演示模式，内存数据恢复初始样例',
@@ -163,14 +168,21 @@ class SettingsScreen extends ConsumerWidget {
                 : '模式由你选择。窗口大小只改变布局；机构模式依然只显示本人信息。切换后内存数据恢复初始样例。',
             style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.7),
           ),
-          if (demo.isInstitution) ...[
+          if (institution) ...[
             const SizedBox(height: 16),
             AppButton(
               label: '暂时隐藏个人信息',
               icon: AppIcons.shield,
               secondary: true,
-              onPressed: () =>
-                  ref.read(demoProvider.notifier).setPrivacyHidden(true),
+              onPressed: () {
+                if (preview) {
+                  ref.read(demoProvider.notifier).setPrivacyHidden(true);
+                } else {
+                  ref
+                      .read(displayStateProvider.notifier)
+                      .setPrivacyHidden(true);
+                }
+              },
             ),
           ],
         ],
@@ -202,6 +214,7 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
     return AppPage(
+      demoLabel: preview ? '设计样例 · 演示数据' : null,
       title: native ? '外观设置' : '外观与演示设置',
       showBack: true,
       children: [
@@ -222,7 +235,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
         Text(
           native
-              ? '外观偏好保存在本机；模式选择和信息遮罩为临时显示，不修改账户、登录会话或授权。'
+              ? '${ref.watch(persistentUiPreferencesProvider) ? '外观偏好保存在本机' : '外观偏好仅保留在本次会话'}；模式选择和信息遮罩为临时显示，不修改账户、登录会话或授权。'
               : '外观偏好与业务样例仅保留在内存，不修改真实账户、登录会话或授权。',
           style: TextStyle(color: AppColors.muted, fontSize: 12, height: 1.7),
         ),

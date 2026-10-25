@@ -38,7 +38,7 @@ class AppPage extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.eyebrow,
-    this.demoLabel = '设计样例 · 演示数据',
+    this.demoLabel,
     required this.children,
     this.trailing,
     this.showBack = false,

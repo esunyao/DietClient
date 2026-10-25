@@ -110,6 +110,7 @@ class MealPlanScreen extends ConsumerWidget {
           ],
         );
         return AppPage(
+          demoLabel: '设计样例 · 演示数据',
           title: wide ? '下一餐，选一个合适的搭配' : '下一餐怎么吃',
           eyebrow: wide ? null : '为今天的晚餐选一个方案',
           subtitle: wide

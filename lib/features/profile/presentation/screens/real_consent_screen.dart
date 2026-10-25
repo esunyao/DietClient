@@ -6,6 +6,7 @@ import 'package:diet_ui/diet_ui.dart';
 import '../../application/profile_state.dart';
 import '../../data/profile_api.dart';
 import '../../../../core/session/session_controller.dart';
+import '../../../../core/network/api_client.dart';
 import '../widgets/remote_state.dart';
 
 class RealConsentScreen extends ConsumerStatefulWidget {
@@ -54,8 +55,14 @@ class _RealConsentState extends ConsumerState<RealConsentScreen> {
       if (mounted && identical(api, ref.read(profileApiProvider))) {
         ref.invalidate(consentsProvider);
       }
-    } catch (_) {
-      if (mounted) setState(() => _error = '保存失败，授权状态未改变，请重试。');
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = error is ApiFailure
+              ? error.message
+              : '保存未确认，请刷新授权状态后重试。',
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

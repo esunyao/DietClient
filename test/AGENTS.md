@@ -34,3 +34,5 @@
 协议包回归仍从各包导航进入；这些离线回归不证明真实服务、邮件投递、对象存储或真机表现。
 
 [Android 说明](../android/doc/README.md) 提供 release 构建、R8 mapping 核对与真机验收入口。上述存储替身回归不覆盖 Java/Kotlin 混淆结果。
+
+前端审查修正回归：[frontend_navigation_test.dart](frontend_navigation_test.dart) 覆盖真实侧栏离开、保存中返回、无栈操作、认证失效及隔夜恢复；[current_date_test.dart](current_date_test.dart) 覆盖本地午夜与时钟变化；[display_state_test.dart](display_state_test.dart) 确认真实显示与演示隔离；[entry_gateway_test.dart](entry_gateway_test.dart) 确认真实入口不初始化演示状态；[api_error_test.dart](api_error_test.dart) 覆盖安全错误映射；[native_layout_test.dart](native_layout_test.dart) 覆盖真实采集、修正、首页的窄屏、大字和键盘。

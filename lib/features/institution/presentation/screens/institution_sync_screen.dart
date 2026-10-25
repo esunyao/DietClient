@@ -32,6 +32,7 @@ class _InstitutionSyncScreenState extends ConsumerState<InstitutionSyncScreen> {
         state.restrictionChecked &&
         !state.institutionConfirmed;
     return AppPage(
+      demoLabel: '设计样例 · 演示数据',
       title: '核对这份机构餐食',
       subtitle: '青禾园区 · 一号食堂 · 同步与实际摄入确认演示',
       showBack: true,

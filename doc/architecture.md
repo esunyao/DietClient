@@ -15,3 +15,5 @@ Android/Windows 餐食与营养功能由 core/nutrition 的契约模型、API �
 导航：[lib](../lib/AGENTS.md) → [app](../lib/app/AGENTS.md)、[core](../lib/core/AGENTS.md)、[demo](../lib/demo/AGENTS.md)、[features](../lib/features/AGENTS.md)、[packages](../packages/AGENTS.md)。
 
 Web 构建可显式启用默认关闭的 WEB_UI_PREVIEW；core/config 提供纯平台与标志判定，app 负责路由例外、未登录标识和隐藏退出。预览与会话完全独立，不构造认证网关，非 Web 平台忽略此开关。
+
+真实临时显示状态（模式／遮罩）、本地日期与共享离开保护位于 core/presentation；演示业务仍独立位于 demo。可编辑路由共用离开检查，保存中阻止离开，认证失效优先。真实／演示页面在入口选择实现后再创建各自控制器。AppPage 默认不标记数据来源，演示页面显式声明。

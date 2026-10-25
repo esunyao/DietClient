@@ -9,3 +9,5 @@ Android/Windows 使用 SharedPreferencesAsync 的单个版本化外观记录，�
 回归见 [preferences_functional_test.dart](../../../../test/preferences_functional_test.dart)，覆盖重启恢复、未知值、失败恢复与重置隔离；实际设备持久化和视觉仍需验收。
 
 [导航](../AGENTS.md) · [根规范](../../../../AGENTS.md)
+
+真实模式与隐私遮罩独立于演示业务，仅在内存中保留；切换真实模式不会重置样例记录或授权。真实设置不显示演示标识，Web 预览仍显式标记演示。

@@ -6,7 +6,10 @@ import 'package:diet_ui/diet_ui.dart';
 import '../../../../core/presentation/account_identity.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import '../../../../core/presentation/app_routes.dart';
-import '../../../../demo/demo_store.dart';
+
+import 'package:diet_models/diet_models.dart';
+
+import '../../../../core/presentation/display_state.dart';
 import '../../application/profile_state.dart';
 import '../../data/profile_api.dart';
 import '../../data/health_fields.dart';
@@ -87,7 +90,9 @@ class RealProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final native = ref.watch(nativeNutritionEnabledProvider);
     final wide = MediaQuery.sizeOf(context).width >= 1024;
-    final institution = ref.watch(demoProvider.select((s) => s.isInstitution));
+    final institution = ref.watch(
+      displayStateProvider.select((s) => s.isInstitution),
+    );
     final data =
         ref.watch(profileProvider).asData?.value ?? <String, dynamic>{};
     final account =

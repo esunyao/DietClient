@@ -1,10 +1,12 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/config/ui_preview_config.dart';
 import '../core/presentation/app_routes.dart';
+import '../core/presentation/unsaved_form.dart';
 import '../core/session/session_controller.dart';
 import '../features/home/presentation/screens/home_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
@@ -76,6 +78,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final refresh = _RouterRefresh();
   ref.listen(sessionProvider, (_, next) => refresh.refresh());
   ref.listen(sessionStatusProvider, (_, next) => refresh.refresh());
+  Future<bool> canLeave(BuildContext context, GoRouterState state) async {
+    // 会话失效必须立即离开业务页，表单保护不能阻止认证门控。
+    if (!uiPreview &&
+        (!hasActiveSession(ref.read(sessionProvider)) ||
+            ref.read(sessionStatusProvider) != SessionStatus.ready)) {
+      return true;
+    }
+    return ref.read(routeLeaveRegistryProvider).confirm();
+  }
+
   final router = GoRouter(
     initialLocation: uiPreview ? AppRoutes.home : AppRoutes.login,
     refreshListenable: refresh,
@@ -134,6 +146,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: AppRoutes.capture,
+            onExit: canLeave,
             builder: (context, state) => const RecognitionScreen(),
           ),
           GoRoute(
@@ -166,6 +179,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: AppRoutes.manualMeal,
+            onExit: canLeave,
             builder: (context, state) => const MealCorrectionScreen(),
           ),
           GoRoute(
@@ -179,19 +193,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/meals/:id/correction',
+            onExit: canLeave,
             builder: (context, state) =>
                 MealCorrectionScreen(mealId: state.pathParameters['id']!),
           ),
           GoRoute(
             path: AppRoutes.editProfile,
+            onExit: canLeave,
             builder: (context, state) => const EditProfileScreen(),
           ),
           GoRoute(
             path: AppRoutes.healthRecords,
+            onExit: canLeave,
             builder: (context, state) => const HealthRecordsScreen(),
           ),
           GoRoute(
             path: '/profile/health-records/:kind',
+            onExit: canLeave,
             builder: (context, state) =>
                 HealthRecordFormScreen(kind: state.pathParameters['kind']!),
           ),
@@ -205,7 +223,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     errorBuilder: (context, state) => AppPage(
       title: '没有找到这个页面',
       children: [
-        const InfoBanner(text: '链接可能已失效，可以回到首页继续演示。'),
+        InfoBanner(
+          text: uiPreview ? '链接可能已失效，可以回到首页继续预览。' : '链接可能已失效，可以回到首页继续使用。',
+        ),
         AppButton(label: '回到首页', onPressed: () => context.go(AppRoutes.home)),
       ],
     ),

@@ -91,7 +91,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
               : '操作失败，请检查网络后重试',
         );
         if (error is ApiFailure &&
-            error.status == 409 &&
+            (error.status == 409 || error.code == 409) &&
             state.session != null) {
           try {
             final fresh = await _api.captureSession(

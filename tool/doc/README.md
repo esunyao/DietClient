@@ -31,3 +31,5 @@ Android 构建由用户通过现有 Flutter 入口单独执行，命令见 [Andr
 Android 为优先编译目标，Web/Windows 次之；iOS 不在本轮范围。基础编译不替代用户的功能、视觉或性能验收。
 
 [工具导航](../AGENTS.md) · [运行说明](../../README.md) · [根规范](../../AGENTS.md)
+
+Bash 脚本在 `.gitattributes` 中固定 `*.sh text eol=lf`，仓库内 `tool/*.sh` 使用 LF，避免 Windows 检出后的 CRLF 被 Bash 当成命令字符。若终端实际进入 Linux 环境而无法执行 Windows Flutter，改用既有 PowerShell 入口调用 Windows SDK。

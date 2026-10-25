@@ -37,6 +37,7 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
     return AppPage(
+      demoLabel: '设计样例 · 演示数据',
       title: wide ? '你的资料与服务' : '我的',
       eyebrow: wide ? null : '资料与健康管理',
       subtitle: wide ? '个人档案与机构服务分开管理，健康资料按用途授权。' : null,

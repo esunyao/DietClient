@@ -10,3 +10,7 @@
 - [公共组件](../../../packages/diet_ui/lib/diet_ui.dart)
 
 本文件仅导航，规范以根 AGENTS 为准。
+
+公开入口在创建状态前选择真实或私有演示采集页；入口隔离回归见 [entry_gateway_test.dart](../../../test/entry_gateway_test.dart)。
+
+真实采集页借助 [共享离开保护](../../core/presentation/unsaved_form.dart) 在有本地待上传图片或备注时确认离开，处理中阻止离开；真实布局及提交失败保留输入见 [native_layout_test](../../../test/native_layout_test.dart)。

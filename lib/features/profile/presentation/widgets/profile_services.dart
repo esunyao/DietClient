@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/display_state.dart';
+import '../../../../core/config/ui_preview_config.dart';
 import '../../../../demo/demo_store.dart';
 import 'health_kind.dart';
 
@@ -89,8 +91,13 @@ class ProfilePrivacyCard extends ConsumerWidget {
           label: '暂时隐藏个人信息',
           icon: AppIcons.shield,
           secondary: true,
-          onPressed: () =>
-              ref.read(demoProvider.notifier).setPrivacyHidden(true),
+          onPressed: () {
+            if (ref.read(uiPreviewProvider)) {
+              ref.read(demoProvider.notifier).setPrivacyHidden(true);
+            } else {
+              ref.read(displayStateProvider.notifier).setPrivacyHidden(true);
+            }
+          },
         ),
       ],
     ),

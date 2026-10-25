@@ -48,6 +48,7 @@ class AiNutritionConsentScreen extends ConsumerWidget {
     if (!ref.watch(uiPreviewProvider)) return const RealConsentScreen();
     final enabled = ref.watch(demoProvider.select((s) => s.aiConsent));
     return AppPage(
+      demoLabel: '设计样例 · 演示数据',
       title: 'AI 数据与隐私',
       subtitle: '用途说明与开关预览',
       showBack: true,

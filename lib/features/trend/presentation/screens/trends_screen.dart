@@ -156,6 +156,7 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
           onTap: () => context.push(AppRoutes.reports),
         );
         return AppPage(
+          demoLabel: '设计样例 · 演示数据',
           title: wide ? '看记录中的营养变化' : '营养趋势',
           eyebrow: wide ? null : '看记录中的变化',
           subtitle: wide ? '$period · 只比较有已知数值的记录' : null,

@@ -8,16 +8,26 @@ import '../widgets/unsaved_form.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'real_health_form_screen.dart';
 
-class HealthRecordFormScreen extends ConsumerStatefulWidget {
+class HealthRecordFormScreen extends ConsumerWidget {
   const HealthRecordFormScreen({super.key, required this.kind});
   final String kind;
   @override
-  ConsumerState<HealthRecordFormScreen> createState() =>
+  Widget build(BuildContext context, WidgetRef ref) =>
+      ref.watch(uiPreviewProvider)
+      ? _DemoHealthRecordFormScreen(kind: kind)
+      : RealHealthFormScreen(kind: kind);
+}
+
+class _DemoHealthRecordFormScreen extends ConsumerStatefulWidget {
+  const _DemoHealthRecordFormScreen({required this.kind});
+  final String kind;
+  @override
+  ConsumerState<_DemoHealthRecordFormScreen> createState() =>
       _HealthRecordFormScreenState();
 }
 
 class _HealthRecordFormScreenState
-    extends ConsumerState<HealthRecordFormScreen> {
+    extends ConsumerState<_DemoHealthRecordFormScreen> {
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _value = TextEditingController();
@@ -106,12 +116,10 @@ class _HealthRecordFormScreenState
 
   @override
   Widget build(BuildContext context) {
-    if (!ref.watch(uiPreviewProvider)) {
-      return RealHealthFormScreen(kind: widget.kind);
-    }
     final label = healthKinds[widget.kind];
     if (label == null) {
       return const AppPage(
+        demoLabel: '设计样例 · 演示数据',
         title: '记录类别不可用',
         showBack: true,
         children: [InfoBanner(text: '请返回健康档案，选择支持的记录类别。')],
@@ -121,6 +129,7 @@ class _HealthRecordFormScreenState
     return UnsavedForm(
       dirty: _dirty,
       child: AppPage(
+        demoLabel: '设计样例 · 演示数据',
         title: '添加$label',
         subtitle: '新记录为空白，仅保留至本次演示',
         showBack: true,

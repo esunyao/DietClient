@@ -21,6 +21,7 @@ class MealDetailScreen extends ConsumerWidget {
     final meal = ref.watch(demoProvider).meal(mealId);
     if (meal == null) {
       return const AppPage(
+        demoLabel: '设计样例 · 演示数据',
         title: '餐食详情',
         showBack: true,
         children: [InfoBanner(text: '这条记录不存在，可能已在演示中删除。')],
@@ -36,6 +37,7 @@ class MealDetailScreen extends ConsumerWidget {
         pageWidth - AppLayout.pageGutter(pageWidth) * 2 >=
         AppLayout.columnsMinWidth;
     return AppPage(
+      demoLabel: '设计样例 · 演示数据',
       title: '${meal.type.label}营养',
       showBack: true,
       footer: wide
