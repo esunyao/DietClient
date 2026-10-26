@@ -68,6 +68,8 @@ class CaptureSession {
   final DateTime expiresAt, createdAt, updatedAt;
   final DateTime? analysisRequestedAt;
   final List<CaptureImage> images;
+  // Signature lifetime starts when this response is received, not on each view.
+  final DateTime previewReceivedAt = DateTime.now().toUtc();
 }
 
 class CaptureDraft {
