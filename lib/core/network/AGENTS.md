@@ -5,6 +5,7 @@
 - [API 客户端](api_client.dart)：当前会话 Bearer、固定相对路径、错误与会话隔离。
 - [无损 ID 解码](lossless_json.dart)：响应先接收原文，再保护健康、同意、餐食、条目与图片 Long ID。
 - [独立上传](object_upload.dart)：预签名 PUT、所需请求头、取消和进度，不附业务 Bearer/Cookie。
+- [独立照片读取](object_image_reader.dart)：无认证对象 GET、安全地址、禁重定向、流式 10 MiB 限制与本地错误；[回归](../../../test/object_image_reader_test.dart)。
 - [配置](../config/api_config.dart)；[资料接口](../../features/profile/data/profile_api.dart)。
 - [膳食接口与共享查询](../nutrition/AGENTS.md)；[会话续期](../session/AGENTS.md)。
 

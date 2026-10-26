@@ -9,3 +9,5 @@
 [网络导航](../AGENTS.md) · [根规范](../../../../AGENTS.md)
 
 HTTP 和业务信封错误使用本地中文提示，区分输入校验、权限、资源缺失、状态冲突、文件限制、频率限制和服务不可用；超时、取消与连接失败单独提示。ApiFailure 保留 HTTP status，业务信封失败另存 code，不展示服务端 message。业务 code 401 与 HTTP 401 使用相同会话保护：GET 至多续期重试一次，写入不重放，迟到的旧令牌拒绝不清除新令牌。
+
+历史照片 GET 使用 ObjectImageReader 独立 Dio，不接收业务 Dio、Bearer、Cookie 或拦截器。地址允许 HTTPS 与显式 loopback HTTP，拒绝相对地址、用户信息和 fragment；禁自动重定向。只接收 JPEG、PNG、WebP，声明长度与实际流均限制 10 MiB，超限、离页或换号时取消传输。错误仅展示本地中文提示，401/403 保留状态供照片查询层合并刷新签名，不清除业务登录。
