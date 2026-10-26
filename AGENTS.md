@@ -65,6 +65,7 @@
 | 装配、路由和导航外壳 | [app/AGENTS](lib/app/AGENTS.md) |
 | 配置、会话、路径和 UI 偏好 | [core/AGENTS](lib/core/AGENTS.md) |
 | 共享业务演示状态 | [demo/AGENTS](lib/demo/AGENTS.md) |
+| 历史照片、双视图与相册 | [meal/AGENTS](lib/features/meal/AGENTS.md) → [共享照片查询](lib/core/nutrition/AGENTS.md)；显示偏好见 [settings/AGENTS](lib/features/settings/AGENTS.md) |
 | 功能页面 | [features/AGENTS](lib/features/AGENTS.md) → feature AGENTS → doc 与源码 |
 | 共享模型、设计系统和登录包 | [packages/AGENTS](packages/AGENTS.md) |
 | 保留既有真实登录 | [登录说明](doc/authentication.md) → [auth/AGENTS](lib/features/auth/AGENTS.md) |
@@ -85,7 +86,7 @@
 
 ## 验证与提交
 
-验证入口见 [tool/AGENTS](tool/AGENTS.md) 与 [tool/verify.sh](tool/verify.sh)，不把完整脚本矩阵当作本轮默认任务。统一做基础格式、一次静态分析、受影响的聚焦回归和必要的一次 Web 或 Windows 编译；不建立逐页 golden 或全平台矩阵。本轮历史照片增量由 AI 完成 Android debug、Windows debug 构建及已连接 ADB 真机的只读浏览验证；明确区分离线测试、编译和真实照片链路结果。iOS 不纳入本轮。
+验证入口见 [tool/AGENTS](tool/AGENTS.md) 与 [tool/verify.sh](tool/verify.sh)，不把完整脚本矩阵当作本轮默认任务。统一做基础格式、一次静态分析、受影响的聚焦回归和必要的一次 Web 或 Windows 编译；不建立逐页 golden 或全平台矩阵。本轮历史照片增量的后续测试、Android/Windows 构建与 ADB 真机验收已由用户接手；AI 停止继续验证，只记录接手前已完成、失败和中止的结果。明确区分离线测试、编译和真实照片链路结果。iOS 不纳入本轮。
 
 只用 `tool/` 的既有 SDK 与缓存入口，缓存限于本仓库。SDK 由用户自行管理，不自动下载、更换或升级。分别报告实际执行、失败与跳过的检查；功能、视觉和性能由用户验收，编译成功不等于视觉验收，离线测试或公开探测也不能替代真实登录验证。目标规格见 [UI 规格](doc/ui-spec.md)，实际命令与结果在 [README](README.md) 和交付说明记录。
 

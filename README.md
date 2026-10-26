@@ -2,7 +2,7 @@
 
 基于新版绿色 C/B 端样板的 Flutter 客户端。四个入口为首页、配餐、趋势、我的；个人/机构内个人模式在设置中明确选择，宽度只控制布局。
 
-Android/Windows 在「我的」真实资料基础上接入采集草稿、图片上传与识别提交、饮食历史、餐食修正删除、首页及趋势，并扩展注册、邮件重发、会话续期和本机外观设置。姓名只读；营养目标未配置时显示未设置。无公开接口的配餐生成、报告生成、机构菜单同步和独立手工新建显示暂未支持，不模拟真实保存。Web 新功能留到下轮，保留现有登录、资料和独立零请求 UI 预览。
+Android/Windows 在「我的」真实资料基础上接入采集草稿、图片上传与识别提交、饮食历史双视图、餐食照片与全屏相册、餐食修正删除、首页及趋势，并扩展注册、邮件重发、会话续期和本机外观设置。姓名只读；营养目标未配置时显示未设置。无公开接口的配餐生成、报告生成、机构菜单同步和独立手工新建显示暂未支持，不模拟真实保存。Web 新功能留到下轮，保留现有登录、资料和独立零请求 UI 预览。
 
 使用 Flutter 3.47.7 / Dart 3.13.5。依赖见 [pubspec](pubspec.yaml)，Pub workspace 包含 diet_oidc、diet_auth、diet_models 与 diet_ui。Android 优先，Windows 同步，本轮不验收 Web 新能力，SDK 由用户自行管理。
 
@@ -13,7 +13,7 @@ bash tool/flutter.sh run -d chrome --web-port 7357 --dart-define-from-file=.env
 bash tool/verify.sh
 ```
 
-verify 执行格式、静态检查、离线测试及 Web/Windows 示例编译；Android 通过 Flutter 单独构建。本轮不默认执行全矩阵，仅做格式、静态检查、相关回归和一次 Windows debug 编译。Android 构建、真实服务、真机、视觉与性能交给用户，不因验证下载或更换 SDK。编译使用 .env.example 占位配置；离线测试或编译不代表真实登录或端到端验收。项目缓存与临时文件隔离在仓库内。
+verify 执行格式、静态检查、离线测试及 Web/Windows 示例编译；Android 通过 Flutter 单独构建。本轮历史照片增量已执行格式、静态检查和回归；后续测试、Android/Windows 构建与 ADB 真机验收由用户接手。实际完成和中止项见本页验证记录。仅编译检查可使用 .env.example 占位配置；离线测试或编译不代表真实登录或端到端验收。项目缓存与临时文件隔离在仓库内。
 
 登录配置使用被忽略的本地 .env，经 --dart-define-from-file 注入；公开 [.env.example](.env.example) 只保留不可连接占位符与空 client ID。Web 回调为同源静态页面，本地固定 http://localhost:7357/auth-callback.html，通过 AUTHENTIK_WEB_REDIRECT_URI 配置。Web 登录关闭弹窗后可在主页面取消，或等待五分钟超时。配置与平台限制详见 [登录说明](doc/authentication.md)。
 
@@ -268,3 +268,24 @@ Android、真实服务、真机视觉和性能未验证；Windows 编译不代�
 统一账户名称优先使用去除首尾空白后的 displayName；缺失、null、空字符串或纯空白时显示 username，两者均为空时显示“姓名未提供”。我的页面和侧栏共用该规则，不修改数据库和后端。
 
 验证：新增 10 项账户名称回归，与 profile API、profile widget、侧栏运动回归合计 37 项通过；两份 Dart 文件格式检查通过；`tool/flutter.ps1 analyze --no-pub` 无问题；Windows debug 使用 `.env.example` 编译成功。未进行真实客户端视觉验收。
+
+
+## 历史餐食照片与双视图（2026-10-26）
+
+Android/Windows 已增加紧凑列表与照片卡片，默认紧凑列表，在应用设置的“饮食历史显示方式”中切换并保存在本机。点击餐食文字进入详情，点击真实照片进入独立全屏相册；详情支持多图，相册支持翻页、缩放、双击复位以及键盘和系统返回。查询组合现有餐食详情与采集会话接口，仅显示 confirmed 图片。
+
+对象图片通过独立无认证 Dio 读取；签名过期或 401/403 时合并刷新一次，其他失败显式重试。图片和签名仅驻留当前账户的活动内存，离页或换号释放，不使用示例食物补图。复用既有依赖与 Flutter 控件，未新增依赖或升级锁定版本；Web 保持原有业务隔离。
+
+| 检查 | 用户接手前的实际结果 |
+|---|---|
+| 照片专项回归 | 最终 58 项通过，包含慢签名刷新、重试上限、换号清理和快速滑动 |
+| 完整 Flutter 测试 | 283 项通过；随后只清理两处测试风格提示，未改变测试行为 |
+| Dart 格式 | tool/dart.sh format --output=none --set-exit-if-changed lib packages test，161 文件、0 处变更 |
+| 静态分析 | tool/flutter.sh analyze --no-pub，No issues found；首次两处测试风格提示已清理 |
+| Android debug | 已启动使用本地 .env 的构建，用户接手测试后主动中止；没有可报告的成功构建结果 |
+| Windows debug | 本轮未执行，由用户接手 |
+| 当前构建的 ADB 真机验收 | 未执行；未安装、卸载或清除设备数据，由用户接手 |
+
+先前专项检查暴露的页面高度约束、键盘焦点与重试点击问题已修复。追加集成用例实际复现了慢签名刷新导致重试预算重置、快速首帧滑动被缩放手势截获的问题，修复后上述专项及完整测试通过。离线测试不代表真实后端照片或签名可达；真实照片、两布局切换、相册返回和应用重启恢复仍由用户验收。
+
+测试入口见 [照片回归导航](test/AGENTS.md)、[构建工具](tool/AGENTS.md)；运行日志仅保存在忽略的 .local/meal-photo-*.log。全部变更在 dev/feature 当前分支完成，没有创建工作树、切换分支或推送。

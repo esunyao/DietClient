@@ -34,3 +34,7 @@ diet_oidc 复用 openid_client 的 PKCE Flow 与令牌模型，使用受约束 h
 # 导航运动泡补充
 
 窄屏导航在既有 GlassBackdrop/GlassSurface 内使用 liquid_glass_easy 5.0.0 公共 LiquidGlassMotionPill，包内薄封装位置、按住预览与抬起/取消吸附；第三方类型不透出 diet_ui，不引用库内部实现。标准、关闭、Web 和无障碍回退保留相同手势，增强仅在能力与 shader 就绪后启用；减少动画时直接定位并关闭弹性伸展。
+
+## 餐食照片
+
+历史照片复用现有 Dio、Riverpod 与 go_router；对象读取由 [network](../lib/core/network/AGENTS.md) 薄封装，餐食到采集图片的查询由 [nutrition](../lib/core/nutrition/AGENTS.md) 组合。照片显示使用 Flutter Image、MemoryImage 与 ResizeImage，翻页和缩放使用 PageView、InteractiveViewer，不增加图片磁盘缓存库或原生桥接。布局选择继续使用 SharedPreferencesAsync，照片和签名地址不写入普通偏好。
