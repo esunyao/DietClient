@@ -7,6 +7,7 @@ import 'package:diet_client/core/nutrition/application/nutrition_providers.dart'
 import 'package:diet_client/core/presentation/app_routes.dart';
 import 'package:diet_client/core/presentation/ui_preferences.dart';
 import 'package:diet_client/core/session/session_controller.dart';
+import 'package:diet_client/features/meal/presentation/screens/native_meal_detail_screen.dart';
 import 'package:diet_client/features/meal/presentation/screens/native_meal_history_screen.dart';
 import 'package:diet_client/features/meal/presentation/widgets/meal_photo_widgets.dart';
 import 'package:diet_client/features/meal/presentation/widgets/native_meal_widgets.dart';
@@ -403,6 +404,62 @@ void main() {
       expect(requested, isNotEmpty);
       expect(requested.length, lessThan(20));
       expect(find.text('未知 kcal'), findsWidgets);
+    },
+  );
+
+  testWidgets(
+    'analysis pending detail shows photos and opens the selected image',
+    (tester) async {
+      final router = GoRouter(
+        initialLocation: '/meals/$_id',
+        routes: [
+          GoRoute(
+            path: '/meals/:id',
+            builder: (_, _) => const NativeMealDetailScreen(mealId: _id),
+          ),
+          GoRoute(
+            path: '/meals/:id/photos',
+            builder: (_, state) =>
+                Text('照片 ${state.uri.queryParameters['imageId']}'),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            mealPhotoPresentationEnabledProvider.overrideWithValue(true),
+            mealProvider(_id).overrideWith(
+              (ref) =>
+                  Meal.fromJson({..._meal(_id), 'analysisStatus': 'pending'}),
+            ),
+            mealPhotosProvider.overrideWith(
+              (ref, id) => _set([
+                _photo,
+                const MealPhoto(
+                  imageId: 'image-2',
+                  slotNo: 2,
+                  previewUrl: 'https://images.test/two',
+                ),
+              ]),
+            ),
+            mealPhotoBytesProvider.overrideWith((ref, key) => _png),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('等待分析'), findsOneWidget);
+      await tester.ensureVisible(find.byType(MealPhotoStrip));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is MealPhotoImage && widget.photo.imageId == 'image-2',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('照片 image-2'), findsOneWidget);
     },
   );
 

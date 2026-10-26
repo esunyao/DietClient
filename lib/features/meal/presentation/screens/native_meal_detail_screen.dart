@@ -11,6 +11,7 @@ import '../../../../core/privacy/ai_consent.dart';
 import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../../core/nutrition/application/analysis_polling.dart';
 import '../widgets/native_meal_widgets.dart';
+import '../widgets/meal_photo_widgets.dart';
 
 final _retryMealProvider = Provider<Future<void> Function(Meal)>(
   (ref) => (meal) async {
@@ -157,6 +158,8 @@ class _DetailState extends ConsumerState<NativeMealDetailScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                MealPhotoStrip(mealId: meal.mealId),
                 const SizedBox(height: 16),
                 AppCard(
                   child: Column(
