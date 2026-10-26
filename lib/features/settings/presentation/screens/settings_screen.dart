@@ -7,6 +7,7 @@ import '../../../../core/presentation/display_state.dart';
 import '../../../../demo/demo_store.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import '../widgets/glass_choice.dart';
+import '../widgets/meal_history_layout_choice.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -19,7 +20,7 @@ class SettingsScreen extends ConsumerWidget {
         title: Text(native ? '恢复默认外观？' : '恢复初始演示？'),
         content: Text(
           native
-              ? '仅恢复玻璃、透明度和动态效果；餐食、健康资料、授权和登录会话保持不变。'
+              ? '恢复紧凑列表及默认玻璃、透明度和动态效果；餐食、健康资料、授权和登录会话保持不变。'
               : '本次尚未持久化的演示修改与外观偏好将清除。不会退出真实登录会话。',
         ),
         actions: [
@@ -55,6 +56,43 @@ class SettingsScreen extends ConsumerWidget {
         ? ref.watch(demoProvider.select((s) => s.isInstitution))
         : ref.watch(displayStateProvider.select((s) => s.isInstitution));
     final wide = MediaQuery.sizeOf(context).width >= 1024;
+    final history = AppCard(
+      radius: wide ? 16 : 20,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeading(title: '饮食历史显示方式'),
+          const SizedBox(height: 8),
+          const Text(
+            '选择历史餐食的浏览布局',
+            style: TextStyle(color: AppColors.muted, fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 340 ? 2 : 1;
+              final width =
+                  (constraints.maxWidth - (columns - 1) * 12) / columns;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final layout in MealHistoryLayout.values)
+                    MealHistoryLayoutChoice(
+                      width: width,
+                      layout: layout,
+                      selected: prefs.mealHistoryLayout == layout,
+                      onTap: prefs.loading || prefs.saving
+                          ? null
+                          : () => controller.setMealHistoryLayout(layout),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
     final glass = AppCard(
       radius: wide ? 16 : 20,
       child: Column(
@@ -198,7 +236,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           Text(
             native
-                ? '恢复默认玻璃、透明度和动态效果，不清除餐食、健康资料、授权或会话。'
+                ? '恢复紧凑列表及默认玻璃、透明度和动态效果，不清除餐食、健康资料、授权或会话。'
                 : '清除本次内存里的编辑、计划、授权预览与报告版本，恢复初始样例。',
             style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.7),
           ),
@@ -229,7 +267,7 @@ class SettingsScreen extends ConsumerWidget {
         AbsorbPointer(
           absorbing: prefs.loading || prefs.saving,
           child: AdaptiveColumns(
-            main: [glass, accessibility],
+            main: [history, glass, accessibility],
             aside: [experience, reset],
           ),
         ),

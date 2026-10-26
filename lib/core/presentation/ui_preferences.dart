@@ -7,6 +7,8 @@ import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 export 'package:diet_ui/diet_ui.dart' show GlassMode;
 
+enum MealHistoryLayout { compact, photoCard }
+
 class UiPreferences {
   const UiPreferences({
     this.loading = false,
@@ -15,6 +17,7 @@ class UiPreferences {
     this.reduceTransparency = false,
     this.reduceMotion = false,
     this.glassMode = GlassMode.standard,
+    this.mealHistoryLayout = MealHistoryLayout.compact,
   });
   final bool loading;
   final bool saving;
@@ -22,14 +25,17 @@ class UiPreferences {
   final bool reduceTransparency;
   final bool reduceMotion;
   final GlassMode glassMode;
+  final MealHistoryLayout mealHistoryLayout;
   UiPreferences copyWith({
     bool? reduceTransparency,
     bool? reduceMotion,
     GlassMode? glassMode,
+    MealHistoryLayout? mealHistoryLayout,
   }) => UiPreferences(
     reduceTransparency: reduceTransparency ?? this.reduceTransparency,
     reduceMotion: reduceMotion ?? this.reduceMotion,
     glassMode: glassMode ?? this.glassMode,
+    mealHistoryLayout: mealHistoryLayout ?? this.mealHistoryLayout,
   );
 }
 
@@ -75,6 +81,7 @@ class UiPreferencesController extends Notifier<UiPreferences> {
     String? error,
   }) => UiPreferences(
     glassMode: value.glassMode,
+    mealHistoryLayout: value.mealHistoryLayout,
     reduceTransparency: value.reduceTransparency,
     reduceMotion: value.reduceMotion,
     loading: loading,
@@ -99,6 +106,13 @@ class UiPreferencesController extends Notifier<UiPreferences> {
                       .where((m) => m.name == json['glassMode'])
                       .firstOrNull ??
                   GlassMode.standard,
+              mealHistoryLayout:
+                  MealHistoryLayout.values
+                      .where(
+                        (layout) => layout.name == json['mealHistoryLayout'],
+                      )
+                      .firstOrNull ??
+                  MealHistoryLayout.compact,
               reduceTransparency: json['reduceTransparency'] == true,
               reduceMotion: json['reduceMotion'] == true,
             );
@@ -129,6 +143,7 @@ class UiPreferencesController extends Notifier<UiPreferences> {
           .write(
             jsonEncode({
               'glassMode': next.glassMode.name,
+              'mealHistoryLayout': next.mealHistoryLayout.name,
               'reduceTransparency': next.reduceTransparency,
               'reduceMotion': next.reduceMotion,
             }),
@@ -147,6 +162,8 @@ class UiPreferencesController extends Notifier<UiPreferences> {
       _save(state.copyWith(reduceMotion: value));
   Future<void> setGlassMode(GlassMode value) =>
       _save(state.copyWith(glassMode: value));
+  Future<void> setMealHistoryLayout(MealHistoryLayout value) =>
+      _save(state.copyWith(mealHistoryLayout: value));
   Future<void> reset() => _save(const UiPreferences());
 }
 

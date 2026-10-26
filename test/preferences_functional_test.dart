@@ -73,19 +73,26 @@ void main() {
       final first = containerFor(storage);
       await hydrate(first);
       final controller = first.read(uiPreferencesProvider.notifier);
+      await controller.setMealHistoryLayout(MealHistoryLayout.photoCard);
       await controller.setGlassMode(GlassMode.enhanced);
       await controller.setReduceMotion(true);
       await controller.setReduceTransparency(true);
+      expect(
+        (jsonDecode(storage.value!) as Map)['mealHistoryLayout'],
+        'photoCard',
+      );
       first.dispose();
       final second = containerFor(storage);
       addTearDown(second.dispose);
       await hydrate(second);
       final state = second.read(uiPreferencesProvider);
+      expect(state.mealHistoryLayout, MealHistoryLayout.photoCard);
       expect(state.glassMode, GlassMode.enhanced);
       expect(state.reduceMotion, isTrue);
       expect(state.reduceTransparency, isTrue);
       expect((jsonDecode(storage.value!) as Map).keys.toSet(), {
         'glassMode',
+        'mealHistoryLayout',
         'reduceMotion',
         'reduceTransparency',
       });
@@ -95,7 +102,7 @@ void main() {
     'unknown enum, wrong types and corrupted JSON fall back to defaults',
     () async {
       for (final raw in [
-        '{"glassMode":"future","reduceMotion":"true","reduceTransparency":42}',
+        '{"glassMode":"future","mealHistoryLayout":"future","reduceMotion":"true","reduceTransparency":42}',
         '{',
         '[]',
       ]) {
@@ -103,6 +110,7 @@ void main() {
         final container = containerFor(storage);
         await hydrate(container);
         final state = container.read(uiPreferencesProvider);
+        expect(state.mealHistoryLayout, MealHistoryLayout.compact);
         expect(state.glassMode, GlassMode.standard);
         expect(state.reduceMotion, isFalse);
         expect(state.reduceTransparency, isFalse);
@@ -149,8 +157,177 @@ void main() {
     await container.read(uiPreferencesProvider.notifier).setReduceMotion(true);
     expect(container.read(uiPreferencesProvider).reduceMotion, isTrue);
     expect(container.read(uiPreferencesProvider).error, isNull);
+    await container
+        .read(uiPreferencesProvider.notifier)
+        .setMealHistoryLayout(MealHistoryLayout.photoCard);
+    await container.read(uiPreferencesProvider.notifier).reload();
+    expect(
+      container.read(uiPreferencesProvider).mealHistoryLayout,
+      MealHistoryLayout.photoCard,
+    );
+    expect(storage.reads, 0);
+    expect(storage.writes, 0);
+    final restarted = containerFor(storage, persist: false);
+    addTearDown(restarted.dispose);
+    expect(
+      restarted.read(uiPreferencesProvider).mealHistoryLayout,
+      MealHistoryLayout.compact,
+    );
+  });
+  test('legacy appearance JSON defaults layout without losing existing values', () async {
+    final storage = PreferenceStorage()
+      ..value =
+          '{"glassMode":"enhanced","reduceMotion":true,"reduceTransparency":true}';
+    final container = containerFor(storage);
+    addTearDown(container.dispose);
+    await hydrate(container);
+    final state = container.read(uiPreferencesProvider);
+    expect(state.mealHistoryLayout, MealHistoryLayout.compact);
+    expect(state.glassMode, GlassMode.enhanced);
+    expect(state.reduceMotion, isTrue);
+    expect(state.reduceTransparency, isTrue);
     expect(storage.writes, 0);
   });
+  test(
+    'unknown layout alone falls back without resetting other preferences',
+    () async {
+      for (final layout in ['future', 42, null]) {
+        final storage = PreferenceStorage()
+          ..value = jsonEncode({
+            'glassMode': 'off',
+            'reduceMotion': true,
+            'reduceTransparency': true,
+            'mealHistoryLayout': layout,
+          });
+        final container = containerFor(storage);
+        await hydrate(container);
+        final state = container.read(uiPreferencesProvider);
+        expect(state.mealHistoryLayout, MealHistoryLayout.compact);
+        expect(state.glassMode, GlassMode.off);
+        expect(state.reduceMotion, isTrue);
+        expect(state.reduceTransparency, isTrue);
+        container.dispose();
+      }
+    },
+  );
+  test(
+    'layout survives loading, save failures, other edits and failed reset',
+    () async {
+      final storage = PreferenceStorage();
+      final container = containerFor(storage);
+      addTearDown(container.dispose);
+      await hydrate(container);
+      final controller = container.read(uiPreferencesProvider.notifier);
+      await controller.setMealHistoryLayout(MealHistoryLayout.photoCard);
+      await controller.setGlassMode(GlassMode.enhanced);
+      await controller.setReduceMotion(true);
+      await controller.setReduceTransparency(true);
+      final saved = storage.value;
+      storage.pendingRead = Completer<String?>();
+      final reload = controller.reload();
+      expect(container.read(uiPreferencesProvider).loading, isTrue);
+      expect(
+        container.read(uiPreferencesProvider).mealHistoryLayout,
+        MealHistoryLayout.photoCard,
+      );
+      storage.pendingRead!.complete(saved);
+      await reload;
+      storage.failWrite = true;
+      await controller.setMealHistoryLayout(MealHistoryLayout.compact);
+      expect(
+        container.read(uiPreferencesProvider).mealHistoryLayout,
+        MealHistoryLayout.photoCard,
+      );
+      expect(container.read(uiPreferencesProvider).error, contains('保存失败'));
+      expect(storage.value, saved);
+      await controller.reset();
+      final failedReset = container.read(uiPreferencesProvider);
+      expect(failedReset.mealHistoryLayout, MealHistoryLayout.photoCard);
+      expect(failedReset.glassMode, GlassMode.enhanced);
+      expect(failedReset.reduceMotion, isTrue);
+      expect(failedReset.reduceTransparency, isTrue);
+      storage.failWrite = false;
+      await controller.setMealHistoryLayout(MealHistoryLayout.compact);
+      final retried = container.read(uiPreferencesProvider);
+      expect(retried.mealHistoryLayout, MealHistoryLayout.compact);
+      expect(retried.error, isNull);
+      expect(retried.glassMode, GlassMode.enhanced);
+      expect(retried.reduceMotion, isTrue);
+      expect(retried.reduceTransparency, isTrue);
+    },
+  );
+  for (final scale in [1.0, 2.0]) {
+    testWidgets(
+      'layout choices save and recover from failure at text scale $scale',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final storage = PreferenceStorage();
+        final container = containerFor(storage);
+        addTearDown(container.dispose);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
+              home: const SettingsScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('饮食历史显示方式'), findsOneWidget);
+        await tester.ensureVisible(find.text('照片卡片'));
+        await tester.pumpAndSettle();
+        expect(find.text('照片卡片').hitTestable(), findsOneWidget);
+        await tester.tap(find.text('照片卡片'));
+        await tester.pumpAndSettle();
+        expect(
+          container.read(uiPreferencesProvider).mealHistoryLayout,
+          MealHistoryLayout.photoCard,
+        );
+        storage.failWrite = true;
+        await tester.ensureVisible(find.text('紧凑列表'));
+        await tester.pumpAndSettle();
+        expect(find.text('紧凑列表').hitTestable(), findsOneWidget);
+        await tester.tap(find.text('紧凑列表'));
+        await tester.pumpAndSettle();
+        expect(
+          container.read(uiPreferencesProvider).mealHistoryLayout,
+          MealHistoryLayout.photoCard,
+        );
+        expect(
+          container.read(uiPreferencesProvider).error,
+          contains('外观设置保存失败'),
+        );
+        final errorBanner = find.textContaining('外观设置保存失败');
+        await tester.scrollUntilVisible(
+          errorBanner,
+          -200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        expect(errorBanner.hitTestable(), findsOneWidget);
+        storage.failWrite = false;
+        await tester.ensureVisible(find.text('紧凑列表'));
+        await tester.pumpAndSettle();
+        expect(find.text('紧凑列表').hitTestable(), findsOneWidget);
+        await tester.tap(find.text('紧凑列表'));
+        await tester.pumpAndSettle();
+        expect(
+          container.read(uiPreferencesProvider).mealHistoryLayout,
+          MealHistoryLayout.compact,
+        );
+        expect(container.read(uiPreferencesProvider).error, isNull);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   testWidgets(
     'native reset only changes appearance; demo data, consent, session untouched',
     (tester) async {
@@ -159,7 +336,8 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final storage = PreferenceStorage()
-        ..value = '{"glassMode":"enhanced","reduceMotion":true}';
+        ..value =
+            '{"glassMode":"enhanced","reduceMotion":true,"reduceTransparency":true,"mealHistoryLayout":"photoCard"}';
       final container = ProviderContainer(
         overrides: [
           persistentUiPreferencesProvider.overrideWithValue(true),
@@ -182,6 +360,7 @@ void main() {
       await tester.ensureVisible(find.text('恢复默认外观'));
       await tester.tap(find.text('恢复默认外观'));
       await tester.pumpAndSettle();
+      expect(find.textContaining('恢复紧凑列表及默认玻璃'), findsWidgets);
       await tester.tap(find.text('恢复'));
       await tester.pumpAndSettle();
       expect(
@@ -189,6 +368,15 @@ void main() {
         GlassMode.standard,
       );
       expect(container.read(uiPreferencesProvider).reduceMotion, isFalse);
+      expect(container.read(uiPreferencesProvider).reduceTransparency, isFalse);
+      expect(
+        container.read(uiPreferencesProvider).mealHistoryLayout,
+        MealHistoryLayout.compact,
+      );
+      expect(
+        (jsonDecode(storage.value!) as Map)['mealHistoryLayout'],
+        'compact',
+      );
       expect(identical(container.read(demoProvider), demoBefore), isTrue);
       expect(container.read(sessionEpochProvider), epoch);
     },
