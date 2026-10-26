@@ -112,11 +112,15 @@ class NutritionPolling extends ConsumerStatefulWidget {
     required this.child,
     required this.onRefresh,
     this.refreshKey,
+    this.expandChild = false,
   });
   final bool pending;
   final Widget child;
   final VoidCallback onRefresh;
   final Object? refreshKey;
+
+  /// Page-level children need a bounded body; inline sections keep natural height.
+  final bool expandChild;
   @override
   ConsumerState<NutritionPolling> createState() => _NutritionPollingState();
 }
@@ -213,7 +217,7 @@ class _NutritionPollingState extends ConsumerState<NutritionPolling>
   Widget build(BuildContext context) {
     ref.watch(sessionEpochProvider);
     _schedule();
-    return Column(
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_expired && widget.pending)
@@ -228,8 +232,11 @@ class _NutritionPollingState extends ConsumerState<NutritionPolling>
               child: const Text('分析仍未结束，点击手动刷新'),
             ),
           ),
-        widget.child,
+        if (widget.expandChild) Expanded(child: widget.child) else widget.child,
       ],
     );
+    return widget.expandChild
+        ? SafeArea(bottom: false, child: content)
+        : content;
   }
 }

@@ -2,6 +2,8 @@ import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/nutrition/application/nutrition_providers.dart';
+import '../../../../core/presentation/ui_preferences.dart';
+import 'meal_photo_widgets.dart';
 
 String nutritionDate(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -55,49 +57,72 @@ class NativeNutrients extends StatelessWidget {
 }
 
 class NativeMealTile extends StatelessWidget {
-  const NativeMealTile({super.key, required this.meal, required this.onTap});
+  const NativeMealTile({
+    super.key,
+    required this.meal,
+    required this.onTap,
+    required this.onPhotoTap,
+    this.layout = MealHistoryLayout.compact,
+  });
   final MealHistoryItem meal;
   final VoidCallback onTap;
+  final ValueChanged<String> onPhotoTap;
+  final MealHistoryLayout layout;
   @override
-  Widget build(BuildContext context) => AppCard(
-    child: InkWell(
+  Widget build(BuildContext context) {
+    final details = InkWell(
       onTap: onTap,
-      child: Row(
-        children: [
-          const PlateIllustration(size: 56),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${meal.localDate} · ${mealTypes[meal.mealType] ?? meal.mealType}',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+            ),
+            Text(
+              '${meal.consumedAt.toLocal().hour.toString().padLeft(2, '0')}:${meal.consumedAt.toLocal().minute.toString().padLeft(2, '0')} · ${statusLabel(meal.analysisStatus)}',
+              style: AppTypography.small,
+            ),
+            Text(
+              '${amountText(nutrientAmount(meal.nutrients, 'ENERGY_KCAL'))} kcal',
+            ),
+            if (meal.notes?.isNotEmpty ?? false)
+              Text(meal.notes!, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
+    );
+    final photo = ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: MealPhotoCover(
+        mealId: meal.mealId,
+        onOpen: onPhotoTap,
+        decodeWidth: layout == MealHistoryLayout.compact ? 288 : 1080,
+      ),
+    );
+    return AppCard(
+      child: layout == MealHistoryLayout.photoCard
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AspectRatio(aspectRatio: 16 / 9, child: photo),
+                const SizedBox(height: 12),
+                details,
+              ],
+            )
+          : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${meal.localDate} · ${mealTypes[meal.mealType] ?? meal.mealType}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
-                  ),
-                ),
-                Text(
-                  '${meal.consumedAt.toLocal().hour.toString().padLeft(2, '0')}:${meal.consumedAt.toLocal().minute.toString().padLeft(2, '0')} · ${statusLabel(meal.analysisStatus)}',
-                  style: AppTypography.small,
-                ),
-                Text(
-                  '${amountText(nutrientAmount(meal.nutrients, 'ENERGY_KCAL'))} kcal',
-                ),
-                if (meal.notes?.isNotEmpty ?? false)
-                  Text(
-                    meal.notes!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                SizedBox.square(dimension: 96, child: photo),
+                const SizedBox(width: 14),
+                Expanded(child: details),
               ],
             ),
-          ),
-          const Icon(Icons.chevron_right),
-        ],
-      ),
-    ),
-  );
+    );
+  }
 }
 
 class NutritionError extends StatelessWidget {

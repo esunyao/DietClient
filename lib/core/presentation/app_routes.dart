@@ -18,6 +18,9 @@ abstract final class AppRoutes {
   static const healthRecords = '/profile/health-records';
   static const aiConsent = '/profile/ai-consent';
   static String mealDetail(String id) => '/meals/${Uri.encodeComponent(id)}';
+  static String mealPhotos(String id, {String? imageId}) =>
+      '${mealDetail(id)}/photos'
+      '${imageId == null ? '' : '?imageId=${Uri.encodeQueryComponent(imageId)}'}';
   static String mealCorrection(String id) => '${mealDetail(id)}/correction';
   static String healthRecordForm(String kind) =>
       '$healthRecords/${Uri.encodeComponent(kind)}';
