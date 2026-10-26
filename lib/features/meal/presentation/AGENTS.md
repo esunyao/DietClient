@@ -7,3 +7,4 @@
 - 状态仍由 [demo](../../../demo/AGENTS.md) 提供；页面布局与 tokens 复用 [diet_ui](../../../../packages/diet_ui/AGENTS.md)，不重复消费安全区。
 
 - Android/Windows 的 `native_meal_*_screen.dart` 使用 [共享真实查询](../../../core/nutrition/application/nutrition_providers.dart)；原页面负责平台分支，Web 演示继续使用 demo。真实逐菜载荷见 [meal_edit.dart](../application/meal_edit.dart)。
+- [screens/AGENTS](screens/AGENTS.md) 导航到真实历史双布局、详情照片和 Shell 外全屏相册；[widgets/AGENTS](widgets/AGENTS.md) 导航到照片状态、字节展示与缓存释放。

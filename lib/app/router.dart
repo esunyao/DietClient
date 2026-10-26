@@ -13,6 +13,7 @@ import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/meal_record/presentation/screens/recognition_screen.dart';
 import '../features/meal/presentation/screens/meal_history_screen.dart';
 import '../features/meal/presentation/screens/meal_detail_screen.dart';
+import '../features/meal/presentation/screens/native_meal_gallery_screen.dart';
 import '../features/meal/presentation/screens/meal_correction_screen.dart';
 import '../features/meal_plan/presentation/screens/meal_plan_screen.dart';
 import '../features/institution/presentation/screens/institution_menu_screen.dart';
@@ -136,6 +137,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const EmailVerifiedScreen(),
       ),
       GoRoute(path: '/', redirect: (context, state) => AppRoutes.home),
+      // 相册在根导航器显示；统一 redirect 仍负责认证和恢复。
+      GoRoute(
+        path: '/meals/:id/photos',
+        builder: (context, state) {
+          if (!ref.read(nativeNutritionEnabledProvider)) {
+            return const AppPage(
+              title: '餐食照片',
+              showBack: true,
+              children: [InfoBanner(text: '此平台暂不支持查看真实餐食照片')],
+            );
+          }
+          return NativeMealGalleryScreen(
+            mealId: state.pathParameters['id']!,
+            imageId: state.uri.queryParameters['imageId'],
+          );
+        },
+      ),
       ShellRoute(
         builder: (context, state, child) =>
             AppShell(location: state.uri.path, child: child),

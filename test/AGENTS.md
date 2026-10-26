@@ -37,3 +37,15 @@
 [Android 说明](../android/doc/README.md) 提供 release 构建、R8 mapping 核对与真机验收入口。上述存储替身回归不覆盖 Java/Kotlin 混淆结果。
 
 前端审查修正回归：[frontend_navigation_test.dart](frontend_navigation_test.dart) 覆盖真实侧栏离开、保存中返回、无栈操作、认证失效及隔夜恢复；[current_date_test.dart](current_date_test.dart) 覆盖本地午夜与时钟变化；[display_state_test.dart](display_state_test.dart) 确认真实显示与演示隔离；[entry_gateway_test.dart](entry_gateway_test.dart) 确认真实入口不初始化演示状态；[api_error_test.dart](api_error_test.dart) 覆盖安全错误映射；[native_layout_test.dart](native_layout_test.dart) 覆盖真实采集、修正、首页的窄屏、大字和键盘。
+
+## 历史餐食照片与显示布局
+
+- [object_image_reader_test.dart](object_image_reader_test.dart)：独立对象 GET 的认证隔离、地址、格式、大小、错误和取消。
+- [meal_photo_provider_test.dart](meal_photo_provider_test.dart)：确认图片顺序与精确 ID、查询复用、签名刷新上限、账户代次和离页释放。
+- [preferences_functional_test.dart](preferences_functional_test.dart)：布局持久化、旧记录兼容、保存失败和恢复默认外观。
+- [meal_photo_widget_test.dart](meal_photo_widget_test.dart)：双布局、图片状态与点击分流。
+- [meal_gallery_test.dart](meal_gallery_test.dart)：相册翻页、定位、缩放、键盘及无栈返回。
+- [meal_photo_refresh_widget_test.dart](meal_photo_refresh_widget_test.dart)：真实共享查询与 UI 联动，慢签名刷新不重置重试上限、换号加载立即清除旧图片。
+- [meal_photo_route_test.dart](meal_photo_route_test.dart)：真实路由认证、全屏外壳隔离、退出清理和 Web 零业务查询。
+
+模块入口见 [餐食](../lib/features/meal/AGENTS.md)、[共享查询](../lib/core/nutrition/AGENTS.md)与[设置](../lib/features/settings/AGENTS.md)。
