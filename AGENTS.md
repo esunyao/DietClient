@@ -26,6 +26,8 @@
 
 ## 范围与边界
 
+- 当前增量任务：补齐 Android/Windows 历史餐食照片、详情照片和全屏相册；提供紧凑列表/照片卡片双视图及本机外观设置。通过现有公开接口组合实现，HealthServer 只读；当前分支实施，不建工作树、不切分支、不推送。
+
 - 唯一可写目录：`E:/ProjectSpace/DietClient`。HealthServer、DietClient-ReactNative 和其他兄弟目录只读；不得在其中安装依赖、创建工作树、改动文件或提交。
 - 本轮在已完成的「我的」基础上，将 Android/Windows 采集、餐食、首页、趋势、注册、邮件重发、会话续期与设置接入真实能力。姓名只读。无公开接口的配餐、报告、机构同步和独立手工新建显示暂未支持，不模拟服务器写入。保持绿色视觉、现有玻璃和四项导航；不新增推送。
 - Web 新功能留待下轮，保留既有登录、资料与显式 `WEB_UI_PREVIEW=true` 的独立未登录演示；预览不构造会话或业务请求。真实账户缺失资料保持未知或空态，不用样例补齐；未设置营养目标不套用演示目标。图片选择、裁剪与存储使用成熟插件，Android 支持系统相机，Windows 按插件能力选图。
@@ -77,13 +79,13 @@
 
 存在 `.codegraph/` 时先用 CodeGraph 理解或定位代码；缺失时不主动建索引。按需使用确实相关且可用的 skills，先读取并说明用途，不假称调用不可用工具。本轮允许新增已批准的偏好、安全存储、时区及必要直接依赖，不升级无关锁定依赖；优先成熟库、Flutter 标准控件和薄封装，用实际约束与逻辑尺寸 tokens 校准布局，不引入 ScreenUtil 式全局缩放，不关闭系统文字缩放。
 
-计划阶段禁止子 agent；批准后先将新规划落入 `doc-project/`。本轮基础阶段完成共享契约后，最多三个 **gpt-6.1-sol / medium** 子 agent 分工实施，不再派生子 agent；主 agent 审查、集成和拆分提交。当前实施分支以 git 实际状态为准，不自动切换。明确互斥文件归属，不并发改同一文件、不并发提交。工作树仅放本仓库忽略目录 `.worktrees/`，分支使用 `dev/feature-*` 或 `dev/doc-*`，不在兄弟仓库建工作树。
+计划阶段禁止子 agent；批准后先将新规划落入 doc-project/ 并确定共享接口与互斥文件归属。最多三个 **yumeyuki/gpt-6.1-sol / high** 子 agent 分工实施，不再派生、不自行提交；入口拒绝精确模型时报告，不擅自替换供应商。主 agent 审查、集成并用 Git 命令拆分提交。全部工作在当前分支和目录完成，不创建工作树、不切换分支、不并发改同一文件、不并发提交。
 
 依赖方向：main → app → features → core/demo/packages。feature 不横向导入；packages 不依赖应用。共享展示模型放 diet_models，设计系统放 diet_ui，业务演示状态放 demo。diet_oidc 是不依赖 Authentik、Flutter、Riverpod、Cookie 的纯 Dart 通用协议包；diet_auth 是依赖 diet_oidc 的纯 Dart Authentik Flow Executor，使用 Dio 内存 Cookie。应用 core/config 装配配置，core/session 保留内存会话，auth/application 控制登录；Web 平台差异由协议包条件导出隔离。统一路径协议位于 core，路由注册位于 app；本轮沿用现有层次，不造空 data/domain/repository 层、不机械搬文件。一个页面一个文件，feature 内复用放本 feature 的 widgets。
 
 ## 验证与提交
 
-验证入口见 [tool/AGENTS](tool/AGENTS.md) 与 [tool/verify.sh](tool/verify.sh)，不把完整脚本矩阵当作本轮默认任务。统一做基础格式、一次静态分析、受影响的聚焦回归和必要的一次 Web 或 Windows 编译；不建立逐页 golden 或全平台矩阵。Android 构建与真机验证由用户负责，iOS 不纳入本轮。
+验证入口见 [tool/AGENTS](tool/AGENTS.md) 与 [tool/verify.sh](tool/verify.sh)，不把完整脚本矩阵当作本轮默认任务。统一做基础格式、一次静态分析、受影响的聚焦回归和必要的一次 Web 或 Windows 编译；不建立逐页 golden 或全平台矩阵。本轮历史照片增量由 AI 完成 Android debug、Windows debug 构建及已连接 ADB 真机的只读浏览验证；明确区分离线测试、编译和真实照片链路结果。iOS 不纳入本轮。
 
 只用 `tool/` 的既有 SDK 与缓存入口，缓存限于本仓库。SDK 由用户自行管理，不自动下载、更换或升级。分别报告实际执行、失败与跳过的检查；功能、视觉和性能由用户验收，编译成功不等于视觉验收，离线测试或公开探测也不能替代真实登录验证。目标规格见 [UI 规格](doc/ui-spec.md)，实际命令与结果在 [README](README.md) 和交付说明记录。
 
