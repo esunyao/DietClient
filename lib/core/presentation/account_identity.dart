@@ -29,8 +29,14 @@ final accountIdentityProvider = FutureProvider<AccountIdentity>((ref) async {
       /* 身份与头像独立，头像可在刷新后重取。 */
     }
   }
+  final displayName = (user['displayName'] as String?)?.trim() ?? '';
+  final username = (user['username'] as String?)?.trim() ?? '';
   return AccountIdentity(
-    name: user['displayName'] as String? ?? '姓名未提供',
+    name: displayName.isNotEmpty
+        ? displayName
+        : username.isNotEmpty
+        ? username
+        : '姓名未提供',
     email: user['email'] as String? ?? '邮箱未提供',
     avatarUrl: safeAvatarUrl(avatar),
   );

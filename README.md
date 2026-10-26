@@ -262,3 +262,9 @@ bash tool/flutter.sh build web --no-pub --dart-define-from-file=.env.example --d
 新回归覆盖侧栏取消／放弃、保存中离开、认证失效优先、无栈成功返回、迟到结果不挤走页面、本地午夜与隔夜恢复、分类错误、显示状态隔离、入口隔离及真实页面的窄屏／大字／键盘与失败重试。运行记录位于忽略目录 .local/frontend-*.log。
 
 Android、真实服务、真机视觉和性能未验证；Windows 编译不代表这些验收完成。
+
+## 2026-10-26 账户名称回退
+
+统一账户名称优先使用去除首尾空白后的 displayName；缺失、null、空字符串或纯空白时显示 username，两者均为空时显示“姓名未提供”。我的页面和侧栏共用该规则，不修改数据库和后端。
+
+验证：新增 10 项账户名称回归，与 profile API、profile widget、侧栏运动回归合计 37 项通过；两份 Dart 文件格式检查通过；`tool/flutter.ps1 analyze --no-pub` 无问题；Windows debug 使用 `.env.example` 编译成功。未进行真实客户端视觉验收。

@@ -14,6 +14,7 @@
 - [unsupported_feature_test.dart](unsupported_feature_test.dart)：真实模式未支持入口不显示虚构数据、不修改演示状态，也不提供模拟写操作。
 
 - [profile_api_test.dart](profile_api_test.dart)：无损 ID、网络目的地、五类 CRUD、头像顺序与认证隔离、同意排序、配置与会话切换。
+- [account_identity_test.dart](account_identity_test.dart)：共享账户名称优先级、空显示名回退用户名及双空占位。
 - [profile_widget_test.dart](profile_widget_test.dart)：真实资料空态、预览零请求、配置错误、保存失败留存、原 ID/编码编辑和裁剪。
 
 实际执行入口与结果见 [根说明](../README.md)，功能、视觉和性能验收由用户进行。
