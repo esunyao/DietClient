@@ -5,13 +5,17 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 
-/// 首页数值格式：未知显示破折号，并为格式化结果添加千位分隔符。
+/// @brief 格式化首页展示用的营养数值。
+/// @details 未知数值显示破折号，并为有效格式化结果添加千位分隔符。
+/// @param value 待格式化的数值，可为 null。
+/// @return 格式化后的展示字符串。
 String homeAmount(double? value) => formatAmount(
   value,
   unknown: '—',
 ).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
-/// 展示演示快照的今日合计及分析状态数量；宽窄布局不改变统计来源。
+/// @brief 首页营养摘要卡片组件。
+/// @details 展示演示快照的今日合计及分析状态数量；宽窄布局切换不改变统计来源。
 class HomeNutritionSummary extends StatelessWidget {
   const HomeNutritionSummary({
     super.key,
@@ -279,8 +283,9 @@ class _NutrientDivider extends StatelessWidget {
   );
 }
 
-/// 展示调用方提供的餐食，支持覆盖来源和逐餐状态标签，并跳转历史或详情。
-/// 餐盘是示意插画，不读取餐食照片；空列表由此组件展示空态。
+/// @brief 首页今日餐食列表组件。
+/// @details 展示调用方提供的餐食，支持覆盖来源与逐餐状态标签并跳转历史或详情；空列表由此组件展示空态。
+/// @note 餐盘为示意插画，不读取真实餐食照片。
 class HomeMeals extends StatelessWidget {
   const HomeMeals({
     super.key,

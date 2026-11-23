@@ -1,7 +1,8 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 
-/// 展示并选择玻璃档位；预览复用共享背景与镜片组件，不自行判断渲染能力。
+/// @brief 玻璃质感档位预览与选择卡片组件。
+/// @details 预览复用共享背景与镜片组件，不在本组件内自行判断平台渲染能力。
 class GlassChoice extends StatelessWidget {
   const GlassChoice({
     super.key,

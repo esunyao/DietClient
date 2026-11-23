@@ -21,7 +21,11 @@ import '../widgets/health_kind.dart';
 import 'profile_screen.dart' show ProfileSection, ProfileShortcuts;
 import 'real_edit_profile_screen.dart';
 
-// 将账户身份和真实资料适配为共享卡片模型；身高和饮水目标的展示标签由调用方另行提供。
+/// @brief 将账户身份与真实档案 JSON 适配为共享资料卡片模型。
+/// @details 身高和饮水目标的缺失展示标签由调用方另行提供。
+/// @param account 共享账户身份对象。
+/// @param data 真实基础资料 JSON 映射。
+/// @return 适配后的 PersonProfile 展示模型。
 PersonProfile _displayProfile(AccountIdentity account, Json data) =>
     PersonProfile(
       name: account.name,
@@ -35,7 +39,11 @@ PersonProfile _displayProfile(AccountIdentity account, Json data) =>
       goal: '未填写',
     );
 
-// 将真实记录投影为摘要模型；测量优先取体重，否则取首个有值的数值字段及标签中的单位。
+/// @brief 将单条真实健康记录投影为摘要预览模型。
+/// @details 身体测量优先取体重，否则取首个有值的数值字段及其标签中的单位。
+/// @param kind 健康记录类别键。
+/// @param record 真实健康记录 JSON 映射。
+/// @return 转换后的 HealthRecordPreview 摘要对象。
 HealthRecordPreview _preview(String kind, Json record) {
   String field(String key) => record[key]?.toString() ?? '';
   final fields = fieldsByKind[kind]!;
@@ -86,7 +94,8 @@ HealthRecordPreview _preview(String kind, Json record) {
   );
 }
 
-/// 组合真实身份、基础资料、健康记录和同意状态；机构显示模式来自临时展示状态。
+/// @brief 真实“我的”个人中心页面。
+/// @details 组合真实身份、基础资料、健康记录和 AI 同意状态；机构显示模式来自临时展示状态。
 class RealProfileScreen extends ConsumerWidget {
   const RealProfileScreen({super.key});
   @override

@@ -13,7 +13,8 @@ import '../widgets/home_summary.dart';
 String _date(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-/// 真实营养首页：以共享本地日期查询当天摘要和餐食，不使用演示营养目标。
+/// @brief 真实营养首页组件。
+/// @details 以共享本地日期查询当天营养摘要与餐食记录，不使用演示营养目标。
 class NativeHomeScreen extends ConsumerWidget {
   const NativeHomeScreen({super.key});
   @override

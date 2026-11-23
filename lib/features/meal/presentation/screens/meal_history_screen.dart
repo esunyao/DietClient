@@ -9,7 +9,8 @@ import '../widgets/meal_widgets.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_meal_history_screen.dart';
 
-/// 先选择真实历史或演示历史，避免在真实入口创建演示筛选状态。
+/// @brief 餐食历史页入口组件。
+/// @details 先按功能开关选择真实历史或演示历史，避免在真实入口创建演示筛选状态。
 class MealHistoryScreen extends ConsumerWidget {
   const MealHistoryScreen({super.key});
   @override
@@ -26,7 +27,8 @@ class _DemoMealHistoryScreen extends ConsumerStatefulWidget {
       _MealHistoryScreenState();
 }
 
-/// 演示历史在共享内存数据上筛选和逐批展示，不请求服务端分页。
+/// @brief 演示餐食历史页面状态。
+/// @details 在共享内存数据上执行筛选与逐批展示，不请求服务端分页。
 class _MealHistoryScreenState extends ConsumerState<_DemoMealHistoryScreen> {
   DateTime _from = demoDate.subtract(const Duration(days: 6));
   DateTime _to = demoDate;
@@ -62,7 +64,8 @@ class _MealHistoryScreenState extends ConsumerState<_DemoMealHistoryScreen> {
     }
   }
 
-  // 编辑中的筛选条件仅在应用后生效；每次应用重置可见条数。
+  /// @brief 应用当前编辑中的日期、餐别与关键词筛选条件。
+  /// @details 编辑中的筛选条件仅在应用后生效；每次应用都会重置可见条数。
   void _apply() {
     if (_from.isAfter(_to)) {
       showDemoMessage(context, '结束日期不能早于开始日期');

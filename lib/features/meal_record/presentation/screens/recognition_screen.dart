@@ -8,7 +8,8 @@ import 'package:diet_client/core/config/ui_preview_config.dart';
 
 import 'native_recognition_screen.dart';
 
-/// 先按共享原生营养功能开关选择真实或演示页面，再创建对应页面状态。
+/// @brief 餐食采集识别页入口组件。
+/// @details 先按共享原生营养功能开关选择真实采集页或演示采集页，再创建对应页面状态。
 class RecognitionScreen extends ConsumerWidget {
   const RecognitionScreen({super.key});
   @override
@@ -18,7 +19,8 @@ class RecognitionScreen extends ConsumerWidget {
       : const _DemoRecognitionScreen();
 }
 
-/// 独立演示采集页：图片和草稿为本地示例，不调用真实采集 API。
+/// @brief 独立演示餐食采集页面。
+/// @details 图片和草稿均为本地示例，不调用真实采集 API。
 class _DemoRecognitionScreen extends ConsumerStatefulWidget {
   const _DemoRecognitionScreen();
   @override
@@ -121,7 +123,8 @@ class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
     );
   }
 
-  // 使用演示授权和表单写入共享内存记录；分析中状态不代表已发起真实分析。
+  /// @brief 按演示授权与当前表单内容写入共享内存餐食记录。
+  /// @note 写入的分析中状态仅用于演示展示，不代表已发起真实分析。
   void _submit() {
     if (_saving || _images == 0 || !ref.read(demoProvider).aiConsent) return;
     setState(() => _saving = true);

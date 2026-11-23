@@ -14,7 +14,8 @@ import '../core/session/session_controller.dart';
 import '../demo/demo_store.dart';
 import 'router.dart';
 
-// ConsumerStatefulWidget 是 StatefulWidget 与 Riverpod 状态读取/监听能力 的结合体
+/// @brief 应用根组件。
+/// @details 继承自 ConsumerStatefulWidget，结合 StatefulWidget 生命周期与 Riverpod 状态读取和监听能力。
 class DietApp extends ConsumerStatefulWidget {
   const DietApp({super.key});
   @override
@@ -22,8 +23,8 @@ class DietApp extends ConsumerStatefulWidget {
 }
 
 class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
+  /// @brief 初始化应用状态，注册系统生命周期监听并安排启动会话恢复。
   @override
-  // 启动恢复与生命周期监听注册
   void initState() {
     super.initState();
     // 监听应用的切前后台等系统级生命周期事件。
@@ -45,7 +46,9 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // 回到前台复核本地日期和会话；仅原生营养启用且会话就绪时刷新营养查询。
+  /// @brief 响应应用前后台生命周期变化。
+  /// @details 回到前台时复核本地日期和会话有效性；仅原生营养启用且会话就绪时刷新营养查询。
+  /// @param state 当前应用生命周期状态。
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {

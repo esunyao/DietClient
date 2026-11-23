@@ -9,12 +9,15 @@ import '../data/nutri_models.dart';
 export '../data/nutri_api.dart';
 export '../data/nutri_models.dart';
 
-// 使用设备时区插件的标识；查询失败时不自动重试。
+/// @brief 设备本地时区标识 Provider。
+/// @details 使用设备时区插件获取时区标识；查询失败时不自动重试。
 final deviceTimezoneProvider = FutureProvider<String>(
   (ref) async => (await FlutterTimezone.getLocalTimezone()).identifier,
   retry: (count, error) => null,
 );
-// Web 和预览不创建真实营养 API；可用时依赖业务客户端，并随 Provider 释放上传器。
+
+/// @brief 真实营养业务 API 客户端 Provider。
+/// @details Web 和预览不创建真实营养 API；可用时依赖业务客户端，并随 Provider 销毁释放上传器。
 final nutritionApiProvider = Provider<NutriApi?>((ref) {
   if (kIsWeb || ref.watch(uiPreviewProvider)) return null;
   final client = ref.watch(apiClientProvider);
@@ -25,7 +28,9 @@ final nutritionApiProvider = Provider<NutriApi?>((ref) {
 });
 NutriApi _api(Ref ref) =>
     ref.watch(nutritionApiProvider) ?? (throw const ApiFailure('请先登录'));
-// 共享策略、草稿和按参数分组的真实查询；这些 Provider 禁用自动重试。
+
+/// @brief 采集策略查询 Provider。
+/// @details 与下方草稿及按参数分组的真实营养查询一样，均禁用自动重试。
 final capturePolicyProvider = FutureProvider<CapturePolicy>(
   (ref) => _api(ref).capturePolicy(),
   retry: (count, error) => null,
@@ -58,7 +63,9 @@ final dailyTrendProvider = FutureProvider.autoDispose
       retry: (count, error) => null,
     );
 
-/// Call after successful create/submit/retry/correction/delete; invalidates all query keys.
+/// @brief Invalidates all shared nutrition query providers via a Ref.
+/// @details Call after successful create, submit, retry, correction, or delete operations.
+/// @param ref Riverpod provider reference.
 void invalidateNutrition(Ref ref) {
   ref.invalidate(draftsProvider);
   ref.invalidate(captureSessionProvider);
@@ -68,7 +75,9 @@ void invalidateNutrition(Ref ref) {
   ref.invalidate(dailyTrendProvider);
 }
 
-/// 供组件侧集中失效营养查询；与 Ref 入口覆盖相同的查询族。
+/// @brief 从组件侧集中失效所有共享营养查询。
+/// @details 与 Ref 入口覆盖相同的查询 Provider 族。
+/// @param ref Riverpod 组件引用。
 void refreshNutrition(WidgetRef ref) {
   ref.invalidate(draftsProvider);
   ref.invalidate(captureSessionProvider);

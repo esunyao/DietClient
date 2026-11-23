@@ -7,7 +7,8 @@ import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_client/core/config/ui_preview_config.dart';
 import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
-/// 展示机构菜单演示；原生营养模式下改为显示暂未支持页面。
+/// @brief 机构菜单演示页面。
+/// @details 原生营养模式下改为显示暂未支持页面。
 class InstitutionMenuScreen extends ConsumerStatefulWidget {
   const InstitutionMenuScreen({super.key});
   @override
@@ -16,7 +17,8 @@ class InstitutionMenuScreen extends ConsumerStatefulWidget {
 }
 
 class _InstitutionMenuScreenState extends ConsumerState<InstitutionMenuScreen> {
-  // 套餐、餐别和提交标记只保存在当前页面；限制核对状态由 demoProvider 共享。
+  /// @brief 当前选中的演示套餐 ID。
+  /// @note 套餐、餐别和提交标记仅保存在当前页面状态，限制核对状态由 demoProvider 共享。
   String _selection = demoPlans.first.id;
   bool _submitted = false;
   int _meal = 2;

@@ -11,7 +11,8 @@ import '../widgets/health_kind.dart';
 import '../widgets/remote_state.dart';
 import 'real_health_form_screen.dart';
 
-/// 为每类真实健康记录创建独立查询与操作区域，不用演示记录补齐空值。
+/// @brief 真实健康档案总览页面。
+/// @details 为每类真实健康记录创建独立查询与操作区域，不使用演示记录补齐空值。
 class RealHealthRecordsScreen extends ConsumerWidget {
   const RealHealthRecordsScreen({super.key});
   @override
@@ -37,7 +38,10 @@ class _Category extends ConsumerStatefulWidget {
 class _CategoryState extends ConsumerState<_Category> {
   bool _removing = false;
   String? _error;
-  // 删除前确认并复核登录代次；成功后仅在 API 仍匹配时刷新该类别。
+
+  /// @brief 弹窗确认并删除指定的真实健康记录。
+  /// @details 删除前复核登录代次；删除成功后仅在 API 仍匹配当前账户时刷新对应类别查询。
+  /// @param record 待删除的健康记录 JSON 对象。
   Future<void> _remove(Json record) async {
     final session = ref.read(sessionEpochProvider);
     final confirmed = await showDialog<bool>(

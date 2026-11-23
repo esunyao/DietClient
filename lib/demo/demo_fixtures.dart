@@ -1,9 +1,10 @@
 import 'package:diet_models/diet_models.dart';
 
-/// 演示场景的固定“今天”，供餐食筛选和趋势计算使用。
+/// @brief 演示场景的固定“今天”日期，供餐食筛选和趋势计算使用。
 final demoDate = DateTime(2026, 10, 2);
 
-/// 本地配餐样例；方案营养是计划值，不是已摄入记录。
+/// @brief 本地配餐方案样例列表。
+/// @note 方案营养是计划值，不是已摄入记录。
 const demoPlans = [
   PlanOption(
     id: 'fish',
@@ -46,8 +47,9 @@ const demoPlans = [
   ),
 ];
 
-/// 每次生成新的演示餐食列表，供状态初始化和重置使用。
-/// 部分九月日期按每日能量总量拆成三餐，其他日期另行提供样例。
+/// @brief 生成新的演示餐食列表，供状态初始化和重置使用。
+/// @details 部分九月日期按每日能量总量拆成三餐，其他日期另行提供样例。
+/// @return 新创建的演示餐食条目列表。
 List<MealEntry> initialMeals() {
   final meals = <MealEntry>[];
   const totals = {26: 1550.0, 27: 1680.0, 29: 1740.0, 30: 1630.0};
@@ -129,7 +131,8 @@ List<MealEntry> initialMeals() {
   return meals;
 }
 
-/// 演示档案的健康记录预览，不来自真实用户资料。
+/// @brief 演示档案的初始健康记录预览列表。
+/// @note 仅为本地样例，不来自真实用户资料。
 const initialHealthRecords = [
   HealthRecordPreview(
     id: 'weight',

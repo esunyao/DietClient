@@ -9,7 +9,8 @@ import '../widgets/meal_widgets.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_meal_detail_screen.dart';
 
-/// 单餐详情入口：真实营养启用时交给原生页，否则读取共享演示记录。
+/// @brief 单餐详情页入口组件。
+/// @details 真实营养启用时委托给原生详情页，否则读取共享演示记录展示。
 class MealDetailScreen extends ConsumerWidget {
   const MealDetailScreen({super.key, required this.mealId});
   final String mealId;

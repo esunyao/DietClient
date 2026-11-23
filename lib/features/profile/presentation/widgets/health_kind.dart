@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../demo/demo_store.dart';
 
-/// 健康记录类别键及其展示名称，供真实和演示资料界面共用。
+/// @brief 健康记录类别键到中文展示名称的共享映射表。
 const healthKinds = {
   'measurement': '身体测量',
   'goal': '健康目标',
@@ -20,7 +20,11 @@ const healthIcons = {
   'restriction': AppIcons.prohibit,
 };
 
-/// 在指定类别中按日期字符串字典序选择最后一条；相同日期取遍历中较后的一条。
+/// @brief 从健康记录集合中选出指定类别日期最新的一条记录。
+/// @details 按日期字符串字典序比较；日期相同时取遍历中较后的一条。
+/// @param records 健康记录预览集合。
+/// @param kind 目标健康记录类别键。
+/// @return 最新一条匹配的记录；无匹配记录时返回 null。
 HealthRecordPreview? latestHealthRecord(
   Iterable<HealthRecordPreview> records,
   String kind,
@@ -34,7 +38,10 @@ HealthRecordPreview? latestHealthRecord(
   return latest;
 }
 
-/// 将可解析日期显示为月日；解析失败时保留原文本。
+/// @brief 将健康记录日期文本格式化为月日展示文案。
+/// @details 日期字符串无法解析时原样返回。
+/// @param value 原始日期字符串。
+/// @return 格式化后的月日字符串或原文本。
 String healthRecordDate(String value) {
   final date = DateTime.tryParse(value);
   return date == null ? value : '${date.month}月${date.day}日';

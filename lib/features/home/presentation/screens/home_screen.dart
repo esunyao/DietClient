@@ -9,7 +9,8 @@ import '../widgets/personal_home_content.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_home_screen.dart';
 
-/// 首页入口：先选择真实营养或演示实现，演示分支再按显式体验模式选择内容。
+/// @brief 应用首页入口组件。
+/// @details 优先按平台开关选择真实营养首页或演示首页；演示分支再按显式体验模式选择个人或机构内容。
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 

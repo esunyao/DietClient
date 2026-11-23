@@ -9,7 +9,8 @@ import '../widgets/trend_widgets.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_trends_screen.dart';
 
-/// 按平台配置选择真实趋势或共享内存演示趋势，演示筛选由本页面持有。
+/// @brief 营养趋势页入口组件。
+/// @details 按平台配置选择真实趋势页或共享内存演示趋势页；演示分支的周期与营养素筛选由本页面持有。
 class TrendsScreen extends ConsumerStatefulWidget {
   const TrendsScreen({super.key});
   @override

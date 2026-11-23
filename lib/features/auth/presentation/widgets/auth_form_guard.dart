@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// 在表单有未保留输入时拦截返回，并请求用户确认是否放弃。
+/// @brief 认证表单离开拦截保护组件。
+/// @details 当表单存在未保留输入时拦截返回操作，并弹窗请求用户确认是否放弃。
 class AuthFormGuard extends StatefulWidget {
   const AuthFormGuard({super.key, required this.dirty, required this.child});
   final bool dirty;

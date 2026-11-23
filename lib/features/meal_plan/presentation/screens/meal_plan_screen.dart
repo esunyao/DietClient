@@ -9,11 +9,15 @@ import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
 import '../widgets/meal_plan_widgets.dart';
 
-/// 组合配餐演示与共享计划状态；原生营养模式显示暂未支持。
+/// @brief 配餐推荐页面组件。
+/// @details 组合配餐演示与共享计划状态；原生营养模式下显示暂未支持页面。
 class MealPlanScreen extends ConsumerWidget {
   const MealPlanScreen({super.key});
 
-  // 弹层返回套餐 ID 后切换整个演示方案；取消弹层时不修改选择。
+  /// @brief 打开套餐替换底部弹层并在确认后切换演示配餐方案。
+  /// @details 弹层返回套餐 ID 后切换整个演示方案；取消弹层时不修改当前选择。
+  /// @param context 当前构建上下文。
+  /// @param ref Riverpod 组件引用。
   Future<void> _replace(BuildContext context, WidgetRef ref) async {
     final selected = await showModalBottomSheet<String>(
       context: context,

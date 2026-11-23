@@ -13,7 +13,8 @@ import '../../../../core/presentation/ui_preferences.dart';
 import '../../../../core/session/session_controller.dart';
 import '../widgets/meal_photo_widgets.dart';
 
-/// 路由装配在 AppShell 外；此页只传递记录与图片 ID。
+/// @brief 原生餐食全屏照片相册页面。
+/// @details 路由装配在 AppShell 之外，页面仅接收并传递餐食记录与初始图片 ID。
 class NativeMealGalleryScreen extends ConsumerWidget {
   const NativeMealGalleryScreen({
     super.key,
@@ -128,7 +129,9 @@ class _GalleryPagesState extends State<_GalleryPages> {
     });
   }
 
-  // 同一账户的照片集合更新时优先按 imageId 保持当前页；找不到则回到首图。
+  /// @brief 在照片集合更新时尽量保持当前浏览图片位置。
+  /// @details 同一账户的照片集合更新时优先按 imageId 定位当前页；找不到则回到首图。
+  /// @param oldWidget 更新前的相册分页组件实例。
   @override
   void didUpdateWidget(_GalleryPages oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -155,7 +158,9 @@ class _GalleryPagesState extends State<_GalleryPages> {
     super.dispose();
   }
 
-  // 放大时禁止箭头翻页；减少动态时直接跳页，否则使用短动画。
+  /// @brief 按偏移量切换相册当前页。
+  /// @details 处于缩放放大状态时禁止翻页；开启减少动态时直接跳页，否则执行短动画切换。
+  /// @param delta 页码偏移量（例如 -1 或 +1）。
   void _move(int delta) {
     final target = _index + delta;
     if (_zoomed || target < 0 || target >= widget.photos.length) return;
@@ -283,7 +288,7 @@ class _ZoomPhotoState extends State<_ZoomPhoto> {
     }
   }
 
-  // 双击在原比例与围绕点击位置的放大之间切换。
+  /// @brief 处理双击手势，在原始比例与围绕点击位置放大之间切换。
   void _doubleTap() {
     _transform.value = _zoomed
         ? Matrix4.identity()

@@ -6,7 +6,8 @@ import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 import 'health_kind.dart';
 
-/// 共享身份卡；调用方可替换默认演示头像、身份标签和缺失身高的展示文本。
+/// @brief 个人中心共享身份卡片组件。
+/// @details 调用方可覆盖默认演示头像、身份标签和缺失身高的展示文本。
 class ProfileIdentityCard extends StatelessWidget {
   const ProfileIdentityCard({
     super.key,
@@ -113,7 +114,8 @@ class ProfileIdentityCard extends StatelessWidget {
   );
 }
 
-/// 展示基础资料；身高和饮水标签可由调用方覆盖，以表达真实数据缺失。
+/// @brief 个人基础资料信息卡片组件。
+/// @details 身高和饮水目标展示标签可由调用方覆盖，以准确表达真实数据缺失。
 class ProfileFactsCard extends StatelessWidget {
   const ProfileFactsCard({
     super.key,
@@ -159,7 +161,8 @@ class ProfileFactsCard extends StatelessWidget {
   );
 }
 
-/// 从传入的真实或演示摘要记录中组合最近测量、目标及过敏和缺失提示。
+/// @brief 个人中心健康档案摘要卡片组件。
+/// @details 从传入的真实或演示摘要记录中组合最近测量、健康目标及过敏与缺失提示。
 class ProfileHealthSummary extends StatelessWidget {
   const ProfileHealthSummary({
     super.key,

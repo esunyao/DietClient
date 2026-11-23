@@ -34,7 +34,10 @@ import 'session_restore_screen.dart';
 
 const sessionRestorePath = '/session/restore';
 
-/// 只允许站内目标；恢复页自身和认证页在成功后回首页。
+/// @brief 解析会话恢复完成后的站内跳转路径。
+/// @details 仅允许站内目标；恢复页自身和认证页在恢复成功后回退到首页。
+/// @param from 原始来源路径，可为 null。
+/// @return 校验后的站内跳转路径。
 String sessionRestoredLocation(String? from) {
   final uri = from == null ? null : Uri.tryParse(from);
   if (uri == null ||
@@ -53,7 +56,12 @@ String sessionRestoredLocation(String? from) {
   return uri.toString();
 }
 
-/// 按登录状态门控业务路径；预览跳过登录门控并把认证页转往首页。
+/// @brief 按登录状态对业务路径执行认证门控重定向。
+/// @details 预览模式跳过登录门控，并将认证页重定向至首页。
+/// @param path 当前请求的路由路径。
+/// @param authenticated 当前是否已完成认证。
+/// @param uiPreview 是否处于 UI 预览模式。
+/// @return 需要重定向的目标路径；无需重定向时返回 null。
 String? authenticationRedirect(
   String path, {
   required bool authenticated,
@@ -75,7 +83,8 @@ class _RouterRefresh extends ChangeNotifier {
   void refresh() => notifyListeners();
 }
 
-/// 装配认证门控、恢复页、根相册路由与业务外壳；会话变化触发重定向复核。
+/// @brief 应用路由 Provider，装配认证门控、恢复页、根相册路由与业务外壳。
+/// @details 会话状态变化时触发路由重定向复核。
 final appRouterProvider = Provider<GoRouter>((ref) {
   final uiPreview = ref.watch(uiPreviewProvider);
   final refresh = _RouterRefresh();

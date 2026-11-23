@@ -4,7 +4,8 @@ import 'package:dio/dio.dart';
 
 import 'api_client.dart';
 
-/// Object GETs never share API authentication, cookies, or interceptors.
+/// @brief Isolated HTTP reader for fetching object-storage photos.
+/// @note Object GETs never share API authentication, cookies, or interceptors.
 class ObjectImageReader {
   ObjectImageReader({HttpClientAdapter? adapter})
     : _dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 30))) {
@@ -14,8 +15,12 @@ class ObjectImageReader {
   static const maxBytes = 10 * 1024 * 1024;
   final Dio _dio;
 
-  /// 从对象地址读取照片；允许 HTTPS 或回环 HTTP，拒绝自动重定向。
-  /// 调用方可取消读取；非 200 状态保留在 ApiFailure 中供上层判断。
+  /// @brief 从对象地址读取照片字节。
+  /// @details 允许 HTTPS 或回环 HTTP，拒绝自动重定向；非 200 状态保留在 ApiFailure 中供上层判断。
+  /// @param url 对象存储照片下载地址。
+  /// @param cancelToken 可选取消令牌。
+  /// @return 读取并校验大小后的图片字节数据。
+  /// @throws ApiFailure 当地址无效、请求失败、响应状态非 200 或超过大小上限时抛出。
   Future<Uint8List> read({
     required String url,
     CancelToken? cancelToken,
@@ -107,7 +112,7 @@ class ObjectImageReader {
     }
   }
 
-  /// 使用结束后关闭独立 Dio，并强制终止其未完成请求。
+  /// @brief 关闭独立 Dio 实例并强制终止其未完成请求。
   void close() => _dio.close(force: true);
 }
 

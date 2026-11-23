@@ -6,7 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/auth_config.dart';
 import '../../../core/session/session_controller.dart';
 
-/// 薄可替换边界供无网络门禁/取消测试使用。
+/// @brief 认证网关抽象接口。
+/// @details 作为薄可替换边界，供无网络门禁与取消流程测试使用。
 abstract interface class AuthGateway {
   Future<OidcSession> password({
     required String username,
@@ -40,7 +41,8 @@ class _AuthentikGateway implements AuthGateway {
   void dispose() => client.dispose();
 }
 
-// 由身份服务配置装配网关，并在 provider 销毁时释放客户端。
+/// @brief 认证网关 Provider。
+/// @details 由身份服务配置装配网关，并在 Provider 销毁时释放客户端资源。
 final authGatewayProvider = Provider<AuthGateway?>((ref) {
   final config = ref.watch(authConfigProvider).authentik;
   if (config == null) return null;
@@ -60,7 +62,8 @@ final loginControllerProvider = NotifierProvider<LoginController, LoginState>(
   LoginController.new,
 );
 
-/// 协调密码或弹窗登录、权限确认和会话建立；记住登录的恢复记录由会话层管理。
+/// @brief 登录流程状态控制器。
+/// @details 协调密码或弹窗登录、权限确认和会话建立；记住登录的恢复记录由会话层管理。
 class LoginController extends Notifier<LoginState> {
   int _attempt = 0;
   Completer<bool>? _consent;
@@ -137,7 +140,8 @@ class LoginController extends Notifier<LoginState> {
     }
   }
 
-  /// 使当前尝试失效、结束待决同意并通知网关取消。
+  /// @brief 取消当前进行中的登录尝试。
+  /// @details 使当前尝试失效、结束待决权限同意并通知认证网关取消请求。
   void cancel() {
     _attempt++;
     if (_consent?.isCompleted == false) _consent!.complete(false);

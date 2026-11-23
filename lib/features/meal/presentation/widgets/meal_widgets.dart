@@ -7,7 +7,8 @@ String mealDate(DateTime d) =>
 String mealTime(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
-/// 演示餐食行：按分析状态展示能量或状态，并支持宽屏列表选中态。
+/// @brief 演示餐食列表行组件。
+/// @details 按分析状态展示能量数值或状态标签，并支持宽屏列表选中态。
 class MealRow extends StatelessWidget {
   const MealRow({
     super.key,
@@ -149,7 +150,8 @@ class MealRow extends StatelessWidget {
   }
 }
 
-/// 展示演示整餐营养；空指标保持未知，评分为未评估占位。
+/// @brief 演示整餐营养详情卡片组件。
+/// @details 展示演示整餐营养数据；空指标保持未知，评分为未评估占位。
 class MealNutrients extends StatelessWidget {
   const MealNutrients({
     super.key,

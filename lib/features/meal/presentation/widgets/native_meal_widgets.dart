@@ -26,7 +26,8 @@ String amountText(double? amount) => amount == null
     ? '未知'
     : amount.toStringAsFixed(amount == amount.roundToDouble() ? 0 : 2);
 
-/// 展示真实营养列表：缺失的常用指标显示未知，其他服务端指标按原名称和单位展示。
+/// @brief 真实餐食营养素列表展示组件。
+/// @details 缺失的常用指标显示未知，其他服务端返回的额外指标按原名称和单位展示。
 class NativeNutrients extends StatelessWidget {
   const NativeNutrients({super.key, required this.values});
   final List<NutrientValue> values;
@@ -57,7 +58,8 @@ class NativeNutrients extends StatelessWidget {
   );
 }
 
-/// 真实历史餐食项按外观偏好切换紧凑行或照片卡片；照片和文字分别交给各自回调。
+/// @brief 真实历史餐食列表项组件。
+/// @details 按外观偏好切换紧凑行或照片卡片视图；点击照片与点击文字分别触发对应回调。
 class NativeMealTile extends StatelessWidget {
   const NativeMealTile({
     super.key,
@@ -127,7 +129,8 @@ class NativeMealTile extends StatelessWidget {
   }
 }
 
-/// 展示调用方提供的查询错误，并将重试行为交还调用方。
+/// @brief 营养查询错误提示与重试卡片组件。
+/// @details 展示调用方提供的查询错误，并将重试操作交还给调用方处理。
 class NutritionError extends StatelessWidget {
   const NutritionError({super.key, required this.error, required this.retry});
   final Object error;

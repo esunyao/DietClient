@@ -9,12 +9,20 @@ import '../../../../core/nutrition/application/meal_photo_providers.dart';
 import '../../../../core/presentation/app_routes.dart';
 import '../../../../core/session/session_controller.dart';
 
-// 仅在会话存在时装配照片读取，与真实页面的认证门控保持一致。
+/// @brief 餐食照片展示与读取启用状态 Provider。
+/// @details 仅在活动会话存在时装配照片读取，与真实页面的认证门控保持一致。
 final mealPhotoPresentationEnabledProvider = Provider<bool>(
   (ref) => ref.watch(sessionProvider) != null,
 );
 
-/// Keep same-account photo consumers mounted while signatures renew.
+/// @brief Maps a meal photo AsyncValue to UI while preserving same-account content during refresh.
+/// @details Keep same-account photo consumers mounted while signatures renew.
+/// @param result Current asynchronous meal photo set result.
+/// @param epoch Active account session epoch used to isolate cross-account snapshots.
+/// @param data Builder invoked when same-account photo metadata is available.
+/// @param loading Builder invoked while loading without reusable same-account data.
+/// @param error Builder invoked when loading fails without reusable same-account data.
+/// @return Rendered widget for the current photo loading state.
 Widget mealPhotoContent(
   AsyncValue<MealPhotoSet> result,
   int epoch, {
@@ -34,7 +42,8 @@ Widget mealPhotoContent(
   );
 }
 
-/// 元数据与图片字节各自重试，不受营养分析状态影响。
+/// @brief 餐食照片加载中或错误状态占位组件。
+/// @details 元数据与图片字节各自独立重试，不受营养分析状态影响。
 class MealPhotoStatus extends StatelessWidget {
   const MealPhotoStatus({
     super.key,
@@ -109,7 +118,8 @@ class MealPhotoStatus extends StatelessWidget {
   );
 }
 
-/// 从照片集合展示首张封面和总数；打开时向调用方传递图片 ID。
+/// @brief 餐食历史卡片照片封面组件。
+/// @details 从照片集合展示首张封面图与照片总数；点击打开时向调用方传递对应图片 ID。
 class MealPhotoCover extends ConsumerWidget {
   const MealPhotoCover({
     super.key,
@@ -177,7 +187,8 @@ class MealPhotoCover extends ConsumerWidget {
   }
 }
 
-/// 分别处理链接缺失、字节加载和解码失败；链接重试刷新元数据，字节重试刷新字节查询。
+/// @brief 单张餐食照片渲染组件。
+/// @details 分别处理链接缺失、字节加载和解码失败状态；链接重试刷新元数据，字节重试刷新字节查询。
 class MealPhotoImage extends ConsumerWidget {
   const MealPhotoImage({
     super.key,
@@ -237,7 +248,8 @@ class MealPhotoImage extends ConsumerWidget {
   }
 }
 
-/// 每个展示实例使用独立字节身份，离开时只移除自己的解码缓存。
+/// @brief 持有独立解码缓存身份的餐食图片组件。
+/// @details 每个展示实例使用独立字节副本作为缓存键，销毁时仅驱逐自身解码缓存。
 class OwnedMealImage extends StatefulWidget {
   const OwnedMealImage({
     super.key,
@@ -256,7 +268,9 @@ class OwnedMealImage extends StatefulWidget {
 
 class _OwnedMealImageState extends State<OwnedMealImage> {
   late ImageProvider _image;
-  // 复制字节以隔离各实例的缓存键；指定尺寸时按等比例边界解码。
+
+  /// @brief 创建隔离缓存键的内存图片提供器。
+  /// @details 复制字节以隔离各实例的缓存键；指定 decodeWidth 时按等比例边界尺寸解码。
   void _create() {
     final memory = MemoryImage(Uint8List.fromList(widget.bytes));
     _image = widget.decodeWidth == null
@@ -301,7 +315,8 @@ class _OwnedMealImageState extends State<OwnedMealImage> {
   );
 }
 
-/// 展示本餐横向缩略图，并以选中的图片 ID 打开独立相册。
+/// @brief 餐食详情横向照片缩略图条组件。
+/// @details 展示本餐已确认照片的横向缩略图，点击时以选中的图片 ID 打开独立全屏相册。
 class MealPhotoStrip extends ConsumerWidget {
   const MealPhotoStrip({super.key, required this.mealId});
   final String mealId;

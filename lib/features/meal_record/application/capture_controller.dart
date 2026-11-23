@@ -9,7 +9,8 @@ import '../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../core/privacy/ai_consent.dart';
 import '../../../core/session/session_controller.dart';
 
-/// 本页内存中的图片及上传阶段；失败重试时复用已完成的签名、上传或确认结果。
+/// @brief 本页内存中的待处理餐食图片及上传阶段状态模型。
+/// @details 失败重试时复用已完成的签名、上传或确认结果。
 class PendingMealImage {
   PendingMealImage(this.image);
   final SelectedImage image;
@@ -27,7 +28,8 @@ class PendingMealImage {
       : '待上传';
 }
 
-/// 聚合服务端采集会话、本地待处理图片和操作状态；备注由页面持有。
+/// @brief 餐食采集流程聚合状态模型。
+/// @details 聚合服务端采集会话、本地待处理图片、忙碌标记与错误信息；备注输入由页面持有。
 class CaptureFlowState {
   const CaptureFlowState({
     this.session,
@@ -46,7 +48,8 @@ final captureFlowProvider =
       CaptureController.new,
     );
 
-/// 协调真实采集 API、媒体选择和授权检查，并按登录代次隔离异步结果。
+/// @brief 真实餐食采集流程控制器。
+/// @details 协调真实采集 API、媒体选择和授权检查，并按登录代次隔离异步结果。
 class CaptureController extends Notifier<CaptureFlowState> {
   CancelToken? _cancel;
   String? _createKey;
@@ -77,8 +80,10 @@ class CaptureController extends Notifier<CaptureFlowState> {
     );
   }
 
-  // 操作互斥；仅在控制器仍挂载且代次未变时回写错误和忙碌状态。
-  // 发生冲突时尝试刷新服务端会话，保留本地输入供核对。
+  /// @brief 在互斥保护下执行单个异步采集操作。
+  /// @details 仅在控制器仍挂载且登录代次未变时回写错误和忙碌状态；发生冲突时尝试刷新服务端会话并保留本地输入供核对。
+  /// @param action 接收当前登录代次的异步业务操作。
+  /// @return 操作返回值；若已有操作进行中或捕获异常则返回 null。
   Future<T?> _run<T>(Future<T?> Function(int epoch) action) async {
     if (state.busy) return null;
     final epoch = ref.read(sessionEpochProvider);
@@ -117,7 +122,9 @@ class CaptureController extends Notifier<CaptureFlowState> {
     }
   }
 
-  /// 新建失败后的显式重试复用幂等键；成功后清除该键并失效共享营养查询。
+  /// @brief 创建新的服务端餐食采集会话。
+  /// @details 新建失败后的显式重试复用同一幂等键；成功后清除该键并失效共享营养查询。
+  /// @return 创建成功的采集会话；失败或会话更换时返回 null。
   Future<CaptureSession?> create() => _run((epoch) async {
     _createKey ??= const Uuid().v4();
     final timezone = await ref.read(deviceTimezoneProvider.future);
@@ -132,7 +139,10 @@ class CaptureController extends Notifier<CaptureFlowState> {
     invalidateNutrition(ref);
     return created;
   });
-  /// 恢复服务端草稿，并通过媒体协调器按餐食用途和会话 ID 恢复丢失的选择结果。
+
+  /// @brief 打开并恢复指定的服务端采集草稿。
+  /// @details 同时通过媒体协调器按餐食用途和会话 ID 恢复 Android 可能丢失的选图结果。
+  /// @param id 目标采集会话 ID。
   Future<void> open(String id) async {
     await _run((epoch) async {
       final session = await _api.captureSession(id);
@@ -171,7 +181,9 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
-  /// 合并未删除的服务端图片和本地待处理图片，按签名图片 ID 避免重复计数。
+  /// @brief 计算当前采集会话中的有效图片总数。
+  /// @details 合并未删除的服务端图片和本地待处理图片，按签名图片 ID 去重计数。
+  /// @return 当前已计入上限的图片数量。
   int get imageCount =>
       (state.session?.images
               .where((image) => image.status != 'deleted')
@@ -205,7 +217,12 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
-  // 同时遵守策略和会话的数量上限；文件内容、大小及类型交由媒体协调器检查。
+  /// @brief 校验并向待上传队列追加单张图片。
+  /// @details 同时遵守策略和会话的数量上限；文件内容、大小及类型交由媒体协调器检查。
+  /// @param file 待加入的本地图片文件。
+  /// @param policy 服务端采集策略。
+  /// @param epoch 发起操作时的登录代次。
+  /// @throws ApiFailure 当本餐图片数量已达上限时抛出。
   Future<void> _add(XFile file, CapturePolicy policy, int epoch) async {
     if (imageCount >= policy.maxImageCount ||
         imageCount >= state.session!.maxImageCount) {
@@ -252,7 +269,8 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
-  /// 逐图串行执行签名、上传和确认；重试跳过已完成阶段，取消令牌用于上传流程。
+  /// @brief 串行执行本地待处理图片的预签名、上传和确认流程。
+  /// @details 重试时自动跳过已完成的阶段，并向对象上传流程传递取消令牌。
   Future<void> upload() async {
     if (state.session == null) return;
     await _run((epoch) async {
@@ -339,8 +357,13 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
-  /// 全部本地图片确认后，每次提交或重新分析都重新核实 AI 同意。
-  /// 返回受理结果并失效共享查询；分析结果需另行查看。
+  /// @brief 提交采集会话或触发重新分析。
+  /// @details 确认全部本地图片已上传确认，并每次都向服务端重新核实 AI 同意；成功后失效共享营养查询。
+  /// @param mealType 餐别标识。
+  /// @param notes 可选餐食备注。
+  /// @param retry 是否为失败后的重新分析提交，默认为 false。
+  /// @return 服务端返回的采集受理结果；未通过检查或失败时返回 null。
+  /// @note 返回受理结果不代表分析已完成，具体分析结果需另行查看。
   Future<CaptureSubmission?> submit({
     required String mealType,
     String? notes,

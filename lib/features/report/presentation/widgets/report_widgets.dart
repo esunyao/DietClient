@@ -39,7 +39,8 @@ class ReportSummaryRow extends StatelessWidget {
   );
 }
 
-/// 展示演示报告版本及过期标记，查看操作由调用方提供。
+/// @brief 演示营养报告版本卡片组件。
+/// @details 展示报告版本号与过期标记，查看详情回调由调用方提供。
 class ReportVersionCard extends StatelessWidget {
   const ReportVersionCard({
     super.key,
@@ -151,7 +152,8 @@ class ReportVersionCard extends StatelessWidget {
   );
 }
 
-/// 并列展示报告快照日均和当前七日覆盖；两者可能因记录变化而不同。
+/// @brief 报告概览对比卡片组件。
+/// @details 并列展示报告快照日均能量与当前七日记录覆盖；两者可能因后续记录变化而不同。
 class ReportOverview extends StatelessWidget {
   const ReportOverview({
     super.key,
@@ -411,7 +413,8 @@ class ReportCoverageDetails extends StatelessWidget {
   );
 }
 
-/// 提供当前趋势的逐日能量读数，区分无餐食和有餐食但缺少能量。
+/// @brief 报告逐日能量明细折叠列表组件。
+/// @details 展示当前趋势的逐日能量读数，并区分无餐食记录与有餐食但缺少能量数据。
 class ReportDailyValues extends StatelessWidget {
   const ReportDailyValues({super.key, required this.points});
   final List<TrendPoint> points;

@@ -13,7 +13,8 @@ import '../../../../core/nutrition/application/analysis_polling.dart';
 import '../widgets/native_meal_widgets.dart';
 import '../widgets/meal_photo_widgets.dart';
 
-// 重新分析先核验 AI 同意，再检查账户代次；仅同一代次的完成结果使共享营养查询失效。
+/// @brief 餐食重新分析动作 Provider。
+/// @details 执行前先核验 AI 同意并检查账户代次；仅同一代次的完成结果使共享营养查询失效。
 final _retryMealProvider = Provider<Future<void> Function(Meal)>(
   (ref) => (meal) async {
     final epoch = ref.read(sessionEpochProvider);
@@ -28,7 +29,8 @@ final _retryMealProvider = Provider<Future<void> Function(Meal)>(
   },
 );
 
-/// 展示共享真实餐食查询，负责重试分析、确认删除和进入修正页。
+/// @brief 原生真实餐食详情页面。
+/// @details 展示共享真实餐食查询数据，负责触发重试分析、确认删除和跳转修正页。
 class NativeMealDetailScreen extends ConsumerStatefulWidget {
   const NativeMealDetailScreen({super.key, required this.mealId});
   final String mealId;
@@ -57,7 +59,9 @@ class _DetailState extends ConsumerState<NativeMealDetailScreen> {
     }
   }
 
-  // 确认及删除期间检查挂载和账户代次；成功后刷新共享查询，再返回历史。
+  /// @brief 弹出确认对话框并删除指定餐食记录。
+  /// @details 确认及删除期间核对组件挂载与账户代次；删除成功后刷新共享查询并返回历史页。
+  /// @param meal 待删除的餐食详情对象。
   Future<void> _delete(Meal meal) async {
     if (_busy) return;
     final epoch = ref.read(sessionEpochProvider);

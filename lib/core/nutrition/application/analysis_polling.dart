@@ -7,11 +7,15 @@ import 'package:go_router/go_router.dart';
 import '../../session/session_controller.dart';
 import 'nutrition_providers.dart';
 
-/// 仅已知排队和分析中状态参与轮询，其他状态不视为待处理。
+/// @brief 判断餐食分析状态是否需要继续轮询。
+/// @details 仅已知的排队和分析中状态参与轮询，其他状态不视为待处理。
+/// @param status 餐食分析状态字符串。
+/// @return 处于待处理状态时返回 true，否则返回 false。
 bool analysisPending(String status) =>
     const ['pending', 'queued', 'analysing', 'analyzing'].contains(status);
 
-/// One clock refreshes shared queries once for all visible consumers.
+/// @brief Shared polling coordinator for pending nutrition analysis queries.
+/// @details One clock refreshes shared queries once for all visible consumers.
 class AnalysisPolling {
   AnalysisPolling(this.refresh);
   final void Function() refresh;
@@ -55,7 +59,8 @@ class AnalysisPolling {
     _sync();
   }
 
-  // 仅活动租约推进三秒计时；同组回调每轮合并，两分钟后通知各租约超时。
+  /// @brief 按当前活动租约状态同步共享轮询计时器。
+  /// @details 仅活动租约推进三秒计时；同组回调每轮合并执行，两分钟后通知各租约超时。
   void _sync() {
     final active = _leases.keys.any(
       (key) => _leases[key]!.active && !expired(key),
@@ -100,7 +105,8 @@ class AnalysisPolling {
   }
 }
 
-// 登录代次变化时重建时钟，并在 Provider 销毁时清理计时器与租约。
+/// @brief 共享营养分析轮询控制器 Provider。
+/// @details 登录代次变化时重建时钟，并在 Provider 销毁时清理计时器与租约。
 final analysisPollingProvider = Provider<AnalysisPolling>((ref) {
   ref.watch(sessionEpochProvider);
   final controller = AnalysisPolling(() {});
@@ -108,8 +114,8 @@ final analysisPollingProvider = Provider<AnalysisPolling>((ref) {
   return controller;
 });
 
-/// 将页面可见性、前后台状态和待分析状态接入共享轮询。
-/// 超时后由本组件提供手动刷新入口；具体查询刷新由调用方提供。
+/// @brief 共享营养分析轮询接入组件。
+/// @details 将页面可见性、前后台状态和待分析状态接入共享轮询；超时后由本组件提供手动刷新入口，具体查询刷新由调用方提供。
 class NutritionPolling extends ConsumerStatefulWidget {
   const NutritionPolling({
     super.key,
@@ -124,7 +130,8 @@ class NutritionPolling extends ConsumerStatefulWidget {
   final VoidCallback onRefresh;
   final Object? refreshKey;
 
-  /// Page-level children need a bounded body; inline sections keep natural height.
+  /// @brief Whether to expand the child within a bounded page body.
+  /// @details Page-level children need a bounded body; inline sections keep natural height.
   final bool expandChild;
   @override
   ConsumerState<NutritionPolling> createState() => _NutritionPollingState();

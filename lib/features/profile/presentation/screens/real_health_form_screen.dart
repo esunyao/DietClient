@@ -12,7 +12,8 @@ import '../../../../core/presentation/unsaved_form.dart' show returnOrGo;
 import '../widgets/health_kind.dart';
 import '../widgets/unsaved_form.dart';
 
-/// 按健康类别和可选记录创建真实新增或编辑表单，并依据字段配置组织表单项。
+/// @brief 真实健康记录新增与编辑表单页面。
+/// @details 按健康类别和可选已有记录装配表单，并依据字段契约配置组织表单项。
 class RealHealthFormScreen extends ConsumerStatefulWidget {
   const RealHealthFormScreen({super.key, required this.kind, this.record});
   final String kind;
@@ -137,7 +138,8 @@ class _RealHealthFormState extends ConsumerState<RealHealthFormScreen> {
     }
   }
 
-  // 测量时间以本地日期和时间选择，写回时转成 UTC；任一弹窗取消或页面销毁即退出。
+  /// @brief 打开本地日期与时间选择器并将所选测量时刻转换为 UTC 写回表单。
+  /// @details 任一弹窗取消或页面销毁时直接退出，不修改当前字段。
   Future<void> _pickDateTime() async {
     final current =
         DateTime.tryParse(_controllers['measuredAt']!.text)?.toLocal() ??

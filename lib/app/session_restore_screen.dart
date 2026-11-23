@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/session/session_controller.dart';
 
-/// 恢复成功前不构建业务页面，网络失败保留安全存储中的恢复信息。
+/// @brief 会话恢复页面。
+/// @details 恢复成功前不构建业务页面；网络失败时保留安全存储中的恢复信息。
 class SessionRestoreScreen extends ConsumerWidget {
   const SessionRestoreScreen({super.key});
 
-  // 已有会话时强制刷新令牌，否则重新尝试恢复；失败状态由会话控制器维护。
+  /// @brief 重试会话恢复或强制刷新访问令牌。
+  /// @details 已有会话时强制刷新令牌，否则重新尝试恢复；失败状态由会话控制器维护。
+  /// @param ref Riverpod 组件引用。
   Future<void> _retry(WidgetRef ref) async {
     final controller = ref.read(sessionProvider.notifier);
     try {

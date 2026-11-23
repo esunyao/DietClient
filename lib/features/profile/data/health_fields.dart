@@ -1,4 +1,5 @@
-/// Orion 的五类记录字段，表单和验证共用同一契约映射。
+/// @brief 健康记录单字段契约配置模型。
+/// @details 覆盖 Orion 的五类健康记录字段，供表单构建和输入校验共用。
 class HealthField {
   const HealthField(
     this.key,
@@ -140,7 +141,11 @@ const fieldsByKind = <String, List<HealthField>>{
   ],
 };
 
-/// 校验必填、长度、数值范围和日期格式；带时区的时间允许最多超前当前时间五分钟。
+/// @brief 按字段契约校验单个健康表单字段的输入值。
+/// @details 校验必填、最大长度、数值范围和日期时间格式；带时区的时间允许最多超前当前时间五分钟。
+/// @param field 字段配置定义。
+/// @param value 用户输入的字符串值。
+/// @return 校验通过时返回 null，否则返回错误提示文案。
 String? validateHealthField(HealthField field, String value) {
   if (value.isEmpty) return field.required ? '请填写${field.label}' : null;
   if (value.length > field.maxLength) return '最多 ${field.maxLength} 字符';
@@ -171,7 +176,12 @@ String? validateHealthField(HealthField field, String value) {
   return null;
 }
 
-/// 校验日期先后及测量记录至少有一项指标；传入的非空日期须先通过单字段校验。
+/// @brief 校验健康记录的跨字段日期先后与测量指标完整性。
+/// @details 校验起止日期先后顺序，以及身体测量记录至少包含一项指标。
+/// @param kind 健康记录类别键。
+/// @param data 已组装待提交的记录数据映射。
+/// @return 校验通过时返回 null，否则返回错误提示文案。
+/// @note 传入的非空日期字段须先通过 validateHealthField 单字段校验。
 String? validateHealthDates(String kind, Map<String, dynamic> data) {
   final pairs = {
     'goal': ['startedOn', 'targetDate'],

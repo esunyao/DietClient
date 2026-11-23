@@ -9,7 +9,8 @@ import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../../core/nutrition/application/analysis_polling.dart';
 import '../widgets/native_meal_widgets.dart';
 
-/// 真实餐食历史使用共享查询进行服务端筛选和分页，并读取本机历史布局偏好。
+/// @brief 原生真实餐食历史列表页面。
+/// @details 使用共享查询进行服务端筛选和分页，并按本机历史布局偏好切换紧凑列表或照片卡片视图。
 class NativeMealHistoryScreen extends ConsumerStatefulWidget {
   const NativeMealHistoryScreen({super.key});
   @override
@@ -31,7 +32,7 @@ class _HistoryState extends ConsumerState<NativeMealHistoryScreen> {
     super.dispose();
   }
 
-  // 将编辑中的日期、餐别和关键词应用为查询条件，并从第一页重新开始。
+  /// @brief 应用当前编辑中的日期、餐别和关键词筛选条件并回到第一页。
   void _apply() {
     if (_from.isAfter(_to)) {
       ScaffoldMessenger.of(context)

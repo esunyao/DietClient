@@ -12,7 +12,8 @@ import '../../../../demo/demo_store.dart';
 import '../widgets/health_kind.dart';
 import '../widgets/health_record_category.dart';
 
-/// 健康档案入口：真实模式委托真实页面，预览模式汇总共享演示资料和记录。
+/// @brief 健康档案总览页入口组件。
+/// @details 真实模式委托给真实健康档案页，预览模式汇总展示共享演示资料和记录。
 class HealthRecordsScreen extends ConsumerWidget {
   const HealthRecordsScreen({super.key});
 

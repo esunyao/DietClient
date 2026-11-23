@@ -10,7 +10,8 @@ import '../widgets/meal_widgets.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_meal_correction_screen.dart';
 
-/// 按平台配置选择真实修正页或演示表单，未选中的分支不创建其表单状态。
+/// @brief 餐食修正页路由入口组件。
+/// @details 按平台配置选择真实修正页或演示表单，未选中的分支不创建其表单状态。
 class MealCorrectionScreen extends ConsumerWidget {
   const MealCorrectionScreen({super.key, this.mealId});
   final String? mealId;
@@ -61,8 +62,10 @@ class _MealCorrectionScreenState
   bool _extraNutrients = false;
   bool _sampleApplied = false;
   bool get _isNew => widget.mealId == null;
+
+  /// @brief 初始化演示修正表单草稿状态。
+  /// @details 演示草稿从共享内存记录初始化；新建时使用演示日期，保存前不改变共享记录。
   @override
-  // 演示草稿从共享内存记录初始化；新建时使用演示日期，保存前不改变共享记录。
   void initState() {
     super.initState();
     _original = widget.mealId == null
@@ -101,7 +104,9 @@ class _MealCorrectionScreenState
   }
 
   void _markDirty() => setState(() => _dirty = true);
-  // 普通菜品或重量变更没有可靠换算依据，清空整餐营养以待人工核对。
+
+  /// @brief 在菜品或重量变更后清空整餐营养数值以待人工核对。
+  /// @details 普通菜品或重量变更没有可靠换算依据，因此清空已填营养值并标记表单已修改。
   void _invalidateNutrition() {
     setState(() {
       _dirty = true;
@@ -146,7 +151,8 @@ class _MealCorrectionScreenState
     });
   }
 
-  // 仅对匹配的午餐样例应用预设结果，不作为通用重量换算。
+  /// @brief 对匹配的午餐演示样例应用预设重量与营养值。
+  /// @note 仅适用于匹配的演示午餐样例，不作为通用重量换算逻辑。
   void _applySample() {
     setState(() {
       _foods.firstWhere((f) => f.id == 'fish').grams.text = '120';

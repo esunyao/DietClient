@@ -1,4 +1,5 @@
-/// 历史餐食照片的内存元数据：保留精确图片 ID、槽位和可空预览签名信息。
+/// @brief 历史餐食照片的内存元数据模型。
+/// @details 保留精确图片 ID、槽位和可空预览签名信息。
 class MealPhoto {
   const MealPhoto({
     required this.imageId,
@@ -13,7 +14,8 @@ class MealPhoto {
   final DateTime? expiresAt;
 }
 
-/// 关联餐食与采集会话的照片快照；照片列表复制为只读集合。
+/// @brief 关联餐食与采集会话的照片集合快照。
+/// @details 内部照片列表在构造时复制为不可修改的只读集合。
 class MealPhotoSet {
   MealPhotoSet({
     required this.mealId,
@@ -25,7 +27,8 @@ class MealPhotoSet {
   final String mealId;
   final String captureSessionId;
 
-  /// Local owner generation, never part of the HTTP contract or persistence.
+  /// @brief Local owner session epoch generation.
+  /// @note Never part of the HTTP contract or persistence.
   final int sessionEpoch;
   final List<MealPhoto> photos;
 }

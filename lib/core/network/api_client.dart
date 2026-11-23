@@ -7,7 +7,8 @@ import '../config/ui_preview_config.dart';
 import '../session/session_controller.dart';
 import 'lossless_json.dart';
 
-/// 使用本地提示表示请求失败，并分别保留可用的 HTTP 状态和业务信封 code。
+/// @brief 业务 API 请求失败异常。
+/// @details 使用本地提示表示请求失败，并分别保留可用的 HTTP 状态码和业务信封 code。
 class ApiFailure implements Exception {
   const ApiFailure(this.message, {this.status, this.code});
   final String message;
@@ -24,8 +25,9 @@ final apiDioFactoryProvider = Provider<Dio Function()>(
   (ref) =>
       () => Dio(BaseOptions(connectTimeout: const Duration(seconds: 30))),
 );
-// 预览或无会话时不创建业务客户端；按稳定登录代次隔离，令牌轮换不重建客户端。
-// Provider 释放时关闭 Dio，换号后的回调和结果由代次检查拦截。
+
+/// @brief 当前登录会话的业务 API 客户端 Provider。
+/// @details 预览或无会话时不创建业务客户端；按稳定登录代次隔离，令牌轮换不重建客户端。Provider 释放时关闭 Dio，换号后的回调和结果由代次检查拦截。
 final apiClientProvider = Provider<ApiClient?>((ref) {
   final epoch = ref.watch(sessionEpochProvider);
   final present = ref.watch(sessionProvider.select((value) => value != null));
@@ -69,8 +71,17 @@ class ApiClient {
   final Future<String> Function({bool force})? freshToken;
   final String? Function()? currentAccessToken;
   void close() => _dio.close(force: true);
-  /// 请求允许的资料或膳食相对路径，附当前 Bearer；支持调用方取消。
-  /// HTTP 或业务 code 401 时仅 GET 最多续期重试一次，写请求不自动重放。
+
+  /// @brief 请求允许的资料或膳食相对路径，附带当前 Bearer 令牌。
+  /// @details 支持调用方取消；HTTP 或业务 code 401 时仅 GET 最多续期重试一次，写请求不自动重放。
+  /// @param path 允许范围内的业务相对路径。
+  /// @param method HTTP 请求方法，默认为 GET。
+  /// @param data 可选请求体数据。
+  /// @param queryParameters 可选查询参数映射。
+  /// @param headers 可选额外请求头。
+  /// @param cancelToken 可选请求取消令牌。
+  /// @return 成功业务信封中的 data 数据。
+  /// @throws ApiFailure 当路径受限、会话失效、请求失败或业务返回非成功状态码时抛出。
   Future<Object?> request(
     String path, {
     String method = 'GET',
@@ -177,7 +188,10 @@ class ApiClient {
   }
 }
 
-// 只使用本地提示；服务端 message 可能包含内部细节或用户输入。
+/// @brief 将 HTTP 或业务错误码映射为本地安全提示。
+/// @details 只使用本地提示，避免直接暴露服务端 message 中可能包含的内部细节或用户输入。
+/// @param code HTTP 状态码或业务信封错误码。
+/// @return 面向用户的错误提示字符串。
 String _failureMessage(int? code) => switch (code ?? 0) {
   400 || 422 => '提交内容不符合要求，请检查填写的信息后重试',
   401 => '登录已失效，请重新登录',

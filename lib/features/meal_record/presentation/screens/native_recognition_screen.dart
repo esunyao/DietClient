@@ -12,7 +12,8 @@ import '../../../../core/privacy/ai_consent.dart';
 import '../../../../core/session/session_controller.dart';
 import '../../application/capture_controller.dart';
 
-/// 真实餐食采集页面：组合服务端策略、草稿、授权和本地表单，不使用演示采集状态。
+/// @brief 原生真实餐食采集与识别提交页面。
+/// @details 组合服务端策略、草稿列表、AI 授权状态和本地表单，不使用演示采集状态。
 class NativeRecognitionScreen extends ConsumerStatefulWidget {
   const NativeRecognitionScreen({super.key});
   @override
@@ -32,7 +33,9 @@ class _NativeRecognitionScreenState
     super.dispose();
   }
 
-  // 受理不等于分析完成；仅在页面、路由和登录代次仍有效时跳转详情。
+  /// @brief 提交当前采集草稿或触发重新分析。
+  /// @details 受理不等于分析完成；仅在页面挂载、当前路由有效且登录代次未变时跳转餐食详情页。
+  /// @param retry 是否为重试分析提交。
   Future<void> _submit(bool retry) async {
     final epoch = ref.read(sessionEpochProvider);
     final result = await ref
@@ -84,7 +87,9 @@ class _NativeRecognitionScreenState
     await ref.read(captureFlowProvider.notifier).deleteDraft(id);
   }
 
-  // 切换不同草稿且本页有图片或备注时先请求确认；目标会话已设置时重置表单。
+  /// @brief 打开或切换到指定的采集草稿。
+  /// @details 切换不同草稿且本页有未提交图片或备注时先请求用户确认；目标会话设置成功后重置页面表单。
+  /// @param id 目标采集会话 ID。
   Future<void> _open(String id) async {
     final controller = ref.read(captureFlowProvider.notifier);
     final previous = ref.read(captureFlowProvider);

@@ -13,7 +13,8 @@ import '../widgets/health_kind.dart';
 import '../widgets/profile_cards.dart';
 import '../widgets/profile_services.dart';
 
-/// 我的页面入口：非预览使用真实页面，预览从共享演示状态组合身份、健康摘要和服务。
+/// @brief “我的”主页面入口组件。
+/// @details 非预览模式使用真实资料页，预览模式从共享演示状态组合身份、健康摘要和服务入口。
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -123,7 +124,8 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-/// 为资料页面的内容块统一提供标题和可选操作入口。
+/// @brief 资料页面通用分节容器组件。
+/// @details 为资料页面各内容块统一提供节标题与可选操作入口。
 class ProfileSection extends StatelessWidget {
   const ProfileSection({
     super.key,
@@ -149,7 +151,8 @@ class ProfileSection extends StatelessWidget {
   );
 }
 
-/// 提供健康档案、报告和饮食历史的路由快捷入口，目标页面负责各自的数据边界。
+/// @brief 资料页快捷入口行组件。
+/// @details 提供健康档案、营养报告和饮食历史的路由快捷入口，具体数据边界由目标页面各自负责。
 class ProfileShortcuts extends StatelessWidget {
   const ProfileShortcuts({super.key});
 

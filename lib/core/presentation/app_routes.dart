@@ -1,4 +1,5 @@
-/// 集中定义应用路径及动态路径构造；路由注册和页面选择由应用层负责。
+/// @brief 应用路由路径常量与动态路径构造工具。
+/// @details 集中定义路径协议，路由注册和页面选择由应用层负责。
 abstract final class AppRoutes {
   static const home = '/home';
   static const capture = '/capture';
@@ -18,7 +19,11 @@ abstract final class AppRoutes {
   static const editProfile = '/profile/edit';
   static const healthRecords = '/profile/health-records';
   static const aiConsent = '/profile/ai-consent';
-  // 动态标识按路径段编码，相册的可选图片标识按查询参数编码。
+
+  /// @brief 构造单餐详情路由路径。
+  /// @details 动态标识按路径段编码；相册的可选图片标识按查询参数编码。
+  /// @param id 餐食标识。
+  /// @return 编码后的单餐详情路径。
   static String mealDetail(String id) => '/meals/${Uri.encodeComponent(id)}';
   static String mealPhotos(String id, {String? imageId}) =>
       '${mealDetail(id)}/photos'

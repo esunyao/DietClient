@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 提供可替换的本地时钟，供日期计算和刷新使用。
+/// @brief 可替换的本地时钟工厂 Provider，供日期计算和刷新使用。
 final localNowProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
-/// 使用本地日历的下一天，避免夏令时下固定 24 小时造成偏移。
+/// @brief 当前本地日期状态控制器。
+/// @details 午夜调度使用本地日历的下一天，避免夏令时下固定 24 小时造成偏移。
 class CurrentDate extends Notifier<DateTime> {
   Timer? _midnight;
   @override
@@ -24,7 +25,8 @@ class CurrentDate extends Notifier<DateTime> {
     return DateTime(now.year, now.month, now.day);
   }
 
-  /// 复核本地日期，即使日期未变也会重新安排下一次午夜刷新。
+  /// @brief 复核本地日期并重新安排下一次午夜刷新。
+  /// @details 即使当前日期未变，也会重新安排下一次午夜定时刷新。
   void refresh() {
     final now = ref.read(localNowProvider)();
     final today = DateTime(now.year, now.month, now.day);

@@ -6,7 +6,9 @@ import '../../../../demo/demo_store.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'real_consent_screen.dart';
 
-/// 按预览配置选择真实同意页面或共享内存中的演示开关；演示操作不修改真实授权。
+/// @brief AI 营养分析同意设置页入口组件。
+/// @details 按预览配置选择真实同意页面或共享内存中的演示开关。
+/// @note 演示模式操作不会修改服务端真实授权。
 class AiNutritionConsentScreen extends ConsumerWidget {
   const AiNutritionConsentScreen({super.key});
 

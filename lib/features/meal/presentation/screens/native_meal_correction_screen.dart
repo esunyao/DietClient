@@ -10,7 +10,8 @@ import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../application/meal_edit.dart';
 import '../widgets/native_meal_widgets.dart';
 
-/// 通过共享餐食查询装配真实修正表单；无 mealId 时展示手工新建暂未支持。
+/// @brief 原生真实餐食修正页面。
+/// @details 通过共享餐食查询装配真实修正表单；未提供 mealId 时提示手工新建暂未支持。
 class NativeMealCorrectionScreen extends ConsumerWidget {
   const NativeMealCorrectionScreen({super.key, this.mealId});
   final String? mealId;
@@ -72,7 +73,10 @@ class _EditState extends ConsumerState<_MealEditForm> {
       .toList();
   bool _dirty = false, _itemsChanged = false, _busy = false;
   String? _error;
-  // 异步结果仅在表单仍挂载且登录代次未变时用于当前账户；这不是请求取消。
+
+  /// @brief 检查表单是否仍挂载且处于初始登录代次。
+  /// @return 仍挂载且登录代次一致时返回 true，否则返回 false。
+  /// @note 仅用于隔离跨账户异步结果，不代表取消底层网络请求。
   bool get _current =>
       mounted && ref.read(sessionEpochProvider) == widget.epoch;
   @override
@@ -243,7 +247,10 @@ class _EditState extends ConsumerState<_MealEditForm> {
     );
   }
 
-  // 未保存草稿和保存中状态交给共享离开保护；失败时保留表单供修改或重试。
+  /// @brief 构建受未保存离开保护包裹的真实餐食修正界面。
+  /// @details 将未保存草稿和保存中状态交给共享离开保护；提交失败时保留表单供修改或重试。
+  /// @param context 当前构建上下文。
+  /// @return 页面组件树。
   @override
   Widget build(BuildContext context) => UnsavedForm(
     dirty: _dirty,

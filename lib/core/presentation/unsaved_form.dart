@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'app_routes.dart';
 
-/// 供路由替换和系统返回复用，避免侧栏绕过表单保护。
+/// @brief 路由离开确认注册表。
+/// @details 供路由替换和系统返回复用，避免侧栏绕过表单保护。
 class RouteLeaveRegistry {
   final Map<Object, Future<bool> Function()> _checks = {};
   final Map<Object, bool Function()> _busy = {};
@@ -23,7 +24,9 @@ class RouteLeaveRegistry {
     _busy.remove(owner);
   }
 
-  /// 从最近注册的检查开始依次确认，任一检查拒绝即停止。
+  /// @brief 依次执行所有已注册的离开确认检查。
+  /// @details 从最近注册的检查开始逆序确认，任一检查拒绝即停止。
+  /// @return 全部检查均允许离开时返回 true，否则返回 false。
   Future<bool> confirm() async {
     for (final owner in _checks.keys.toList().reversed) {
       final check = _checks[owner];
@@ -35,7 +38,10 @@ class RouteLeaveRegistry {
 
 final routeLeaveRegistryProvider = Provider((ref) => RouteLeaveRegistry());
 
-/// 优先弹出路由；GoRouter 无返回栈时转往指定位置，非 GoRouter 仅尝试弹出。
+/// @brief 返回上一页或在无返回栈时跳转至回退路径。
+/// @details 优先弹出路由；GoRouter 无返回栈时转往指定位置，非 GoRouter 仅尝试弹出。
+/// @param context 当前构建上下文。
+/// @param fallbackLocation 无可弹出路由时的回退路径。
 void returnOrGo(BuildContext context, String fallbackLocation) {
   final router = GoRouter.maybeOf(context);
   if (router != null) {
@@ -49,8 +55,8 @@ void returnOrGo(BuildContext context, String fallbackLocation) {
   }
 }
 
-/// 将表单注册到共享离开检查，并通过 PopScope 保护系统返回。
-/// 保存中拒绝离开；存在未保存修改时由用户确认是否放弃。
+/// @brief 未保存表单离开保护组件。
+/// @details 将表单注册到共享离开检查，并通过 PopScope 保护系统返回；保存中拒绝离开，存在未保存修改时由用户确认是否放弃。
 class UnsavedForm extends ConsumerStatefulWidget {
   const UnsavedForm({
     super.key,
@@ -83,7 +89,9 @@ class _UnsavedFormState extends ConsumerState<UnsavedForm> {
     );
   }
 
-  // 非当前路由不拦截，避免重复弹窗；对话框结束后再次检查挂载和保存状态。
+  /// @brief 执行当前表单的离开确认逻辑。
+  /// @details 非当前路由不拦截以避免重复弹窗；对话框结束后再次检查挂载和保存状态。
+  /// @return 允许离开页面时返回 true，否则返回 false。
   Future<bool> _confirm() async {
     if (!mounted) return true;
     if (_asking) return false;
@@ -117,7 +125,7 @@ class _UnsavedFormState extends ConsumerState<UnsavedForm> {
     }
   }
 
-  // 页面销毁时移除检查，避免注册表继续引用已离开的表单。
+  /// @brief 释放组件状态并从离开检查注册表移除当前表单。
   @override
   void dispose() {
     _registry.remove(this);

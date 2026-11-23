@@ -11,7 +11,8 @@ import '../../application/login_controller.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import '../widgets/auth_field.dart';
 
-/// 真实登录入口：Web 使用 SSO 弹窗，非 Web 收集账号密码并交给登录控制器。
+/// @brief 真实登录入口页面。
+/// @details Web 端使用 SSO 弹窗登录，非 Web 端收集账号密码并交给登录控制器处理。
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -31,7 +32,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  // 展示登录请求的权限；取消或没有结果时按拒绝处理。
+  /// @brief 弹窗展示登录请求的权限列表并等待用户确认。
+  /// @details 弹窗被取消或未返回结果时按拒绝处理。
+  /// @param consent 认证流程返回的权限同意请求。
+  /// @return 用户同意授权时返回 true，否则返回 false。
   Future<bool> _confirmConsent(AuthentikConsent consent) async {
     if (!mounted) return false;
     try {

@@ -7,7 +7,8 @@ import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
 import '../widgets/report_widgets.dart';
 
-/// 真实营养模式显示能力未支持；其余分支使用共享内存演示报告。
+/// @brief 营养报告页面组件。
+/// @details 真实营养模式显示暂未支持页面；其余分支使用共享内存演示报告数据。
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
 

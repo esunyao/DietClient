@@ -1,7 +1,8 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 
-/// 认证辅助页面的展示面板；文案和操作由调用方决定，不执行认证流程。
+/// @brief 认证辅助页面通用展示面板组件。
+/// @details 文案和操作按钮由调用方注入，组件本身不执行认证流程。
 class AuthPreviewPanel extends StatelessWidget {
   const AuthPreviewPanel({
     super.key,

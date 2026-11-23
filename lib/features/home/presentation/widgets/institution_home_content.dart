@@ -8,7 +8,8 @@ import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 import 'seven_day_summary.dart';
 
-/// 机构演示首页：主栏展示快照统计，侧栏展示机构晚餐、报告和隐私入口。
+/// @brief 机构演示模式首页内容布局组件。
+/// @details 主栏展示快照统计，侧栏展示机构晚餐、报告和隐私入口。
 class InstitutionHomeContent extends StatelessWidget {
   const InstitutionHomeContent({super.key, required this.data});
   final DemoSnapshot data;
@@ -285,7 +286,8 @@ class _WeeklyReport extends StatelessWidget {
   }
 }
 
-/// 隐私入口只修改演示状态中的临时隐藏标志。
+/// @brief 机构首页隐私隐藏提示入口卡片。
+/// @note 仅修改演示状态中的临时隐藏标志。
 class _PrivacyNotice extends ConsumerWidget {
   const _PrivacyNotice();
 

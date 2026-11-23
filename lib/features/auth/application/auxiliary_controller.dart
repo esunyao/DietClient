@@ -6,7 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/auth_config.dart';
 import '../../../core/config/ui_preview_config.dart';
 
-/// 注册和邮件重发的独立可替换边界。
+/// @brief 注册与验证邮件重发网关抽象接口。
+/// @details 提供独立可替换边界，便于隔离网络实现与测试替身。
 abstract interface class AuxiliaryGateway {
   Future<void> register({
     required String username,
@@ -45,7 +46,8 @@ class _Gateway implements AuxiliaryGateway {
   Future<void> dispose() => executor.dispose();
 }
 
-// 仅启用原生能力且有身份服务配置时提供工厂；每次操作创建独立网关。
+/// @brief 认证辅助网关工厂 Provider。
+/// @details 仅在启用原生能力且存在身份服务配置时提供工厂；每次操作创建独立网关。
 final auxiliaryGatewayFactoryProvider = Provider<AuxiliaryGateway Function()?>((
   ref,
 ) {
@@ -91,13 +93,17 @@ final auxiliaryNowProvider = Provider<DateTime Function()>(
   (ref) => DateTime.now,
 );
 
-/// 管理注册与重发状态；单次操作的返回值供调用页面决定后续导航。
+/// @brief 注册与邮件重发流程状态控制器。
+/// @details 管理注册与重发状态；单次操作的返回值供调用页面决定后续导航。
 class AuxiliaryController extends Notifier<AuxiliaryState> {
   int _attempt = 0;
   AuxiliaryGateway? _gateway;
   Timer? _timer;
   DateTime? _cooldownUntil;
-  // 按截止时间计算剩余秒数并向上取整，定时器只负责刷新显示。
+
+  /// @brief 计算重发冷却剩余秒数。
+  /// @details 按截止时间计算剩余秒数并向上取整，定时器只负责刷新显示。
+  /// @return 限制在 0 到 60 之间的剩余冷却秒数。
   int get _remaining => _cooldownUntil == null
       ? 0
       : ((_cooldownUntil!
@@ -208,7 +214,7 @@ class AuxiliaryController extends Notifier<AuxiliaryState> {
           error: '未能确认结果，请先检查验证邮件，避免重复提交。',
         );
       }
-    // 每次操作都释放自己的网关，避免旧操作清除后续操作持有的网关。
+      // 每次操作都释放自己的网关，避免旧操作清除后续操作持有的网关。
     } finally {
       if (identical(_gateway, gateway)) _gateway = null;
       try {

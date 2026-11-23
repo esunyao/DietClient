@@ -17,7 +17,8 @@ import '../core/session/session_controller.dart';
 import '../demo/demo_store.dart';
 import '../features/auth/application/login_controller.dart';
 
-/// 为业务页面装配共享背景、响应式导航和账户入口；页面内容由路由提供。
+/// @brief 为业务页面装配共享背景、响应式导航和账户入口。
+/// @details 页面内容由路由提供。
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child, required this.location});
   final Widget child;
@@ -44,7 +45,10 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   final _collapse = NavigationCollapseController();
   bool _menuOpen = false;
-  // 路径变化时展开底栏；收起控制器随外壳释放。
+
+  /// @brief 在路径变化时恢复展开底部导航栏。
+  /// @param oldWidget 更新前的旧组件实例。
+  /// @note 收起控制器随外壳组件销毁而释放。
   @override
   void didUpdateWidget(AppShell oldWidget) {
     super.didUpdateWidget(oldWidget);

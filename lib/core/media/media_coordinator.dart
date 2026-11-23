@@ -21,7 +21,11 @@ class SelectedImage {
   final String contentType;
 }
 
-/// 从实际字节识别受支持格式，并检查首帧可解码及像素上限。
+/// @brief 从实际字节识别受支持的图片格式并校验解码能力。
+/// @details 校验格式为 JPEG、PNG 或 WebP，检查首帧可解码且像素总量不超过 2500 万。
+/// @param bytes 图片原始字节数据。
+/// @return 识别到的标准 MIME 类型字符串。
+/// @throws FormatException 当图片格式不受支持、无法解码或超过像素上限时抛出。
 String actualImageType(Uint8List bytes) {
   final decoder = image.findDecoderForData(bytes);
   final type = switch (decoder) {
@@ -45,7 +49,8 @@ final mediaCoordinatorProvider = Provider<MediaCoordinator>(
   (ref) => MediaCoordinator(ref),
 );
 
-/// Only this coordinator calls Android retrieveLostData. Recovery is never upload.
+/// @brief Coordinates image selection, Android lost-data recovery, and image inspection.
+/// @note Only this coordinator calls Android retrieveLostData. Recovery is never upload.
 class MediaCoordinator {
   MediaCoordinator(this.ref, {ImagePicker? picker, this.preferences})
     : _picker = picker ?? ImagePicker();
@@ -67,8 +72,15 @@ class MediaCoordinator {
 
   String _purpose(MediaPurpose purpose, String? contextId) =>
       '${purpose.name}:${contextId ?? ''}';
-  /// 防止并发选图；Android 保存恢复归属，返回前核对登录代次。
-  /// 此处只选择文件，不检查内容或上传。
+
+  /// @brief 调用系统选图器选取图片文件。
+  /// @details 防止并发选图；Android 平台保存恢复归属信息，返回前核对登录代次。
+  /// @param purpose 选图业务用途。
+  /// @param source 图片来源（相机或相册）。
+  /// @param contextId 可选上下文标识，用于绑定采集会话等归属范围。
+  /// @return 选中的图片文件；取消选择或登录代次变化时返回 null。
+  /// @throws StateError 当已有图片选择操作正在进行时抛出。
+  /// @note 此处只选择文件，不检查内容或上传。
   Future<XFile?> pick({
     required MediaPurpose purpose,
     required ImageSource source,
@@ -105,7 +117,12 @@ class MediaCoordinator {
     }
   }
 
-  /// 共用一次恢复操作，按账户、代次和用途消费暂存文件；恢复不触发上传。
+  /// @brief 恢复 Android 丢失选图数据并按用途消费暂存文件。
+  /// @details 共用一次底层恢复操作，按账户、登录代次和用途消费暂存文件。
+  /// @param purpose 选图业务用途。
+  /// @param contextId 可选上下文标识。
+  /// @return 属于当前账户与用途的恢复文件列表；无匹配项时返回空列表。
+  /// @note 恢复操作不会触发上传。
   Future<List<XFile>> recover({
     required MediaPurpose purpose,
     String? contextId,
@@ -154,7 +171,13 @@ class MediaCoordinator {
     }
   }
 
-  /// 读取前后均检查大小，再按实际格式和调用方允许类型校验。
+  /// @brief 检查图片文件的大小、真实格式和允许类型。
+  /// @details 读取字节前后均检查大小上限，再按实际字节格式和调用方允许类型校验。
+  /// @param file 待检查的图片文件。
+  /// @param maxBytes 允许的最大字节数。
+  /// @param allowedContentTypes 允许的 MIME 类型白名单。
+  /// @return 校验通过的 SelectedImage 对象。
+  /// @throws FormatException 当文件超限、不可解码或格式不在白名单中时抛出。
   Future<SelectedImage> inspect(
     XFile file, {
     required int maxBytes,

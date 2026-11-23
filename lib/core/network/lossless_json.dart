@@ -1,6 +1,9 @@
 import 'dart:convert';
 
-/// 在 JSON 解码之前保护业务 ID，跳过字符串内部的转义内容。
+/// @brief 无损解码业务 API 返回的 JSON 文本。
+/// @details 在 JSON 解码之前保护长整型业务 ID，扫描过程中跳过字符串内部的转义内容。
+/// @param raw 原始 JSON 字符串。
+/// @return 解码后的 JSON 数据对象。
 Object? decodeApiJson(String raw) {
   const keys = {
     'measurementId',

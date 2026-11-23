@@ -26,7 +26,8 @@ const activityOptions = {
   'very_active': '极高活动',
 };
 
-/// 加载真实基础资料后创建表单；读取失败时通过失效查询重试。
+/// @brief 真实个人基础资料编辑页面。
+/// @details 加载真实基础资料后装配表单；读取失败时通过失效查询重试。
 class RealEditProfileScreen extends ConsumerWidget {
   const RealEditProfileScreen({super.key});
   @override
@@ -45,7 +46,8 @@ class _ProfileForm extends ConsumerStatefulWidget {
   ConsumerState<_ProfileForm> createState() => _ProfileFormState();
 }
 
-/// 持有初始登录代次和编辑控制器；保存中交由未保存保护阻止离开。
+/// @brief 真实个人基础资料表单状态。
+/// @details 持有初始登录代次和各字段编辑控制器；保存过程中交由未保存保护阻止离开。
 class _ProfileFormState extends ConsumerState<_ProfileForm> {
   final _form = GlobalKey<FormState>();
   late final Map<String, TextEditingController> _fields;

@@ -7,7 +7,8 @@ import '../widgets/unsaved_form.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'real_edit_profile_screen.dart';
 
-/// 先按预览配置选择实现，避免真实编辑入口创建演示表单状态。
+/// @brief 个人基础资料编辑页入口组件。
+/// @details 先按预览配置选择真实编辑页或演示编辑页，避免真实编辑入口创建演示表单状态。
 class EditProfileScreen extends ConsumerWidget {
   const EditProfileScreen({super.key});
   @override
@@ -24,7 +25,8 @@ class _DemoEditProfileScreen extends ConsumerStatefulWidget {
       _EditProfileScreenState();
 }
 
-/// 从演示资料快照初始化控制器；修改仅写回共享演示状态，并由未保存保护拦截离开。
+/// @brief 演示资料编辑页面状态。
+/// @details 从演示资料快照初始化输入控制器；修改仅写回共享演示状态，并由未保存保护拦截离开。
 class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
   final _form = GlobalKey<FormState>();
   late final PersonProfile _original;
@@ -54,7 +56,11 @@ class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
     super.dispose();
   }
 
-  // 日期回读年月日以排除 DateTime 自动进位，数值范围仅适用于此演示表单。
+  /// @brief 校验单个演示资料表单字段。
+  /// @details 日期回读年月日以排除 DateTime 自动进位，数值范围仅适用于此演示表单。
+  /// @param key 字段标签名。
+  /// @param value 用户输入的字符串值。
+  /// @return 校验通过时返回 null，否则返回错误提示字符串。
   String? _validate(String key, String? value) {
     if (value == null || value.trim().isEmpty) return '请填写$key';
     if (key == '出生日期') {
@@ -86,7 +92,8 @@ class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
     return null;
   }
 
-  // 基于初始化时的资料快照合并表单，不调用真实资料接口。
+  /// @brief 校验表单并将修改合并写回共享演示资料状态。
+  /// @note 仅修改内存演示状态，不调用真实资料接口。
   void _save() {
     if (!_form.currentState!.validate()) return;
     ref

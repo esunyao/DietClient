@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'app_routes.dart';
 
-/// 真实模式没有服务契约的入口，不展示虚构记录或执行模拟写入。
+/// @brief 暂未支持功能提示页。
+/// @details 用于真实模式下没有公开服务契约的入口，不展示虚构记录或执行模拟写入。
 class UnsupportedFeaturePage extends StatelessWidget {
   const UnsupportedFeaturePage({
     super.key,

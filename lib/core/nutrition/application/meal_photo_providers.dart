@@ -22,7 +22,8 @@ final objectImageReaderProvider = Provider.autoDispose<ObjectImageReader>((
   return reader;
 });
 
-// One coordinator per listened meal; it retains metadata, never image bytes.
+/// @brief Per-meal photo metadata loader provider.
+/// @details One coordinator per listened meal; it retains metadata, never image bytes.
 final _photoLoaderProvider = Provider.autoDispose.family<_PhotoLoader, String>((
   ref,
   id,
@@ -35,7 +36,8 @@ final _photoLoaderProvider = Provider.autoDispose.family<_PhotoLoader, String>((
   );
 });
 
-// 通过餐食定位采集会话并共享照片元数据；失败不自动重试，异步返回后检查账户代次。
+/// @brief 按餐食 ID 共享餐食照片元数据的 Provider。
+/// @details 通过餐食定位采集会话并共享照片元数据；失败不自动重试，异步返回后检查账户代次。
 final mealPhotosProvider = FutureProvider.autoDispose
     .family<MealPhotoSet, String>((ref, id) async {
       final loader = ref.watch(_photoLoaderProvider(id));
@@ -53,7 +55,8 @@ final mealPhotosProvider = FutureProvider.autoDispose
       return loader.fromSession(session);
     }, retry: (count, error) => null);
 
-// 按餐食和精确图片 ID 共享字节；最后监听结束时取消读取，不随元数据更新重建字节。
+/// @brief 按餐食与精确图片 ID 共享照片字节的 Provider。
+/// @details 最后监听结束时取消读取，且不随签名元数据更新重建字节。
 final mealPhotoBytesProvider = FutureProvider.autoDispose
     .family<Uint8List, MealPhotoKey>((ref, key) async {
       final epoch = ref.watch(sessionEpochProvider);
@@ -126,7 +129,10 @@ class _PhotoLoader {
     if (!isCurrent()) throw const ApiFailure('会话已更换');
   }
 
-  // 仅收集已确认图片，按槽位排序；签名到期时间以采集响应接收时间为基准。
+  /// @brief 从采集会话提取并构建照片元数据集合。
+  /// @details 仅收集已确认图片并按槽位排序；签名到期时间以采集响应接收时间为基准。
+  /// @param session 服务端采集会话模型。
+  /// @return 排序后的餐食照片集合。
   MealPhotoSet fromSession(CaptureSession session) {
     checkCurrent();
     if (identical(session, _session)) return _latest!;
@@ -156,7 +162,10 @@ class _PhotoLoader {
     );
   }
 
-  // 同一餐食并发签名刷新共用请求，并在已有较新快照时直接复用。
+  /// @brief 刷新指定过期的照片集合签名快照。
+  /// @details 同一餐食并发签名刷新共用请求，并在已有较新快照时直接复用。
+  /// @param stale 需要刷新的过期照片集合快照。
+  /// @return 刷新后的最新照片集合。
   Future<MealPhotoSet> refresh(MealPhotoSet stale) async {
     checkCurrent();
     if (_refresh != null) return _refresh!;

@@ -9,13 +9,18 @@ String _date(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 String _amount(double? v) => v == null ? '未知' : v.toStringAsFixed(1);
 
-/// Empty calendar dates and days without meals stay unknown, even if the server emits zero totals.
+/// @brief Extracts a recorded nutrient amount for a calendar day, preserving unknown days as null.
+/// @details Empty calendar dates and days without meals stay unknown, even if the server emits zero totals.
+/// @param day Daily summary returned by the server, or null for empty dates.
+/// @param code Target nutrient code.
+/// @return Recorded nutrient amount, or null when unrecorded or unavailable.
 double? recordedNutrient(DailySummary? day, String code) =>
     day == null || day.mealCount == 0
     ? null
     : nutrientAmount(day.nutrients, code);
 
-/// 通过共享 daily-trend 查询展示真实趋势，周期和营养素选择保存在页面状态中。
+/// @brief 原生真实营养趋势页面。
+/// @details 通过共享 daily-trend 查询展示真实多日趋势，周期与营养素选择保存在页面局部状态中。
 class NativeTrendsScreen extends ConsumerStatefulWidget {
   const NativeTrendsScreen({super.key});
   @override

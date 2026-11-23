@@ -5,7 +5,8 @@ import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_client/core/config/ui_preview_config.dart';
 import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
-/// 核对机构餐食演示及实际食用比例；原生营养模式不接入机构同步。
+/// @brief 机构餐食同步核对演示页面。
+/// @details 用于核对机构餐食演示及实际食用比例；原生营养模式下不接入机构同步。
 class InstitutionSyncScreen extends ConsumerStatefulWidget {
   const InstitutionSyncScreen({super.key});
   @override
@@ -14,7 +15,8 @@ class InstitutionSyncScreen extends ConsumerStatefulWidget {
 }
 
 class _InstitutionSyncScreenState extends ConsumerState<InstitutionSyncScreen> {
-  // 归属和食用比例是页面局部选择；限制核对与入账标记来自共享演示状态。
+  /// @brief 当前选中的归属选项索引。
+  /// @note 归属和食用比例为页面局部选择，限制核对与入账标记来自共享演示状态。
   int _ownership = 0;
   double? _fraction;
 

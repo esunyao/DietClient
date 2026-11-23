@@ -7,7 +7,8 @@ import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 import 'health_kind.dart';
 
-/// 演示健康类别的摘要与展开列表；新增走路由，删除只修改共享演示状态。
+/// @brief 演示健康记录分类摘要与展开列表组件。
+/// @details 新增操作走路由跳转，删除操作仅修改共享演示状态。
 class HealthRecordCategory extends ConsumerStatefulWidget {
   const HealthRecordCategory({
     super.key,
@@ -28,7 +29,9 @@ class HealthRecordCategory extends ConsumerStatefulWidget {
 class _HealthRecordCategoryState extends ConsumerState<HealthRecordCategory> {
   bool _expanded = false;
 
-  // 优先使用最新记录的备注，否则按类别给出说明；无记录不推断为没有健康问题。
+  /// @brief 生成当前健康类别卡片的摘要描述文案。
+  /// @details 优先使用最新记录的备注，否则按类别给出默认说明；无记录不推断为没有健康问题。
+  /// @return 展示在类别卡片中的描述字符串。
   String get _description {
     final latest = latestHealthRecord(widget.records, widget.kind);
     if (latest != null && latest.note.isNotEmpty) return latest.note;

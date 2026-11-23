@@ -11,7 +11,8 @@ import 'package:diet_client/core/presentation/app_routes.dart';
 import '../widgets/auth_field.dart';
 import '../widgets/auth_form_guard.dart';
 
-/// 注册表单：原生分支调用辅助控制器，预览分支只校验并进入演示流程。
+/// @brief 用户注册表单页面。
+/// @details 原生分支调用辅助控制器发起注册，预览分支仅执行本地校验并进入演示流程。
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
   @override
@@ -34,7 +35,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _controller = ref.read(auxiliaryControllerProvider.notifier);
   }
 
-  // 离开时使页面提交回调失效并取消仍在进行的辅助操作。
+  /// @brief 释放表单控制器并取消离开时仍在进行的辅助操作。
   @override
   void dispose() {
     _submission++;

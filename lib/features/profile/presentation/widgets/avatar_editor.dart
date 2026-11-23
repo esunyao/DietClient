@@ -11,7 +11,8 @@ import '../../../../core/media/media_coordinator.dart';
 import '../../application/profile_state.dart';
 import '../../data/avatar_image.dart';
 
-/// 协调头像选取、方形裁剪预览和确认上传；上传实现由资料 API 负责。
+/// @brief 头像选取、方形裁剪预览与确认上传组件。
+/// @details 协调选图、本地预处理裁剪与确认上传流程，底层上传实现由资料 API 负责。
 class AvatarEditor extends ConsumerStatefulWidget {
   const AvatarEditor({super.key});
   @override
@@ -65,7 +66,9 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
     }
   }
 
-  // 限制原图大小，异步预处理并裁剪；仅将当前登录代次的结果留作待上传预览。
+  /// @brief 校验、预处理并打开方形裁剪流程。
+  /// @details 限制原图大小，异步预处理后执行裁剪；仅将当前登录代次的裁剪结果留作待上传预览。
+  /// @param file 用户新选中的原始图片文件。
   Future<void> _crop(XFile file) async {
     final session = ref.read(sessionEpochProvider);
     setState(() {
@@ -97,7 +100,8 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
     }
   }
 
-  // 上传失败保留裁剪结果供重试；成功且 API 仍匹配时更新头像并刷新身份。
+  /// @brief 上传当前待确认的裁剪头像字节。
+  /// @details 上传失败时保留裁剪结果供重试；上传成功且 API 仍匹配当前账户时更新已确认头像并刷新身份查询。
   Future<void> _upload() async {
     final bytes = _pending;
     if (bytes == null) return;

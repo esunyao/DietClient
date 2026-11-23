@@ -1,7 +1,8 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 
-/// 认证表单字段；输入控制器由调用方持有，支持本地校验和服务端错误展示。
+/// @brief 认证表单输入框组件。
+/// @details 输入控制器由调用方持有，支持本地校验规则与服务端错误展示。
 class AuthField extends StatefulWidget {
   const AuthField({
     super.key,
@@ -60,7 +61,10 @@ class _AuthFieldState extends State<AuthField> {
   );
 }
 
-/// 仅做基本邮箱格式检查，不验证邮箱是否存在或可接收邮件。
+/// @brief 校验邮箱地址的基础格式。
+/// @details 仅做基本邮箱格式检查，不验证邮箱是否存在或可接收邮件。
+/// @param value 待校验的输入文本。
+/// @return 校验通过时返回 null，否则返回错误提示字符串。
 String? validateEmail(String? value) =>
     RegExp(r'^\S+@\S+\.\S+$').hasMatch(value?.trim() ?? '')
     ? null

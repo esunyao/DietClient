@@ -1,7 +1,8 @@
 import 'package:diet_models/diet_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 真实界面的临时显示选择，不持有业务样例或机构授权。
+/// @brief 真实界面的临时显示状态。
+/// @details 仅保存体验模式与隐私隐藏选择，不持有业务样例或机构授权。
 class DisplayState {
   const DisplayState({
     this.mode = ExperienceMode.personal,
@@ -16,7 +17,9 @@ class DisplayController extends Notifier<DisplayState> {
   @override
   DisplayState build() => const DisplayState();
 
-  /// 选择模式时重新使用默认遮罩状态；遮罩切换则保留当前模式。
+  /// @brief 切换体验模式并重置隐私遮罩为默认状态。
+  /// @param mode 目标体验模式。
+  /// @note 仅切换遮罩状态时由 setPrivacyHidden 保留当前模式。
   void selectMode(ExperienceMode mode) => state = DisplayState(mode: mode);
   void setPrivacyHidden(bool hidden) =>
       state = DisplayState(mode: state.mode, privacyHidden: hidden);

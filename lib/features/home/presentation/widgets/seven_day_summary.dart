@@ -8,7 +8,8 @@ import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 
-/// 展示传入的演示趋势及记录日均，点击进入趋势页；缺失能量的日期不参与平均。
+/// @brief 七日能量趋势概览卡片组件。
+/// @details 展示传入的演示趋势及记录日均，点击进入趋势页；缺失能量的日期不参与平均计算。
 class SevenDaySummary extends StatelessWidget {
   const SevenDaySummary({super.key, required this.points});
   final List<TrendPoint> points;

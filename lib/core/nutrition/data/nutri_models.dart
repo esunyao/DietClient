@@ -1,11 +1,17 @@
-// NutriMemo 用户接口的响应解析和餐食修正输入；此处不生成演示业务数据。
+//! @file nutri_models.dart
+//! @brief NutriMemo 用户接口的响应解析和餐食修正输入定义；不生成演示业务数据。
 typedef NutriJson = Map<String, dynamic>;
 NutriJson nutriJson(Object? value) => Map<String, dynamic>.from(value as Map);
 List<T> _list<T>(Object? value, T Function(NutriJson) parse) => (value as List)
     .map((item) => parse(nutriJson(item)))
     .toList(growable: false);
 double? _number(Object? value) => value == null ? null : double.parse('$value');
-// 记录 ID 校验为数字后保留字符串，避免转换为数值造成精度损失。
+
+/// @brief 校验记录 ID 为纯数字字符串并原样保留。
+/// @details 避免将长整型业务 ID 转换为数值造成精度损失。
+/// @param value 待校验的原始字段值。
+/// @return 校验通过的数字字符串 ID。
+/// @throws FormatException 当值不是纯数字字符串时抛出。
 String _id(Object? value) {
   final id = '$value';
   if (!RegExp(r'^\d+$').hasMatch(id)) {
@@ -70,7 +76,9 @@ class CaptureSession {
   final DateTime expiresAt, createdAt, updatedAt;
   final DateTime? analysisRequestedAt;
   final List<CaptureImage> images;
-  // Signature lifetime starts when this response is received, not on each view.
+
+  /// @brief UTC timestamp when this capture session response was received.
+  /// @note Signature lifetime starts when this response is received, not on each view.
   final DateTime previewReceivedAt = DateTime.now().toUtc();
 }
 
@@ -110,7 +118,8 @@ class PresignedImage {
   final Map<String, String> requiredHeaders;
 }
 
-/// 后端返回的营养编码、名称、单位和值；不在模型中推断缺失指标。
+/// @brief 单项营养素数值模型。
+/// @details 保留后端返回的营养编码、名称、单位和数值，不在模型中推断缺失指标。
 class NutrientValue {
   NutrientValue.fromJson(NutriJson j)
     : nutrientCode = j['nutrientCode'] as String,
@@ -121,7 +130,11 @@ class NutrientValue {
   final double amount;
 }
 
-/// 按编码取首个营养值；未返回该指标时保留未知而非填零。
+/// @brief 按营养编码提取首个匹配的营养数值。
+/// @details 未返回该指标时返回 null 保留未知，而不填零。
+/// @param values 营养素数值列表。
+/// @param code 目标营养素编码。
+/// @return 匹配的营养数值；缺失时返回 null。
 double? nutrientAmount(List<NutrientValue> values, String code) {
   for (final value in values) {
     if (value.nutrientCode == code) return value.amount;
@@ -163,7 +176,8 @@ class MealHistoryItem {
   final List<NutrientValue> nutrients;
 }
 
-/// 餐食详情在历史摘要上补充采集会话、原时区和条目。
+/// @brief 餐食详情模型。
+/// @details 在 MealHistoryItem 历史摘要基础上补充采集会话、原时区和菜品条目。
 class Meal extends MealHistoryItem {
   Meal.fromJson(super.j)
     : captureSessionId = j['captureSessionId'] as String,
@@ -257,7 +271,8 @@ class MealCorrectionItem {
   };
 }
 
-/// 完整餐食修正输入；序列化时将用餐时刻转为 UTC 并保留时区标识。
+/// @brief 完整餐食修正输入载荷。
+/// @details 序列化时将用餐时刻转为 UTC 并保留时区标识。
 class MealCorrection {
   const MealCorrection({
     required this.mealType,
@@ -279,7 +294,8 @@ class MealCorrection {
   };
 }
 
-/// Value equality makes provider families stable across widget rebuilds.
+/// @brief Query key record for paginated meal history requests.
+/// @details Value equality makes provider families stable across widget rebuilds.
 typedef MealQuery = ({
   String? dateFrom,
   String? dateTo,

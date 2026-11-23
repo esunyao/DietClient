@@ -9,7 +9,8 @@ import '../../application/auxiliary_controller.dart';
 import '../widgets/auth_field.dart';
 import '../widgets/auth_preview_panel.dart';
 
-/// 原生分支提供重发与返回登录；演示分支不发送邮件，也不确认真实验证结果。
+/// @brief 邮箱验证等待与重发页面。
+/// @details 原生分支提供重发验证邮件与返回登录入口；演示分支不发送邮件，也不确认真实验证结果。
 class VerifyEmailScreen extends ConsumerStatefulWidget {
   const VerifyEmailScreen({super.key});
   @override
@@ -20,7 +21,9 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   final _email = TextEditingController();
   final _form = GlobalKey<FormState>();
   late final AuxiliaryController _controller;
-  // 初始邮箱取自辅助流程状态；离页时取消仍在进行的操作。
+
+  /// @brief 初始化状态并从辅助流程状态预填邮箱地址。
+  /// @note 页面销毁时自动取消仍在进行中的辅助操作。
   @override
   void initState() {
     super.initState();

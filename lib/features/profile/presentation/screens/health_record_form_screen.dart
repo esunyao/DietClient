@@ -8,7 +8,8 @@ import '../widgets/unsaved_form.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'real_health_form_screen.dart';
 
-/// 依据预览配置选择新增表单实现，不在真实入口初始化演示控制器。
+/// @brief 健康记录新增表单页入口组件。
+/// @details 依据预览配置选择演示或真实表单实现，不在真实入口初始化演示控制器。
 class HealthRecordFormScreen extends ConsumerWidget {
   const HealthRecordFormScreen({super.key, required this.kind});
   final String kind;
@@ -27,7 +28,8 @@ class _DemoHealthRecordFormScreen extends ConsumerStatefulWidget {
       _HealthRecordFormScreenState();
 }
 
-/// 演示表单按类别组织字段并写入内存记录；控制器随页面销毁释放。
+/// @brief 演示健康记录新增表单状态。
+/// @details 按类别组织表单字段并将结果写入共享内存记录；输入控制器随页面销毁释放。
 class _HealthRecordFormScreenState
     extends ConsumerState<_DemoHealthRecordFormScreen> {
   final _form = GlobalKey<FormState>();
@@ -48,7 +50,11 @@ class _HealthRecordFormScreenState
 
   String? _required(String? v) =>
       v == null || v.trim().isEmpty ? '请填写此项' : null;
-  // 比较解析后的日期文本，排除自动进位的日期和未来日期。
+
+  /// @brief 校验记录日期字符串格式及有效性。
+  /// @details 比较解析后的 ISO 日期文本，排除自动进位的无效日期和未来日期。
+  /// @param v 待校验的日期文本。
+  /// @return 校验通过时返回 null，否则返回错误提示文案。
   String? _validDate(String? v) {
     if (_required(v) != null) return '请填写记录日期';
     if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(v!)) return '请输入 YYYY-MM-DD';
@@ -90,7 +96,9 @@ class _HealthRecordFormScreenState
       ),
     ),
   );
-  // 测量单位从所选标签提取；保存后禁用重复提交，后续编辑会清除保存标记。
+
+  /// @brief 校验表单并向共享演示状态写入新健康记录。
+  /// @details 测量单位从所选标签提取；保存后禁用重复提交，后续编辑会清除保存标记。
   void _save() {
     if (!_form.currentState!.validate()) return;
     final id = 'health-${DateTime.now().microsecondsSinceEpoch}';

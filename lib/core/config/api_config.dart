@@ -1,5 +1,6 @@
-/// 校验业务 API 基址；仅回环地址允许 HTTP，不接受凭据、查询或片段。
-/// 保留基址路径并补齐末尾斜杠，供相对业务路径解析。
+/// @brief 业务 API 基址配置。
+/// @details 校验业务 API 基址；仅回环地址允许 HTTP，不接受凭据、查询或片段；保留基址路径并补齐末尾斜杠，供相对业务路径解析。
+/// @throws FormatException 当传入基址无效或不符合协议约束时抛出。
 class ApiConfig {
   ApiConfig(String value) : baseUrl = _parse(value);
   final Uri baseUrl;

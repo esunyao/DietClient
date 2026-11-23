@@ -9,11 +9,15 @@ import '../../../../core/config/ui_preview_config.dart';
 import '../widgets/glass_choice.dart';
 import '../widgets/meal_history_layout_choice.dart';
 
-/// 组合外观偏好与显示模式设置；预览使用演示状态，其他场景使用真实显示状态。
+/// @brief 应用设置页面组件。
+/// @details 组合外观偏好与个人/机构显示模式设置；预览使用演示状态，其余场景使用真实显示状态。
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  /// 确认后重置外观；预览还会重置演示数据，异步返回时仅在页面仍挂载时反馈。
+  /// @brief 弹窗确认后重置本机外观设置。
+  /// @details 预览模式还会一并重置演示数据；异步完成后仅在页面仍挂载时展示反馈提示。
+  /// @param context 当前构建上下文。
+  /// @param ref Riverpod 组件引用。
   Future<void> _reset(BuildContext context, WidgetRef ref) async {
     final native = !ref.read(uiPreviewProvider);
     final confirmed = await showDialog<bool>(
