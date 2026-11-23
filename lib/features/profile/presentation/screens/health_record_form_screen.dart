@@ -8,6 +8,7 @@ import '../widgets/unsaved_form.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'real_health_form_screen.dart';
 
+/// 依据预览配置选择新增表单实现，不在真实入口初始化演示控制器。
 class HealthRecordFormScreen extends ConsumerWidget {
   const HealthRecordFormScreen({super.key, required this.kind});
   final String kind;
@@ -26,6 +27,7 @@ class _DemoHealthRecordFormScreen extends ConsumerStatefulWidget {
       _HealthRecordFormScreenState();
 }
 
+/// 演示表单按类别组织字段并写入内存记录；控制器随页面销毁释放。
 class _HealthRecordFormScreenState
     extends ConsumerState<_DemoHealthRecordFormScreen> {
   final _form = GlobalKey<FormState>();
@@ -46,6 +48,7 @@ class _HealthRecordFormScreenState
 
   String? _required(String? v) =>
       v == null || v.trim().isEmpty ? '请填写此项' : null;
+  // 比较解析后的日期文本，排除自动进位的日期和未来日期。
   String? _validDate(String? v) {
     if (_required(v) != null) return '请填写记录日期';
     if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(v!)) return '请输入 YYYY-MM-DD';
@@ -87,6 +90,7 @@ class _HealthRecordFormScreenState
       ),
     ),
   );
+  // 测量单位从所选标签提取；保存后禁用重复提交，后续编辑会清除保存标记。
   void _save() {
     if (!_form.currentState!.validate()) return;
     final id = 'health-${DateTime.now().microsecondsSinceEpoch}';
@@ -116,6 +120,7 @@ class _HealthRecordFormScreenState
 
   @override
   Widget build(BuildContext context) {
+    // 未知类别只显示返回提示，不构建可提交的表单。
     final label = healthKinds[widget.kind];
     if (label == null) {
       return const AppPage(

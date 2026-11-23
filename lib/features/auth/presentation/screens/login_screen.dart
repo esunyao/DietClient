@@ -11,6 +11,7 @@ import '../../application/login_controller.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import '../widgets/auth_field.dart';
 
+/// 真实登录入口：Web 使用 SSO 弹窗，非 Web 收集账号密码并交给登录控制器。
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -30,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  // 展示登录请求的权限；取消或没有结果时按拒绝处理。
   Future<bool> _confirmConsent(AuthentikConsent consent) async {
     if (!mounted) return false;
     try {
@@ -105,6 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final config = ref.watch(authConfigProvider);
     final login = ref.watch(loginControllerProvider);
+    // 登录不再进行时移除仍打开的同意弹窗，避免取消后弹窗残留。
     ref.listen(loginControllerProvider, (previous, next) {
       if (!next.busy) _dismissConsent();
     });
@@ -133,7 +136,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: PlateIllustration(size: 72),
@@ -163,7 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 15),
                             if (kIsWeb)
                               const Padding(
                                 padding: EdgeInsets.only(bottom: 20),
@@ -202,7 +205,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 value: _rememberMe,
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('记住登录'),
-                                subtitle: const Text('仅在本机安全存储续期凭据'),
+                                // subtitle: const Text('仅在本机安全存储续期凭据'),
                                 onChanged: login.busy
                                     ? null
                                     : (value) => setState(

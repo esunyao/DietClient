@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 
+/// 首页数值格式：未知显示破折号，并为格式化结果添加千位分隔符。
 String homeAmount(double? value) => formatAmount(
   value,
   unknown: '—',
 ).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
+/// 展示演示快照的今日合计及分析状态数量；宽窄布局不改变统计来源。
 class HomeNutritionSummary extends StatelessWidget {
   const HomeNutritionSummary({
     super.key,
@@ -277,6 +279,8 @@ class _NutrientDivider extends StatelessWidget {
   );
 }
 
+/// 展示调用方提供的餐食，支持覆盖来源和逐餐状态标签，并跳转历史或详情。
+/// 餐盘是示意插画，不读取餐食照片；空列表由此组件展示空态。
 class HomeMeals extends StatelessWidget {
   const HomeMeals({
     super.key,
@@ -383,6 +387,7 @@ class _MealTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final time =
         '${meal.consumedAt.hour.toString().padLeft(2, '0')}:${meal.consumedAt.minute.toString().padLeft(2, '0')}';
+    // 未确认状态优先显示；能量仅在展示模型的分析状态为 ready 时显示。
     final ready = meal.status == AnalysisStatus.ready;
     final amount = ready
         ? '${homeAmount(meal.nutrients.energy)} kcal'

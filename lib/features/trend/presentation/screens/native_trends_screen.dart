@@ -15,6 +15,7 @@ double? recordedNutrient(DailySummary? day, String code) =>
     ? null
     : nutrientAmount(day.nutrients, code);
 
+/// 通过共享 daily-trend 查询展示真实趋势，周期和营养素选择保存在页面状态中。
 class NativeTrendsScreen extends ConsumerStatefulWidget {
   const NativeTrendsScreen({super.key});
   @override
@@ -32,6 +33,7 @@ class _TrendsState extends ConsumerState<NativeTrendsScreen> {
   @override
   Widget build(BuildContext context) {
     final days = [7, 30, 90][_range];
+    // 以共享本地日期为截止日构造连续窗口；跨日更新查询而不重置筛选。
     final end = ref.watch(currentDateProvider);
     final dates = List.generate(
       days,
@@ -40,6 +42,7 @@ class _TrendsState extends ConsumerState<NativeTrendsScreen> {
     final query = (dateFrom: _date(dates.first), dateTo: _date(end));
     final result = ref.watch(dailyTrendProvider(query));
     final field = _fields[_nutrient];
+    // 按日期对齐服务端结果与完整窗口，缺失日仍进入图表和逐日表。
     final byDate = {
       for (final day in result.value?.days ?? <DailySummary>[])
         day.localDate: day,
@@ -47,6 +50,7 @@ class _TrendsState extends ConsumerState<NativeTrendsScreen> {
     final values = [
       for (final date in dates) recordedNutrient(byDate[_date(date)], field.$1),
     ];
+    // 均值只除以所选营养素有数值的记录日，显式记录的零仍参与计算。
     final known = values.whereType<double>().toList();
     final average = known.isEmpty
         ? null
@@ -68,6 +72,7 @@ class _TrendsState extends ConsumerState<NativeTrendsScreen> {
           equalWidth: true,
           onChanged: (v) => setState(() => _nutrient = v),
         ),
+        // 首次无值加载显示进度；错误可失效当前日期查询重试，有值时仍展示数据。
         if (result.isLoading && result.value == null)
           const Center(child: CircularProgressIndicator()),
         if (result.hasError)

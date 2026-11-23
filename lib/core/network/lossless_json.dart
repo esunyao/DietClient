@@ -43,6 +43,8 @@ Object? decodeApiJson(String raw) {
     while (cursor < raw.length && raw[cursor].trim().isEmpty) {
       cursor++;
     }
+    // 仅将指定键下完整的整数值改写为 JSON 字符串，避免解码时丢失长 ID 精度。
+    // 其他值保持原样，最终仍由标准 JSON 解码器校验。
     final match = RegExp(r'^-?\d+(?=\s*[,}\]])')
         .firstMatch(raw.substring(cursor));
     if (match != null) {

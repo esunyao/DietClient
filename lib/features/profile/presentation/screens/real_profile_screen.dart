@@ -21,6 +21,7 @@ import '../widgets/health_kind.dart';
 import 'profile_screen.dart' show ProfileSection, ProfileShortcuts;
 import 'real_edit_profile_screen.dart';
 
+// 将账户身份和真实资料适配为共享卡片模型；身高和饮水目标的展示标签由调用方另行提供。
 PersonProfile _displayProfile(AccountIdentity account, Json data) =>
     PersonProfile(
       name: account.name,
@@ -34,6 +35,7 @@ PersonProfile _displayProfile(AccountIdentity account, Json data) =>
       goal: '未填写',
     );
 
+// 将真实记录投影为摘要模型；测量优先取体重，否则取首个有值的数值字段及标签中的单位。
 HealthRecordPreview _preview(String kind, Json record) {
   String field(String key) => record[key]?.toString() ?? '';
   final fields = fieldsByKind[kind]!;
@@ -84,6 +86,7 @@ HealthRecordPreview _preview(String kind, Json record) {
   );
 }
 
+/// 组合真实身份、基础资料、健康记录和同意状态；机构显示模式来自临时展示状态。
 class RealProfileScreen extends ConsumerWidget {
   const RealProfileScreen({super.key});
   @override
@@ -145,6 +148,7 @@ class RealProfileScreen extends ConsumerWidget {
             : '${data['dailyWaterTargetMl']} ml / 用户设置',
       ),
     );
+    // 五类记录独立查询，汇总已有结果；部分失败时仅重试失败类别，不隐藏其他摘要。
     final records = <HealthRecordPreview>[];
     final healthErrors = <String>[];
     var loading = false;
@@ -215,6 +219,7 @@ class RealProfileScreen extends ConsumerWidget {
                 onTap: () => context.push(AppRoutes.healthRecords),
                 child: health,
               ),
+              // 服务入口按原生营养能力区分真实支持与演示或暂未支持的文案。
               ProfileSection(
                 title: native ? '常用入口' : '常用入口（报告、饮食与机构仍演示）',
                 child: ProfileServiceEntries(
@@ -267,6 +272,7 @@ class RealProfileScreen extends ConsumerWidget {
               const ProfileSection(title: '账户与帮助', child: ProfileAccountCard()),
             ],
           ),
+        // 手动刷新先清除已确认的头像和资料覆盖，再失效各项查询。
         TextButton(
           onPressed: () {
             ref.read(confirmedAvatarProvider.notifier).setUrl(null);

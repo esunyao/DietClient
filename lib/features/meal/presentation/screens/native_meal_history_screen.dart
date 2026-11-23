@@ -9,6 +9,7 @@ import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../../core/nutrition/application/analysis_polling.dart';
 import '../widgets/native_meal_widgets.dart';
 
+/// 真实餐食历史使用共享查询进行服务端筛选和分页，并读取本机历史布局偏好。
 class NativeMealHistoryScreen extends ConsumerStatefulWidget {
   const NativeMealHistoryScreen({super.key});
   @override
@@ -30,6 +31,7 @@ class _HistoryState extends ConsumerState<NativeMealHistoryScreen> {
     super.dispose();
   }
 
+  // 将编辑中的日期、餐别和关键词应用为查询条件，并从第一页重新开始。
   void _apply() {
     if (_from.isAfter(_to)) {
       ScaffoldMessenger.of(context)
@@ -78,6 +80,7 @@ class _HistoryState extends ConsumerState<NativeMealHistoryScreen> {
     final layout = ref.watch(
       uiPreferencesProvider.select((p) => p.mealHistoryLayout),
     );
+    // 当前页存在待分析记录时委托共享轮询刷新；已有查询正在加载时不重复失效。
     return NutritionPolling(
       expandChild: true,
       refreshKey: query,
@@ -163,6 +166,7 @@ class _HistoryState extends ConsumerState<NativeMealHistoryScreen> {
           if (page != null) ...[
             Text('共 ${page.total} 条记录 · 第 ${page.page} 页'),
             if (page.items.isEmpty) const AppCard(child: Text('没有符合这些条件的记录')),
+            // 每餐作为页面列表的直接子项，照片消费者随列表项挂载。
             for (final meal in page.items)
               Padding(
                 padding: const EdgeInsets.only(top: 12),

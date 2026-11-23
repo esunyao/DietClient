@@ -7,6 +7,7 @@ import '../config/ui_preview_config.dart';
 import '../session/session_controller.dart';
 import 'lossless_json.dart';
 
+/// 使用本地提示表示请求失败，并分别保留可用的 HTTP 状态和业务信封 code。
 class ApiFailure implements Exception {
   const ApiFailure(this.message, {this.status, this.code});
   final String message;
@@ -23,6 +24,8 @@ final apiDioFactoryProvider = Provider<Dio Function()>(
   (ref) =>
       () => Dio(BaseOptions(connectTimeout: const Duration(seconds: 30))),
 );
+// 预览或无会话时不创建业务客户端；按稳定登录代次隔离，令牌轮换不重建客户端。
+// Provider 释放时关闭 Dio，换号后的回调和结果由代次检查拦截。
 final apiClientProvider = Provider<ApiClient?>((ref) {
   final epoch = ref.watch(sessionEpochProvider);
   final present = ref.watch(sessionProvider.select((value) => value != null));
@@ -66,6 +69,8 @@ class ApiClient {
   final Future<String> Function({bool force})? freshToken;
   final String? Function()? currentAccessToken;
   void close() => _dio.close(force: true);
+  /// 请求允许的资料或膳食相对路径，附当前 Bearer；支持调用方取消。
+  /// HTTP 或业务 code 401 时仅 GET 最多续期重试一次，写请求不自动重放。
   Future<Object?> request(
     String path, {
     String method = 'GET',
@@ -74,6 +79,7 @@ class ApiClient {
     Map<String, String>? headers,
     CancelToken? cancelToken,
   }) async {
+    // 限制目标路径和额外请求头，避免将业务凭据发送到任意接口。
     final profilePath = RegExp(
       r'^v1/(users/self(?:/[a-z-]+(?:/[0-9]+)?)?|files/avatar(?:/(presign|confirm))?)$',
     ).hasMatch(path);
@@ -88,6 +94,7 @@ class ApiClient {
     if (!isCurrent() || (freshToken == null && !hasActiveSession(session))) {
       throw const ApiFailure('请重新登录');
     }
+    // 每次发送前取得待用令牌，并在等待令牌及响应后检查账户代次。
     Future<Object?> send(bool retry, {bool forceRefresh = false}) async {
       String? usedToken;
       try {
@@ -115,6 +122,7 @@ class ApiClient {
           ),
         );
         if (!isCurrent()) throw const ApiFailure('会话已更换');
+        // 先保护长整型业务 ID 再解码信封；只返回成功信封的 data。
         final envelope =
             decodeApiJson(response.data ?? '') as Map<String, dynamic>;
         if (envelope['code'] != 200 &&
@@ -132,6 +140,7 @@ class ApiClient {
       } on DioException catch (e) {
         if (!isCurrent()) throw const ApiFailure('会话已更换');
         final status = e.response?.statusCode;
+        // HTTP 401 与下方业务 code 401 共用重试策略；已有新令牌时无需强制再次续期。
         if (status == 401 && isCurrent()) {
           if (method.toUpperCase() == 'GET' && !retry && freshToken != null) {
             final current = await freshToken!(force: false);

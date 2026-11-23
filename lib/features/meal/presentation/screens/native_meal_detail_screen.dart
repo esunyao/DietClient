@@ -13,6 +13,7 @@ import '../../../../core/nutrition/application/analysis_polling.dart';
 import '../widgets/native_meal_widgets.dart';
 import '../widgets/meal_photo_widgets.dart';
 
+// 重新分析先核验 AI 同意，再检查账户代次；仅同一代次的完成结果使共享营养查询失效。
 final _retryMealProvider = Provider<Future<void> Function(Meal)>(
   (ref) => (meal) async {
     final epoch = ref.read(sessionEpochProvider);
@@ -27,6 +28,7 @@ final _retryMealProvider = Provider<Future<void> Function(Meal)>(
   },
 );
 
+/// 展示共享真实餐食查询，负责重试分析、确认删除和进入修正页。
 class NativeMealDetailScreen extends ConsumerStatefulWidget {
   const NativeMealDetailScreen({super.key, required this.mealId});
   final String mealId;
@@ -55,6 +57,7 @@ class _DetailState extends ConsumerState<NativeMealDetailScreen> {
     }
   }
 
+  // 确认及删除期间检查挂载和账户代次；成功后刷新共享查询，再返回历史。
   Future<void> _delete(Meal meal) async {
     if (_busy) return;
     final epoch = ref.read(sessionEpochProvider);
@@ -132,6 +135,7 @@ class _DetailState extends ConsumerState<NativeMealDetailScreen> {
             retry: () => ref.invalidate(mealProvider(widget.mealId)),
           ),
         if (_error != null) InfoBanner(text: _error!),
+        // 待分析记录交给共享轮询组件；加载期间已有记录仍可展示。
         if (meal != null)
           NutritionPolling(
             refreshKey: widget.mealId,
@@ -159,6 +163,7 @@ class _DetailState extends ConsumerState<NativeMealDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                // 不按营养分析状态隐藏照片区域；照片加载状态由该组件处理。
                 MealPhotoStrip(mealId: meal.mealId),
                 const SizedBox(height: 16),
                 AppCard(

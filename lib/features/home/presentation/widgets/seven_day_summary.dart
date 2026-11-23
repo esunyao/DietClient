@@ -8,6 +8,7 @@ import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 
+/// 展示传入的演示趋势及记录日均，点击进入趋势页；缺失能量的日期不参与平均。
 class SevenDaySummary extends StatelessWidget {
   const SevenDaySummary({super.key, required this.points});
   final List<TrendPoint> points;
@@ -122,6 +123,7 @@ class _EnergyBars extends StatelessWidget {
     final known = points
         .map((point) => point.nutrients.energy)
         .whereType<double>();
+    // 柱图以至少 1800 的最大值归一化；缺失日绘制纹理而不是补零。
     final maximum = known.fold<double>(1800, math.max);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,

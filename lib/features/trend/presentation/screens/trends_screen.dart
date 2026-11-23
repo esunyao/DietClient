@@ -9,6 +9,7 @@ import '../widgets/trend_widgets.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_trends_screen.dart';
 
+/// 按平台配置选择真实趋势或共享内存演示趋势，演示筛选由本页面持有。
 class TrendsScreen extends ConsumerStatefulWidget {
   const TrendsScreen({super.key});
   @override
@@ -30,6 +31,7 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
     if (ref.watch(nativeNutritionEnabledProvider)) {
       return const NativeTrendsScreen();
     }
+    // 演示趋势与其他演示页面共享记录；未知值不进入合计和日均分母。
     final state = ref.watch(demoProvider);
     final days = [7, 30, 90][_range];
     final points = state.trend(days);
@@ -161,11 +163,13 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
           eyebrow: wide ? null : '看记录中的变化',
           subtitle: wide ? '$period · 只比较有已知数值的记录' : null,
           children: [
+            // 宽屏侧栏承载日均卡、阅读说明和报告入口；窄屏在图表中显示日均，并将说明和入口放入主流程。
             AdaptiveColumns(
               main: [
                 if (wide)
                   LayoutBuilder(
                     builder: (context, constraints) {
+                      // 即使外层为宽屏，主栏空间不足或文字放大时仍纵向排列筛选。
                       if (constraints.maxWidth < 700 ||
                           MediaQuery.textScalerOf(context).scale(14) > 20) {
                         return Column(

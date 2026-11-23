@@ -7,6 +7,7 @@ import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 import 'health_kind.dart';
 
+/// 演示健康类别的摘要与展开列表；新增走路由，删除只修改共享演示状态。
 class HealthRecordCategory extends ConsumerStatefulWidget {
   const HealthRecordCategory({
     super.key,
@@ -27,6 +28,7 @@ class HealthRecordCategory extends ConsumerStatefulWidget {
 class _HealthRecordCategoryState extends ConsumerState<HealthRecordCategory> {
   bool _expanded = false;
 
+  // 优先使用最新记录的备注，否则按类别给出说明；无记录不推断为没有健康问题。
   String get _description {
     final latest = latestHealthRecord(widget.records, widget.kind);
     if (latest != null && latest.note.isNotEmpty) return latest.note;
@@ -121,6 +123,7 @@ class _HealthRecordCategoryState extends ConsumerState<HealthRecordCategory> {
                                       : AppColors.muted,
                                 ),
                               );
+                              // 局部可用宽度不足或文字放大时，将标题和摘要改为纵向排列。
                               if (constraints.maxWidth < 230 ||
                                   MediaQuery.textScalerOf(context).scale(14) >
                                       20) {

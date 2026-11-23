@@ -12,6 +12,7 @@ import '../../../../demo/demo_store.dart';
 import '../widgets/health_kind.dart';
 import '../widgets/health_record_category.dart';
 
+/// 健康档案入口：真实模式委托真实页面，预览模式汇总共享演示资料和记录。
 class HealthRecordsScreen extends ConsumerWidget {
   const HealthRecordsScreen({super.key});
 
@@ -19,6 +20,7 @@ class HealthRecordsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(uiPreviewProvider)) return const RealHealthRecordsScreen();
     final state = ref.watch(demoProvider);
+    // 此页面按窗口宽度选择宽窄布局；宽屏类别合卡并将用途说明放入侧栏。
     final wide = MediaQuery.sizeOf(context).width >= 1024;
     final profile = state.profile;
     final basics = AppCard(
@@ -94,6 +96,7 @@ class HealthRecordsScreen extends ConsumerWidget {
         ],
       ),
     );
+    // 各类别只接收对应记录，展开和演示删除交互由类别组件负责。
     final categories = [
       for (final kind in healthKinds.keys)
         HealthRecordCategory(

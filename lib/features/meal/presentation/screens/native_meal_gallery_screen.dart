@@ -32,6 +32,7 @@ class NativeMealGalleryScreen extends ConsumerWidget {
         body: const Center(child: Text('Web 暂未接入真实餐食照片')),
       );
     }
+    // 无展示会话时不装配照片查询；元数据状态由共享照片展示边界处理。
     final result = ref.watch(mealPhotoPresentationEnabledProvider)
         ? ref.watch(mealPhotosProvider(mealId))
         : AsyncValue<MealPhotoSet>.data(
@@ -127,6 +128,7 @@ class _GalleryPagesState extends State<_GalleryPages> {
     });
   }
 
+  // 同一账户的照片集合更新时优先按 imageId 保持当前页；找不到则回到首图。
   @override
   void didUpdateWidget(_GalleryPages oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -153,6 +155,7 @@ class _GalleryPagesState extends State<_GalleryPages> {
     super.dispose();
   }
 
+  // 放大时禁止箭头翻页；减少动态时直接跳页，否则使用短动画。
   void _move(int delta) {
     final target = _index + delta;
     if (_zoomed || target < 0 || target >= widget.photos.length) return;
@@ -280,6 +283,7 @@ class _ZoomPhotoState extends State<_ZoomPhoto> {
     }
   }
 
+  // 双击在原比例与围绕点击位置的放大之间切换。
   void _doubleTap() {
     _transform.value = _zoomed
         ? Matrix4.identity()

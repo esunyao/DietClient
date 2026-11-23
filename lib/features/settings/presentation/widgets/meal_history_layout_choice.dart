@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/presentation/ui_preferences.dart';
 
+/// 展示历史布局选项；选中状态和保存操作由调用方提供。
 class MealHistoryLayoutChoice extends StatelessWidget {
   const MealHistoryLayoutChoice({
     super.key,
@@ -41,6 +42,7 @@ class MealHistoryLayoutChoice extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 小样仅用于说明布局，读屏使用外层选项的文字和选中状态。
               ExcludeSemantics(child: _LayoutPreview(compact: compact)),
               const SizedBox(height: 12),
               Row(
@@ -78,6 +80,7 @@ class MealHistoryLayoutChoice extends StatelessWidget {
   }
 }
 
+/// 用装饰性 Flutter 控件示意两种布局，不读取真实餐食或照片。
 class _LayoutPreview extends StatelessWidget {
   const _LayoutPreview({required this.compact});
 

@@ -6,6 +6,7 @@ import '../../../../demo/demo_store.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'real_consent_screen.dart';
 
+/// 按预览配置选择真实同意页面或共享内存中的演示开关；演示操作不修改真实授权。
 class AiNutritionConsentScreen extends ConsumerWidget {
   const AiNutritionConsentScreen({super.key});
 
@@ -14,6 +15,7 @@ class AiNutritionConsentScreen extends ConsumerWidget {
     WidgetRef ref,
     bool enabled,
   ) async {
+    // 仅关闭演示开关时需要确认；弹窗取消或页面销毁后不写入状态。
     if (enabled) {
       final confirm = await showDialog<bool>(
         context: context,

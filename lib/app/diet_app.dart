@@ -28,7 +28,9 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
     super.initState();
     // 监听应用的切前后台等系统级生命周期事件。
     WidgetsBinding.instance.addObserver(this);
+    // 延后到微任务启动恢复；预览不恢复会话，仅 booting 状态触发。
     Future.microtask(() {
+      // mounted 当前组件是否存活
       if (mounted &&
           !ref.read(uiPreviewProvider) &&
           ref.read(sessionStatusProvider) == SessionStatus.booting) {
@@ -43,6 +45,7 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  // 回到前台复核本地日期和会话；仅原生营养启用且会话就绪时刷新营养查询。
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -58,6 +61,7 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // 保持本地日期订阅；会话清空时重置真实隐私遮罩，避免沿用上个会话的显示状态。
     ref.watch(currentDateProvider);
     ref.listen(sessionProvider, (previous, next) {
       if (previous != null && next == null) {
@@ -67,6 +71,7 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
     final signedIn = hasActiveSession(ref.watch(sessionProvider));
     final uiPreview = ref.watch(uiPreviewProvider);
     final prefs = ref.watch(uiPreferencesProvider);
+    // 机构遮罩仅控制界面可见性：预览读演示状态，正常路径读真实展示状态。
     final hidden =
         (signedIn || uiPreview) &&
         (uiPreview
@@ -87,6 +92,7 @@ class _DietAppState extends ConsumerState<DietApp> with WidgetsBindingObserver {
       supportedLocales: const [Locale('zh', 'CN')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       builder: (context, child) {
+        // 合并系统和应用的减少动态设置；遮罩期间保留页面树但停用其动画。
         final media = MediaQuery.of(context);
         return MediaQuery(
           data: media.copyWith(

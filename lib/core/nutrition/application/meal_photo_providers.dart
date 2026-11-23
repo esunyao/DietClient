@@ -35,6 +35,7 @@ final _photoLoaderProvider = Provider.autoDispose.family<_PhotoLoader, String>((
   );
 });
 
+// 通过餐食定位采集会话并共享照片元数据；失败不自动重试，异步返回后检查账户代次。
 final mealPhotosProvider = FutureProvider.autoDispose
     .family<MealPhotoSet, String>((ref, id) async {
       final loader = ref.watch(_photoLoaderProvider(id));
@@ -52,6 +53,7 @@ final mealPhotosProvider = FutureProvider.autoDispose
       return loader.fromSession(session);
     }, retry: (count, error) => null);
 
+// 按餐食和精确图片 ID 共享字节；最后监听结束时取消读取，不随元数据更新重建字节。
 final mealPhotoBytesProvider = FutureProvider.autoDispose
     .family<Uint8List, MealPhotoKey>((ref, key) async {
       final epoch = ref.watch(sessionEpochProvider);
@@ -70,6 +72,7 @@ final mealPhotoBytesProvider = FutureProvider.autoDispose
 
       var photos = await ref.read(mealPhotosProvider(key.mealId).future);
       checkCurrent();
+      // 链接过期或对象读取返回 401/403 时，单次字节查询最多刷新签名一次。
       var refreshed = false;
       while (true) {
         final photo = photos.photos
@@ -123,6 +126,7 @@ class _PhotoLoader {
     if (!isCurrent()) throw const ApiFailure('会话已更换');
   }
 
+  // 仅收集已确认图片，按槽位排序；签名到期时间以采集响应接收时间为基准。
   MealPhotoSet fromSession(CaptureSession session) {
     checkCurrent();
     if (identical(session, _session)) return _latest!;
@@ -152,6 +156,7 @@ class _PhotoLoader {
     );
   }
 
+  // 同一餐食并发签名刷新共用请求，并在已有较新快照时直接复用。
   Future<MealPhotoSet> refresh(MealPhotoSet stale) async {
     checkCurrent();
     if (_refresh != null) return _refresh!;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/demo/demo_store.dart';
 
+/// 比较共享演示套餐，通过回调交出选中的套餐 ID，不自行保存状态。
 class PlanComparison extends StatelessWidget {
   const PlanComparison({
     super.key,
@@ -28,6 +29,7 @@ class PlanComparison extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final gap = wide ? 20.0 : 8.0;
+      // 可用宽度不足或文字放大时改为纵向卡片，否则平分三列。
       final stacked =
           constraints.maxWidth < 340 ||
           MediaQuery.textScalerOf(context).scale(14) > 19;
@@ -189,6 +191,7 @@ class PlanComparison extends StatelessWidget {
   );
 }
 
+/// 展示所选套餐的菜品和计划份量；角色标签仅按样例食物 ID 映射。
 class PlanDishes extends StatelessWidget {
   const PlanDishes({super.key, required this.plan, required this.wide});
 
@@ -218,6 +221,7 @@ class PlanDishes extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 9),
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  // 窄空间或大字时将角色移到菜名下方，避免与份量行争宽。
                   final stacked =
                       constraints.maxWidth < 280 ||
                       MediaQuery.textScalerOf(context).scale(14) > 20;
@@ -284,6 +288,7 @@ class PlanDishes extends StatelessWidget {
   );
 }
 
+/// 展示调用方传入的演示目标、今日已记录能量及分析中餐数。
 class PlanContextCard extends StatelessWidget {
   const PlanContextCard({
     super.key,
@@ -345,6 +350,7 @@ class PlanContextCard extends StatelessWidget {
   );
 }
 
+/// 展示方案依据与固定的过敏核对提示，健康档案导航由调用方提供。
 class PlanReasonCard extends StatelessWidget {
   const PlanReasonCard({
     super.key,
@@ -386,6 +392,7 @@ class PlanReasonCard extends StatelessWidget {
   );
 }
 
+/// 展示食堂入口，菜单导航由调用方提供。
 class PlanMenuCard extends StatelessWidget {
   const PlanMenuCard({super.key, required this.wide, required this.onMenu});
   final bool wide;

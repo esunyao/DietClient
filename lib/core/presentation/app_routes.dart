@@ -1,3 +1,4 @@
+/// 集中定义应用路径及动态路径构造；路由注册和页面选择由应用层负责。
 abstract final class AppRoutes {
   static const home = '/home';
   static const capture = '/capture';
@@ -17,6 +18,7 @@ abstract final class AppRoutes {
   static const editProfile = '/profile/edit';
   static const healthRecords = '/profile/health-records';
   static const aiConsent = '/profile/ai-consent';
+  // 动态标识按路径段编码，相册的可选图片标识按查询参数编码。
   static String mealDetail(String id) => '/meals/${Uri.encodeComponent(id)}';
   static String mealPhotos(String id, {String? imageId}) =>
       '${mealDetail(id)}/photos'

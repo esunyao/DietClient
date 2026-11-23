@@ -140,6 +140,7 @@ const fieldsByKind = <String, List<HealthField>>{
   ],
 };
 
+/// 校验必填、长度、数值范围和日期格式；带时区的时间允许最多超前当前时间五分钟。
 String? validateHealthField(HealthField field, String value) {
   if (value.isEmpty) return field.required ? '请填写${field.label}' : null;
   if (value.length > field.maxLength) return '最多 ${field.maxLength} 字符';
@@ -170,6 +171,7 @@ String? validateHealthField(HealthField field, String value) {
   return null;
 }
 
+/// 校验日期先后及测量记录至少有一项指标；传入的非空日期须先通过单字段校验。
 String? validateHealthDates(String kind, Map<String, dynamic> data) {
   final pairs = {
     'goal': ['startedOn', 'targetDate'],

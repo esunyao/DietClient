@@ -17,6 +17,7 @@ import '../core/session/session_controller.dart';
 import '../demo/demo_store.dart';
 import '../features/auth/application/login_controller.dart';
 
+/// 为业务页面装配共享背景、响应式导航和账户入口；页面内容由路由提供。
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child, required this.location});
   final Widget child;
@@ -30,6 +31,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
+    // 会话提示在下一帧展示；回调执行前需确认外壳仍存活。
     ref.listenManual<String?>(sessionNoticeProvider, (_, notice) {
       if (notice == null) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -42,6 +44,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   final _collapse = NavigationCollapseController();
   bool _menuOpen = false;
+  // 路径变化时展开底栏；收起控制器随外壳释放。
   @override
   void didUpdateWidget(AppShell oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -71,6 +74,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     final location = widget.location;
     final prefs = ref.watch(uiPreferencesProvider);
+    // 预览读取演示模式与姓名，正常路径读取真实展示状态和共享账户身份。
     final uiPreview = ref.watch(uiPreviewProvider);
     final demo = uiPreview ? ref.watch(demoProvider) : null;
     final institution = uiPreview
@@ -79,6 +83,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final accountName = uiPreview
         ? demo!.profile.name
         : ref.watch(accountIdentityProvider).asData?.value.name ?? '当前账户';
+    // 保存等离开保护忙碌时不打开设置；退出只清理当前应用会话。
     void openSettings() {
       if (!ref.read(routeLeaveRegistryProvider).busy) {
         context.push(AppRoutes.settings);
@@ -90,6 +95,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       ref.read(sessionProvider.notifier).clear();
     }
 
+    // 将机构、配餐、趋势、报告及个人相关的指定路径映射到主入口；未匹配时高亮首页。
     final index =
         location.startsWith('/institution') ||
             location.startsWith(AppRoutes.mealPlan)
@@ -107,6 +113,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final padding = MediaQuery.paddingOf(context);
+          // 宽屏在 Web/Windows 使用侧栏，其他平台使用顶栏；窄屏仅主路径显示底栏。
           final wide = constraints.maxWidth >= AppLayout.navigationBreakpoint;
           final sidebar =
               wide &&
@@ -126,6 +133,8 @@ class _AppShellState extends ConsumerState<AppShell> {
             width: bottomWidth,
             destinations: _destinations,
           );
+          // 背景只装配一次，导航作为覆盖层；页面 inset 不包含系统安全区。
+          // 侧栏正文固定预留 120，展开部分覆盖正文而非再次挤压。
           return GlassBackdrop(
             mode: wide || showBottom ? prefs.glassMode : GlassMode.off,
             reduceTransparency: prefs.reduceTransparency,
@@ -181,6 +190,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       glassMode: prefs.glassMode,
                       reduceTransparency: prefs.reduceTransparency,
                       menuOpen: _menuOpen,
+                      // 用连续展开进度移动头像并淡入姓名，菜单开关状态交给侧栏。
                       accountBuilder: (expansion) =>
                           PopupMenuButton<_AccountAction>(
                             tooltip: '个人菜单',
@@ -418,6 +428,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       ),
                     ),
                   ),
+                // 主体滚动驱动底栏收起，导航交互期间由控制器暂停收起。
                 if (showBottom)
                   Positioned(
                     left: AppLayout.mobileGutter + padding.left,

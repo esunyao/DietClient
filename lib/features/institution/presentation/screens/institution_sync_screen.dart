@@ -5,6 +5,7 @@ import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_client/core/config/ui_preview_config.dart';
 import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
+/// 核对机构餐食演示及实际食用比例；原生营养模式不接入机构同步。
 class InstitutionSyncScreen extends ConsumerStatefulWidget {
   const InstitutionSyncScreen({super.key});
   @override
@@ -13,6 +14,7 @@ class InstitutionSyncScreen extends ConsumerStatefulWidget {
 }
 
 class _InstitutionSyncScreenState extends ConsumerState<InstitutionSyncScreen> {
+  // 归属和食用比例是页面局部选择；限制核对与入账标记来自共享演示状态。
   int _ownership = 0;
   double? _fraction;
 
@@ -25,7 +27,9 @@ class _InstitutionSyncScreenState extends ConsumerState<InstitutionSyncScreen> {
       );
     }
     final state = ref.watch(demoProvider);
+    // 同步场景固定使用首个套餐样例，不读取菜单页的局部选餐。
     final plan = demoPlans.first;
+    // 仅本人归属、已选比例、完成模拟限制核对且尚未入账时允许确认。
     final canConfirm =
         _ownership == 1 &&
         _fraction != null &&
@@ -108,6 +112,7 @@ class _InstitutionSyncScreenState extends ConsumerState<InstitutionSyncScreen> {
                 ],
               ),
             ),
+            // 标记误归属时隐藏菜品详情，改为提示联系机构复核。
             if (_ownership != 2) ...[
               const SectionHeading(title: '机构提供的菜品'),
               AppCard(
@@ -267,6 +272,7 @@ class _InstitutionSyncScreenState extends ConsumerState<InstitutionSyncScreen> {
                         : '确认归属与食用量后记录',
                     onPressed: canConfirm
                         ? () {
+                            // 将比例交给共享演示状态处理，页面随后展示联动提示。
                             ref
                                 .read(demoProvider.notifier)
                                 .confirmInstitutionMeal(fraction: _fraction!);

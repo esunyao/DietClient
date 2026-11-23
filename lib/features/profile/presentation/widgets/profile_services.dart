@@ -9,6 +9,7 @@ import '../../../../core/config/ui_preview_config.dart';
 import '../../../../demo/demo_store.dart';
 import 'health_kind.dart';
 
+/// 演示时展示虚构机构及菜单入口；非演示时只提示机构能力暂未支持。
 class ProfileInstitutionCard extends StatelessWidget {
   const ProfileInstitutionCard({super.key, this.demo = true});
 
@@ -59,6 +60,7 @@ class ProfileInstitutionCard extends StatelessWidget {
         );
 }
 
+/// 隐藏个人信息的入口：预览写演示状态，其他模式写独立临时展示状态。
 class ProfilePrivacyCard extends ConsumerWidget {
   const ProfilePrivacyCard({super.key});
 
@@ -104,6 +106,7 @@ class ProfilePrivacyCard extends ConsumerWidget {
   );
 }
 
+/// 组合服务路由；real 控制支持状态文案，目标页面仍负责自身功能边界。
 class ProfileServiceEntries extends StatelessWidget {
   const ProfileServiceEntries({
     super.key,
@@ -172,6 +175,7 @@ class ProfileServiceEntries extends StatelessWidget {
   );
 }
 
+/// 提供设置和应用内退出入口；预览模式隐藏退出，退出动作由页面作用域提供。
 class ProfileAccountCard extends StatelessWidget {
   const ProfileAccountCard({super.key});
 

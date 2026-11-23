@@ -12,6 +12,7 @@ import '../../../../core/privacy/ai_consent.dart';
 import '../../../../core/session/session_controller.dart';
 import '../../application/capture_controller.dart';
 
+/// 真实餐食采集页面：组合服务端策略、草稿、授权和本地表单，不使用演示采集状态。
 class NativeRecognitionScreen extends ConsumerStatefulWidget {
   const NativeRecognitionScreen({super.key});
   @override
@@ -31,6 +32,7 @@ class _NativeRecognitionScreenState
     super.dispose();
   }
 
+  // 受理不等于分析完成；仅在页面、路由和登录代次仍有效时跳转详情。
   Future<void> _submit(bool retry) async {
     final epoch = ref.read(sessionEpochProvider);
     final result = await ref
@@ -82,6 +84,7 @@ class _NativeRecognitionScreenState
     await ref.read(captureFlowProvider.notifier).deleteDraft(id);
   }
 
+  // 切换不同草稿且本页有图片或备注时先请求确认；目标会话已设置时重置表单。
   Future<void> _open(String id) async {
     final controller = ref.read(captureFlowProvider.notifier);
     final previous = ref.read(captureFlowProvider);
@@ -124,6 +127,7 @@ class _NativeRecognitionScreenState
 
   @override
   Widget build(BuildContext context) {
+    // 备注和餐别属于页面本地状态，换号时与采集控制器状态一同重置。
     ref.listen(sessionEpochProvider, (_, _) {
       _notes.clear();
       setState(() => _type = 1);
@@ -135,6 +139,8 @@ class _NativeRecognitionScreenState
     final consent = ref.watch(aiNutritionConsentProvider);
     final session = flow.session;
     final failed = session?.status == 'failed';
+    // 草稿状态和有效期决定编辑入口；失败会话使用重新分析分支。
+    // 提交还要求没有未确认的本地图片，授权由控制器在提交时复查。
     final editable =
         session != null &&
         ['created', 'uploading'].contains(session.status) &&
@@ -152,6 +158,7 @@ class _NativeRecognitionScreenState
               p.confirmed == null &&
               !confirmedImages.any((i) => i.imageId == p.signed?.imageId),
         );
+    // 指定草稿状态下的备注或未确认本地图片触发离开保护；处理中由 busy 阻止离开。
     return UnsavedForm(
       dirty:
           session != null &&
@@ -326,6 +333,7 @@ class _NativeRecognitionScreenState
                         ],
                       ),
                     ),
+                  // 已出现在服务端列表的签名图片不再重复显示本地卡片。
                   for (final pending in flow.pending.where(
                     (p) => !session.images.any(
                       (i) =>

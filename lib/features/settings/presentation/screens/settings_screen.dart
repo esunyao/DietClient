@@ -9,9 +9,11 @@ import '../../../../core/config/ui_preview_config.dart';
 import '../widgets/glass_choice.dart';
 import '../widgets/meal_history_layout_choice.dart';
 
+/// 组合外观偏好与显示模式设置；预览使用演示状态，其他场景使用真实显示状态。
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  /// 确认后重置外观；预览还会重置演示数据，异步返回时仅在页面仍挂载时反馈。
   Future<void> _reset(BuildContext context, WidgetRef ref) async {
     final native = !ref.read(uiPreviewProvider);
     final confirmed = await showDialog<bool>(
@@ -52,6 +54,7 @@ class SettingsScreen extends ConsumerWidget {
     final prefs = ref.watch(uiPreferencesProvider);
     final controller = ref.read(uiPreferencesProvider.notifier);
     final preview = ref.watch(uiPreviewProvider);
+    // 模式和遮罩分别由演示状态或真实临时显示状态持有，不从窗口宽度推断。
     final institution = preview
         ? ref.watch(demoProvider.select((s) => s.isInstitution))
         : ref.watch(displayStateProvider.select((s) => s.isInstitution));
@@ -68,6 +71,7 @@ class SettingsScreen extends ConsumerWidget {
             style: TextStyle(color: AppColors.muted, fontSize: 14),
           ),
           const SizedBox(height: 16),
+          // 选择项按卡片内部可用宽度分列，避免窄容器沿用窗口级断点。
           LayoutBuilder(
             builder: (context, constraints) {
               final columns = constraints.maxWidth >= 340 ? 2 : 1;
@@ -188,6 +192,7 @@ class SettingsScreen extends ConsumerWidget {
               final mode = index == 0
                   ? ExperienceMode.personal
                   : ExperienceMode.institution;
+              // 演示模式切换会恢复样例；真实模式切换只更新显示选择。
               if (preview) {
                 ref.read(demoProvider.notifier).selectMode(mode);
               } else {
@@ -256,6 +261,7 @@ class SettingsScreen extends ConsumerWidget {
       title: native ? '外观设置' : '外观与演示设置',
       showBack: true,
       children: [
+        // 加载或保存时阻止设置区交互；错误提供重新读取入口，保存可由用户再次操作重试。
         if (prefs.loading || prefs.saving) const LinearProgressIndicator(),
         if (prefs.error != null) ...[
           InfoBanner(text: prefs.error!, color: AppColors.red),

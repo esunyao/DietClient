@@ -4,6 +4,7 @@ import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/network/api_client.dart';
 
+/// 将异步值映射为内容、加载或安全错误提示；重试行为由调用方注入。
 class RemoteState<T> extends StatelessWidget {
   const RemoteState({
     super.key,

@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/auth_config.dart';
 
+/// 表示启动恢复、未登录、会话可用或需要用户重试的状态。
 enum SessionStatus { booting, signedOut, ready, retryRequired }
 
 class SessionNotice extends Notifier<String?> {
@@ -28,6 +29,7 @@ class SessionStatusController extends Notifier<SessionStatus> {
   void set(SessionStatus value) => state = value;
 }
 
+/// 登录和清除会话时推进代次，用于隔离旧账户异步结果；普通续期不推进。
 class SessionEpoch extends Notifier<int> {
   @override
   int build() => 0;
@@ -51,6 +53,7 @@ abstract interface class SessionStorage {
   Future<void> delete();
 }
 
+/// 用系统安全存储保存恢复记录；普通偏好中的禁用标记用于阻止读取旧记录。
 class SecureSessionStorage implements SessionStorage {
   const SecureSessionStorage();
   static const _storage = FlutterSecureStorage();
@@ -81,6 +84,7 @@ final sessionStorageProvider = Provider<SessionStorage>(
   (ref) => const SecureSessionStorage(),
 );
 typedef RefreshSession = Future<OidcSession> Function(OidcSession session);
+/// 使用当前认证配置创建 OIDC 客户端续期，并在请求结束后释放客户端。
 final refreshSessionProvider = Provider<RefreshSession>(
   (ref) => (session) async {
     final config = ref.read(authConfigProvider).authentik;
@@ -115,6 +119,7 @@ class SessionController extends Notifier<OidcSession?> {
     return null;
   }
 
+  // 串行执行存储写入和删除；单次失败仍向调用方报告，但不阻断后续操作。
   Future<void> _store(Future<void> Function(SessionStorage) action) {
     final storage = ref.read(sessionStorageProvider);
     final next = _storageWork.then((_) => action(storage));
@@ -131,6 +136,8 @@ class SessionController extends Notifier<OidcSession?> {
     _refresh = null;
   }
 
+  /// 建立内存会话并推进代次；仅非 Web 且具备刷新令牌和身份时可记住登录。
+  /// 保存失败只提示并尝试清理记录，不回退到明文存储。
   Future<void> establish(OidcSession session, {bool rememberMe = false}) async {
     _expiry?.cancel();
     _advance();
@@ -170,6 +177,7 @@ class SessionController extends Notifier<OidcSession?> {
     }
   }
 
+  /// 合并并发恢复；非 Web 从安全存储读取记录，并通过强制续期验证后进入可用状态。
   Future<void> restore() =>
       _restoring ??= _restore().whenComplete(() => _restoring = null);
   Future<void> _restore() async {
@@ -183,6 +191,7 @@ class SessionController extends Notifier<OidcSession?> {
         _status(SessionStatus.signedOut);
         return;
       }
+      // 恢复记录须匹配当前环境；先构造过期会话，让续期流程核对返回的身份。
       final json = jsonDecode(raw) as Map<String, dynamic>;
       if (json['environment'] != _environment) throw const FormatException();
       final identity = OidcIdentity(
@@ -207,6 +216,7 @@ class SessionController extends Notifier<OidcSession?> {
         identity: identity,
       );
       await ensureFreshAccessToken(force: true);
+    // 格式或类型无效时清理；其他恢复失败保留重试状态，旧代次不更新状态。
     } on FormatException {
       await clear();
     } on TypeError {
@@ -216,6 +226,7 @@ class SessionController extends Notifier<OidcSession?> {
     }
   }
 
+  /// 返回仍可用的访问令牌，或合并同一代次的续期请求；缺少续期条件时清除会话。
   Future<String> ensureFreshAccessToken({bool force = false}) {
     final current = state;
     if (current == null) {
@@ -256,6 +267,8 @@ class SessionController extends Notifier<OidcSession?> {
     return pending;
   }
 
+  // 续期后核对主体、签发方和客户端；代次变化或销毁时拒绝旧结果回写。
+  // 按需尝试持久化轮换后的记录，再次检查代次后更新内存会话。
   Future<String> _renew(OidcSession current, int start) async {
     try {
       final fresh = await ref.read(refreshSessionProvider)(current);
@@ -292,6 +305,7 @@ class SessionController extends Notifier<OidcSession?> {
       _status(SessionStatus.ready);
       _arm(fresh);
       return fresh.accessToken;
+    // 凭据或身份类失败清除会话；其他失败保留可用会话或切换为待重试。
     } catch (e) {
       if (ref.mounted && epoch == start) {
         if (e is OidcFailure &&
@@ -333,6 +347,8 @@ class SessionController extends Notifier<OidcSession?> {
     }
   }
 
+  // 非 Web 且刷新令牌非 null 时提前触发：剩余寿命的五分之一，最多 60 秒。
+  // 其他情况到期清除；重新安排或控制器销毁时取消旧定时器。
   void _arm(OidcSession session) {
     _expiry?.cancel();
     final lifetime = session.expiresAt.difference(DateTime.now());
@@ -351,6 +367,7 @@ class SessionController extends Notifier<OidcSession?> {
     });
   }
 
+  /// 检查已过期的内存会话，并异步尝试续期或清除。
   void checkExpiry() {
     if (state != null && !hasActiveSession(state)) {
       unawaited(
@@ -362,6 +379,7 @@ class SessionController extends Notifier<OidcSession?> {
     }
   }
 
+  /// 先推进代次并清空内存状态，再尝试删除本机恢复记录；不执行全局 SSO 注销。
   Future<void> clear() async {
     _expiry?.cancel();
     _expiry = null;
@@ -379,6 +397,7 @@ class SessionController extends Notifier<OidcSession?> {
     }
   }
 
+  // 恢复记录绑定 API 地址与身份配置，只编码刷新令牌和身份校验上下文。
   String get _environment => jsonEncode([
     const String.fromEnvironment('API_BASE_URL'),
     ref.read(authConfigProvider).authentik?.discoveryUri.toString(),

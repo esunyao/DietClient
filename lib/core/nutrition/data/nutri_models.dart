@@ -1,9 +1,11 @@
+// NutriMemo 用户接口的响应解析和餐食修正输入；此处不生成演示业务数据。
 typedef NutriJson = Map<String, dynamic>;
 NutriJson nutriJson(Object? value) => Map<String, dynamic>.from(value as Map);
 List<T> _list<T>(Object? value, T Function(NutriJson) parse) => (value as List)
     .map((item) => parse(nutriJson(item)))
     .toList(growable: false);
 double? _number(Object? value) => value == null ? null : double.parse('$value');
+// 记录 ID 校验为数字后保留字符串，避免转换为数值造成精度损失。
 String _id(Object? value) {
   final id = '$value';
   if (!RegExp(r'^\d+$').hasMatch(id)) {
@@ -108,6 +110,7 @@ class PresignedImage {
   final Map<String, String> requiredHeaders;
 }
 
+/// 后端返回的营养编码、名称、单位和值；不在模型中推断缺失指标。
 class NutrientValue {
   NutrientValue.fromJson(NutriJson j)
     : nutrientCode = j['nutrientCode'] as String,
@@ -118,6 +121,7 @@ class NutrientValue {
   final double amount;
 }
 
+/// 按编码取首个营养值；未返回该指标时保留未知而非填零。
 double? nutrientAmount(List<NutrientValue> values, String code) {
   for (final value in values) {
     if (value.nutrientCode == code) return value.amount;
@@ -159,6 +163,7 @@ class MealHistoryItem {
   final List<NutrientValue> nutrients;
 }
 
+/// 餐食详情在历史摘要上补充采集会话、原时区和条目。
 class Meal extends MealHistoryItem {
   Meal.fromJson(super.j)
     : captureSessionId = j['captureSessionId'] as String,
@@ -252,6 +257,7 @@ class MealCorrectionItem {
   };
 }
 
+/// 完整餐食修正输入；序列化时将用餐时刻转为 UTC 并保留时区标识。
 class MealCorrection {
   const MealCorrection({
     required this.mealType,

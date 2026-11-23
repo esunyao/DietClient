@@ -13,6 +13,7 @@ import '../widgets/health_kind.dart';
 import '../widgets/profile_cards.dart';
 import '../widgets/profile_services.dart';
 
+/// 我的页面入口：非预览使用真实页面，预览从共享演示状态组合身份、健康摘要和服务。
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -20,6 +21,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(uiPreviewProvider)) return const RealProfileScreen();
     final state = ref.watch(demoProvider);
+    // 窗口宽度决定页面编排；机构卡片是否出现由演示模式状态决定，而非宽度推断。
     final wide = MediaQuery.sizeOf(context).width >= 1024;
     final identity = ProfileIdentityCard(profile: state.profile, wide: wide);
     final health = ProfileHealthSummary(
@@ -121,6 +123,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
+/// 为资料页面的内容块统一提供标题和可选操作入口。
 class ProfileSection extends StatelessWidget {
   const ProfileSection({
     super.key,
@@ -146,6 +149,7 @@ class ProfileSection extends StatelessWidget {
   );
 }
 
+/// 提供健康档案、报告和饮食历史的路由快捷入口，目标页面负责各自的数据边界。
 class ProfileShortcuts extends StatelessWidget {
   const ProfileShortcuts({super.key});
 

@@ -9,10 +9,12 @@ import '../data/nutri_models.dart';
 export '../data/nutri_api.dart';
 export '../data/nutri_models.dart';
 
+// 使用设备时区插件的标识；查询失败时不自动重试。
 final deviceTimezoneProvider = FutureProvider<String>(
   (ref) async => (await FlutterTimezone.getLocalTimezone()).identifier,
   retry: (count, error) => null,
 );
+// Web 和预览不创建真实营养 API；可用时依赖业务客户端，并随 Provider 释放上传器。
 final nutritionApiProvider = Provider<NutriApi?>((ref) {
   if (kIsWeb || ref.watch(uiPreviewProvider)) return null;
   final client = ref.watch(apiClientProvider);
@@ -23,6 +25,7 @@ final nutritionApiProvider = Provider<NutriApi?>((ref) {
 });
 NutriApi _api(Ref ref) =>
     ref.watch(nutritionApiProvider) ?? (throw const ApiFailure('请先登录'));
+// 共享策略、草稿和按参数分组的真实查询；这些 Provider 禁用自动重试。
 final capturePolicyProvider = FutureProvider<CapturePolicy>(
   (ref) => _api(ref).capturePolicy(),
   retry: (count, error) => null,
@@ -65,6 +68,7 @@ void invalidateNutrition(Ref ref) {
   ref.invalidate(dailyTrendProvider);
 }
 
+/// 供组件侧集中失效营养查询；与 Ref 入口覆盖相同的查询族。
 void refreshNutrition(WidgetRef ref) {
   ref.invalidate(draftsProvider);
   ref.invalidate(captureSessionProvider);

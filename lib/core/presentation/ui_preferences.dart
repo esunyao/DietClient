@@ -9,6 +9,7 @@ export 'package:diet_ui/diet_ui.dart' show GlassMode;
 
 enum MealHistoryLayout { compact, photoCard }
 
+/// 外观选择及其读写状态；copyWith 复制选择项并重置加载、保存和错误状态。
 class UiPreferences {
   const UiPreferences({
     this.loading = false,
@@ -39,6 +40,7 @@ class UiPreferences {
   );
 }
 
+/// 外观 JSON 的异步存储边界，不用于保存会话或健康资料。
 abstract interface class UiPreferenceStorage {
   Future<String?> read();
   Future<void> write(String value);
@@ -53,6 +55,7 @@ class SharedUiPreferenceStorage implements UiPreferenceStorage {
   Future<void> write(String value) => _preferences.setString(key, value);
 }
 
+// 仅 Android 和 Windows 非 Web 端持久化，其余平台只保留内存选择。
 final persistentUiPreferencesProvider = Provider<bool>(
   (ref) =>
       !kIsWeb &&
@@ -63,6 +66,7 @@ final uiPreferenceStorageProvider = Provider<UiPreferenceStorage>(
   (ref) => SharedUiPreferenceStorage(),
 );
 
+/// 管理外观读取和保存；持久化平台初始化时异步加载本地设置。
 class UiPreferencesController extends Notifier<UiPreferences> {
   bool _loading = false;
   @override
@@ -88,6 +92,7 @@ class UiPreferencesController extends Notifier<UiPreferences> {
     saving: saving,
     error: error,
   );
+  /// 重读本地外观；读取或保存进行中不重复加载，失败保留当前值并暴露重试提示。
   Future<void> reload() async {
     if (!ref.mounted || _loading || state.saving) return;
     if (!ref.read(persistentUiPreferencesProvider)) return;
@@ -96,6 +101,7 @@ class UiPreferencesController extends Notifier<UiPreferences> {
     try {
       final raw = await ref.read(uiPreferenceStorageProvider).read();
       var prefs = const UiPreferences();
+      // 未知枚举值及格式无效的数据回退默认项，以兼容本地旧值。
       if (raw != null) {
         try {
           final json = jsonDecode(raw);
@@ -129,6 +135,7 @@ class UiPreferencesController extends Notifier<UiPreferences> {
     }
   }
 
+  // 持久化成功后应用新值，失败恢复此前选择；异步完成后仅在仍挂载时更新状态。
   Future<void> _save(UiPreferences next) async {
     if (state.loading || state.saving) return;
     final previous = state;

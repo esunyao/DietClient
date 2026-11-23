@@ -9,6 +9,7 @@ import '../widgets/meal_widgets.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_meal_detail_screen.dart';
 
+/// 单餐详情入口：真实营养启用时交给原生页，否则读取共享演示记录。
 class MealDetailScreen extends ConsumerWidget {
   const MealDetailScreen({super.key, required this.mealId});
   final String mealId;
@@ -27,8 +28,10 @@ class MealDetailScreen extends ConsumerWidget {
         children: [InfoBanner(text: '这条记录不存在，可能已在演示中删除。')],
       );
     }
+    // 演示中仅分析完成时展示已有整餐营养；其他状态以未知值呈现。
     final ready = meal.status == AnalysisStatus.ready;
     void correct() => context.push(AppRoutes.mealCorrection(meal.id));
+    // 页级宽度决定修正操作是否放入底部；内容列再按实际约束选择布局。
     final safeWidth =
         MediaQuery.sizeOf(context).width -
         MediaQuery.paddingOf(context).horizontal;

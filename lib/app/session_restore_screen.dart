@@ -8,6 +8,7 @@ import '../core/session/session_controller.dart';
 class SessionRestoreScreen extends ConsumerWidget {
   const SessionRestoreScreen({super.key});
 
+  // 已有会话时强制刷新令牌，否则重新尝试恢复；失败状态由会话控制器维护。
   Future<void> _retry(WidgetRef ref) async {
     final controller = ref.read(sessionProvider.notifier);
     try {

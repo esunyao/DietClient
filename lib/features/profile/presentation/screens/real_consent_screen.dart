@@ -9,6 +9,7 @@ import '../../../../core/session/session_controller.dart';
 import '../../../../core/network/api_client.dart';
 import '../widgets/remote_state.dart';
 
+/// 读取真实同意记录并在确认后追加授权或撤回记录；加载失败可重新查询。
 class RealConsentScreen extends ConsumerStatefulWidget {
   const RealConsentScreen({super.key});
   @override
@@ -18,6 +19,7 @@ class RealConsentScreen extends ConsumerStatefulWidget {
 class _RealConsentState extends ConsumerState<RealConsentScreen> {
   bool _saving = false;
   String? _error;
+  // 弹窗前记录登录代次，确认后拒绝跨账户提交；写入成功仅刷新仍匹配的 API 查询。
   Future<void> _save(bool granted) async {
     final session = ref.read(sessionEpochProvider);
     final confirm = await showDialog<bool>(
@@ -79,6 +81,7 @@ class _RealConsentState extends ConsumerState<RealConsentScreen> {
       RemoteState(
         value: ref.watch(consentsProvider),
         retry: () => ref.invalidate(consentsProvider),
+          // 状态和最近记录由共享同意规则计算；本页面据状态决定下一次追加的操作。
         builder: (records) {
           final status = consentStatus(records),
               latest = latestConsent(records);

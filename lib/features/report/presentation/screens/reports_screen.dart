@@ -7,6 +7,7 @@ import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
 import '../widgets/report_widgets.dart';
 
+/// 真实营养模式显示能力未支持；其余分支使用共享内存演示报告。
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
 
@@ -64,10 +65,12 @@ class ReportsScreen extends ConsumerWidget {
         description: '报告生成、历史版本与导出暂未支持。真实每日营养汇总已在首页和趋势中提供。',
       );
     }
+    // 报告列表提供版本快照；七日趋势则提供当前覆盖与图表数据。
     final state = ref.watch(demoProvider);
     final latest = state.reports.first;
     final history = state.reports.skip(1).toList();
     final points = state.trend(7);
+    // 仅汇总有能量数值的日期；没有可用值时保留未知，而非生成零值摘要。
     final known = points
         .map((p) => p.nutrients.energy)
         .whereType<double>()
@@ -149,6 +152,7 @@ class ReportsScreen extends ConsumerWidget {
             ),
           ),
           children: [
+            // 宽屏将历史和版本说明放侧栏；窄屏将历史与说明排入主流程。
             AdaptiveColumns(
               main: [
                 ReportOverview(
@@ -198,6 +202,7 @@ class ReportsScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // 图表读取当前趋势，不是历史报告的版本快照。
                         NutritionBarChart(
                           values: points
                               .map((p) => p.nutrients.energy)

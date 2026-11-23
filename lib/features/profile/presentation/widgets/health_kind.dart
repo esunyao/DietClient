@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../demo/demo_store.dart';
 
+/// 健康记录类别键及其展示名称，供真实和演示资料界面共用。
 const healthKinds = {
   'measurement': '身体测量',
   'goal': '健康目标',
@@ -19,6 +20,7 @@ const healthIcons = {
   'restriction': AppIcons.prohibit,
 };
 
+/// 在指定类别中按日期字符串字典序选择最后一条；相同日期取遍历中较后的一条。
 HealthRecordPreview? latestHealthRecord(
   Iterable<HealthRecordPreview> records,
   String kind,
@@ -32,6 +34,7 @@ HealthRecordPreview? latestHealthRecord(
   return latest;
 }
 
+/// 将可解析日期显示为月日；解析失败时保留原文本。
 String healthRecordDate(String value) {
   final date = DateTime.tryParse(value);
   return date == null ? value : '${date.month}月${date.day}日';

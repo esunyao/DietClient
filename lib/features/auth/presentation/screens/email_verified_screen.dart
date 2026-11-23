@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/presentation/app_routes.dart';
 import '../widgets/auth_preview_panel.dart';
 
+/// 展示网页验证后的返回指引或演示结束提示，不确认邮箱验证是否成功。
 class EmailVerifiedScreen extends ConsumerWidget {
   const EmailVerifiedScreen({super.key});
 

@@ -14,6 +14,8 @@ class ObjectImageReader {
   static const maxBytes = 10 * 1024 * 1024;
   final Dio _dio;
 
+  /// 从对象地址读取照片；允许 HTTPS 或回环 HTTP，拒绝自动重定向。
+  /// 调用方可取消读取；非 200 状态保留在 ApiFailure 中供上层判断。
   Future<Uint8List> read({
     required String url,
     CancelToken? cancelToken,
@@ -61,6 +63,7 @@ class ObjectImageReader {
       if (!const ['image/jpeg', 'image/png', 'image/webp'].contains(type)) {
         throw const ApiFailure('照片格式不可用，请刷新后重试');
       }
+      // 声明长度和实际流分别限额，避免缺失或不准确的 Content-Length 绕过限制。
       final length = int.tryParse(
         response.headers.value('content-length') ?? '',
       );
@@ -104,6 +107,7 @@ class ObjectImageReader {
     }
   }
 
+  /// 使用结束后关闭独立 Dio，并强制终止其未完成请求。
   void close() => _dio.close(force: true);
 }
 

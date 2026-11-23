@@ -12,6 +12,7 @@ import '../../../../core/presentation/unsaved_form.dart' show returnOrGo;
 import '../widgets/health_kind.dart';
 import '../widgets/unsaved_form.dart';
 
+/// 按健康类别和可选记录创建真实新增或编辑表单，并依据字段配置组织表单项。
 class RealHealthFormScreen extends ConsumerStatefulWidget {
   const RealHealthFormScreen({super.key, required this.kind, this.record});
   final String kind;
@@ -30,6 +31,7 @@ class _RealHealthFormState extends ConsumerState<RealHealthFormScreen> {
   @override
   void initState() {
     super.initState();
+    // 表单绑定打开时的登录代次；选项和值分别保存，新增测量和目标设置默认时间或日期。
     _session = ref.read(sessionEpochProvider);
     for (final field in fieldsByKind[widget.kind] ?? <HealthField>[]) {
       final value = widget.record?[field.key];
@@ -67,6 +69,7 @@ class _RealHealthFormState extends ConsumerState<RealHealthFormScreen> {
       return;
     }
     if (!_form.currentState!.validate()) return;
+    // 保留已有代码或在代码缺失时生成自定义代码；已有字段留空不作为清空操作。
     final data = <String, dynamic>{};
     for (final field in fieldsByKind[widget.kind]!) {
       if (field.key.endsWith('Code')) {
@@ -105,6 +108,7 @@ class _RealHealthFormState extends ConsumerState<RealHealthFormScreen> {
     try {
       final api = ref.read(profileApiProvider);
       if (api == null) throw StateError('会话不可用');
+      // 传入记录 ID 以区分编辑和新增；成功后只失效当前类别，并在帧后检查代次再返回。
       await api.save(
         widget.kind,
         data,
@@ -133,6 +137,7 @@ class _RealHealthFormState extends ConsumerState<RealHealthFormScreen> {
     }
   }
 
+  // 测量时间以本地日期和时间选择，写回时转成 UTC；任一弹窗取消或页面销毁即退出。
   Future<void> _pickDateTime() async {
     final current =
         DateTime.tryParse(_controllers['measuredAt']!.text)?.toLocal() ??

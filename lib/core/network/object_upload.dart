@@ -6,6 +6,8 @@ import 'package:dio/dio.dart';
 class ObjectUploader {
   ObjectUploader({Dio? dio}) : _dio = dio ?? Dio();
   final Dio _dio;
+  /// 向预签名地址上传字节，透传所需请求头、取消令牌和进度回调。
+  /// 仅允许 HTTPS 或回环 HTTP，拒绝敏感请求头和自动重定向。
   Future<void> put({
     required String url,
     required Uint8List bytes,
@@ -45,5 +47,6 @@ class ObjectUploader {
     );
   }
 
+  /// 使用结束后关闭 Dio，并强制终止其未完成请求。
   void close() => _dio.close(force: true);
 }

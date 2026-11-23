@@ -13,12 +13,14 @@ import '../widgets/home_summary.dart';
 String _date(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
+/// 真实营养首页：以共享本地日期查询当天摘要和餐食，不使用演示营养目标。
 class NativeHomeScreen extends ConsumerWidget {
   const NativeHomeScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final date = ref.watch(currentDateProvider);
     final today = _date(date);
+    // 日期标题、摘要和餐食共用同一天；首页只取第一页，超出部分引导至历史。
     final query = (
       dateFrom: today,
       dateTo: today,
@@ -39,6 +41,7 @@ class NativeHomeScreen extends ConsumerWidget {
       eyebrow: '${date.month}月${date.day}日，星期${'一二三四五六日'[date.weekday - 1]}',
       trailing: const AccountAvatar(size: 48),
       children: [
+        // 待分析餐食驱动共享轮询；刷新时跳过正在加载的查询，轮询生命周期由组件管理。
         NutritionPolling(
           refreshKey: query,
           onRefresh: () {
@@ -70,6 +73,7 @@ class NativeHomeScreen extends ConsumerWidget {
                       ),
                     ),
                     const Text('营养目标：未设置', style: AppTypography.small),
+                    // 摘要与餐食分别展示加载和错误状态，重试只失效对应查询。
                     if (summary.isLoading && summary.value == null)
                       const LinearProgressIndicator(),
                     if (summary.hasError)
@@ -125,6 +129,7 @@ class NativeHomeScreen extends ConsumerWidget {
                   onPressed: () => ref.invalidate(mealsProvider(query)),
                   child: const Text('今日餐食加载失败，点击重试'),
                 ),
+              // 将查询结果适配为共享餐食展示模型，并保留更细的服务端状态标签。
               if (meals.value != null)
                 HomeMeals(
                   sourceLabel: '拍照记录',

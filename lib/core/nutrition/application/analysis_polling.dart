@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../session/session_controller.dart';
 import 'nutrition_providers.dart';
 
+/// 仅已知排队和分析中状态参与轮询，其他状态不视为待处理。
 bool analysisPending(String status) =>
     const ['pending', 'queued', 'analysing', 'analyzing'].contains(status);
 
@@ -54,6 +55,7 @@ class AnalysisPolling {
     _sync();
   }
 
+  // 仅活动租约推进三秒计时；同组回调每轮合并，两分钟后通知各租约超时。
   void _sync() {
     final active = _leases.keys.any(
       (key) => _leases[key]!.active && !expired(key),
@@ -98,6 +100,7 @@ class AnalysisPolling {
   }
 }
 
+// 登录代次变化时重建时钟，并在 Provider 销毁时清理计时器与租约。
 final analysisPollingProvider = Provider<AnalysisPolling>((ref) {
   ref.watch(sessionEpochProvider);
   final controller = AnalysisPolling(() {});
@@ -105,6 +108,8 @@ final analysisPollingProvider = Provider<AnalysisPolling>((ref) {
   return controller;
 });
 
+/// 将页面可见性、前后台状态和待分析状态接入共享轮询。
+/// 超时后由本组件提供手动刷新入口；具体查询刷新由调用方提供。
 class NutritionPolling extends ConsumerStatefulWidget {
   const NutritionPolling({
     super.key,
@@ -158,11 +163,13 @@ class _NutritionPollingState extends ConsumerState<NutritionPolling>
   @override
   void didUpdateWidget(NutritionPolling oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 查询键变化时移除旧租约，新的查询从独立计时窗口开始。
     if (oldWidget.refreshKey != widget.refreshKey) {
       _controller?.remove(_lease);
       _expired = false;
     }
     if (!widget.pending) _expired = false;
+    // 待分析状态结束后集中失效共享营养查询，安排到帧后以避开构建阶段。
     if (oldWidget.pending && !widget.pending) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) refreshNutrition(ref);

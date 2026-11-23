@@ -11,6 +11,7 @@ import '../widgets/health_kind.dart';
 import '../widgets/remote_state.dart';
 import 'real_health_form_screen.dart';
 
+/// 为每类真实健康记录创建独立查询与操作区域，不用演示记录补齐空值。
 class RealHealthRecordsScreen extends ConsumerWidget {
   const RealHealthRecordsScreen({super.key});
   @override
@@ -36,6 +37,7 @@ class _Category extends ConsumerStatefulWidget {
 class _CategoryState extends ConsumerState<_Category> {
   bool _removing = false;
   String? _error;
+  // 删除前确认并复核登录代次；成功后仅在 API 仍匹配时刷新该类别。
   Future<void> _remove(Json record) async {
     final session = ref.read(sessionEpochProvider);
     final confirmed = await showDialog<bool>(
@@ -108,6 +110,7 @@ class _CategoryState extends ConsumerState<_Category> {
           ],
         ),
         if (_error != null) InfoBanner(text: _error!),
+        // 各类别分别处理加载、错误和重试；展开后按字段配置展示并进入编辑或删除。
         RemoteState(
           value: ref.watch(healthRecordsProvider(widget.kind)),
           retry: () => ref.invalidate(healthRecordsProvider(widget.kind)),

@@ -13,6 +13,8 @@ class MealItemEdit {
   final MealItem? original;
   String name, weight, notes;
   final Map<String, String> amounts;
+  /// 校验草稿并生成逐菜修正载荷；重量可留空，空营养输入不提交。
+  /// 每道菜至少需一项有效营养值；保留原菜品 ID，修改重量不会推算营养。
   MealCorrectionItem toInput() {
     if (name.trim().isEmpty || name.trim().length > 150) {
       throw const FormatException('菜品名称需为 1–150 字');

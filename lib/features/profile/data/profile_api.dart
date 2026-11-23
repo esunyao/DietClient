@@ -23,6 +23,7 @@ const healthIdKeys = {
   'restriction': 'restrictionId',
 };
 
+/// 封装真实账户的资料、健康记录、同意和头像请求；对象上传由独立上传器处理。
 class ProfileApi {
   ProfileApi(this.client, {Dio? uploadClient})
     : _upload = ObjectUploader(dio: uploadClient);
@@ -31,10 +32,12 @@ class ProfileApi {
   Future<Json> profile() async => Map<String, dynamic>.from(
     await client.request('v1/users/self/profile') as Map,
   );
+  /// 提交调用方提供的 PATCH 字段，返回服务端确认的档案。
   Future<Json> saveProfile(Json data) async => Map<String, dynamic>.from(
     await client.request('v1/users/self/profile', method: 'PATCH', data: data)
         as Map,
   );
+  // 类别必须在契约映射内，记录 ID 以数字字符串拼入路径，避免数值精度转换。
   String _path(String kind, [String? id]) {
     final segment = healthPaths[kind];
     if (segment == null || (id != null && !RegExp(r'^\d+$').hasMatch(id))) {
@@ -63,6 +66,7 @@ class ProfileApi {
       (await client.request('v1/users/self/consents') as List)
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
+  /// 追加 AI 营养分析同意记录，政策版本固定为 1.0。
   Future<void> consent(bool granted, String source) async {
     await client.request(
       'v1/users/self/consents',
@@ -76,6 +80,8 @@ class ProfileApi {
     );
   }
 
+  /// 先取预签名地址，再由独立上传器 PUT，最后向业务接口确认 objectKey。
+  /// 取消令牌传给 PUT；上传前后检查当前会话，PUT 失败统一转换为可重试的安全提示。
   Future<String?> uploadAvatar(
     Uint8List bytes,
     void Function(int, int) onProgress,
@@ -116,6 +122,7 @@ class ProfileApi {
     return confirmed['avatarUrl'] as String?;
   }
 
+  /// 释放此 API 持有的对象上传器。
   void close() => _upload.close();
 }
 
@@ -123,6 +130,7 @@ Json? latestConsent(List<Json> records) {
   return latestAiConsent(records);
 }
 
+/// 使用共享规则选出最新同意，再根据政策版本和授权值生成展示状态。
 String consentStatus(List<Json> records) {
   final latest = latestConsent(records);
   if (latest == null) return '未授权';

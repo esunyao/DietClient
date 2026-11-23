@@ -53,6 +53,7 @@ String sessionRestoredLocation(String? from) {
   return uri.toString();
 }
 
+/// 按登录状态门控业务路径；预览跳过登录门控并把认证页转往首页。
 String? authenticationRedirect(
   String path, {
   required bool authenticated,
@@ -74,11 +75,13 @@ class _RouterRefresh extends ChangeNotifier {
   void refresh() => notifyListeners();
 }
 
+/// 装配认证门控、恢复页、根相册路由与业务外壳；会话变化触发重定向复核。
 final appRouterProvider = Provider<GoRouter>((ref) {
   final uiPreview = ref.watch(uiPreviewProvider);
   final refresh = _RouterRefresh();
   ref.listen(sessionProvider, (_, next) => refresh.refresh());
   ref.listen(sessionStatusProvider, (_, next) => refresh.refresh());
+  // 编辑与采集路由共用离开确认；认证失效时优先放行门控。
   Future<bool> canLeave(BuildContext context, GoRouterState state) async {
     // 会话失效必须立即离开业务页，表单保护不能阻止认证门控。
     if (!uiPreview &&
@@ -93,6 +96,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: uiPreview ? AppRoutes.home : AppRoutes.login,
     refreshListenable: refresh,
     redirect: (context, state) {
+      // 非 Web 恢复中或需要重试时先进入恢复页，并保留原站内目标。
+      // 恢复页退出后再按会话状态和目标校验结果决定去向。
       final status = ref.read(sessionStatusProvider);
       final recovering =
           !kIsWeb &&
@@ -141,6 +146,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/meals/:id/photos',
         builder: (context, state) {
+          // 非原生营养路径只显示不支持提示，不创建真实相册页面。
           if (!ref.read(nativeNutritionEnabledProvider)) {
             return const AppPage(
               title: '餐食照片',
@@ -248,6 +254,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ],
     ),
   );
+  // 路由和用于会话刷新通知的监听器随 provider 一并释放。
   ref.onDispose(() {
     router.dispose();
     refresh.dispose();

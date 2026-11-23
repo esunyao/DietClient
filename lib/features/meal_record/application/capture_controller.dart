@@ -9,6 +9,7 @@ import '../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../core/privacy/ai_consent.dart';
 import '../../../core/session/session_controller.dart';
 
+/// 本页内存中的图片及上传阶段；失败重试时复用已完成的签名、上传或确认结果。
 class PendingMealImage {
   PendingMealImage(this.image);
   final SelectedImage image;
@@ -26,6 +27,7 @@ class PendingMealImage {
       : '待上传';
 }
 
+/// 聚合服务端采集会话、本地待处理图片和操作状态；备注由页面持有。
 class CaptureFlowState {
   const CaptureFlowState({
     this.session,
@@ -44,11 +46,13 @@ final captureFlowProvider =
       CaptureController.new,
     );
 
+/// 协调真实采集 API、媒体选择和授权检查，并按登录代次隔离异步结果。
 class CaptureController extends Notifier<CaptureFlowState> {
   CancelToken? _cancel;
   String? _createKey;
   @override
   CaptureFlowState build() {
+    // 登录代次变化时重建状态；销毁时取消当前上传请求。
     ref.watch(sessionEpochProvider);
     _createKey = null;
     ref.onDispose(() => _cancel?.cancel('采集页面已关闭'));
@@ -73,6 +77,8 @@ class CaptureController extends Notifier<CaptureFlowState> {
     );
   }
 
+  // 操作互斥；仅在控制器仍挂载且代次未变时回写错误和忙碌状态。
+  // 发生冲突时尝试刷新服务端会话，保留本地输入供核对。
   Future<T?> _run<T>(Future<T?> Function(int epoch) action) async {
     if (state.busy) return null;
     final epoch = ref.read(sessionEpochProvider);
@@ -111,6 +117,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
     }
   }
 
+  /// 新建失败后的显式重试复用幂等键；成功后清除该键并失效共享营养查询。
   Future<CaptureSession?> create() => _run((epoch) async {
     _createKey ??= const Uuid().v4();
     final timezone = await ref.read(deviceTimezoneProvider.future);
@@ -125,6 +132,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
     invalidateNutrition(ref);
     return created;
   });
+  /// 恢复服务端草稿，并通过媒体协调器按餐食用途和会话 ID 恢复丢失的选择结果。
   Future<void> open(String id) async {
     await _run((epoch) async {
       final session = await _api.captureSession(id);
@@ -163,6 +171,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
+  /// 合并未删除的服务端图片和本地待处理图片，按签名图片 ID 避免重复计数。
   int get imageCount =>
       (state.session?.images
               .where((image) => image.status != 'deleted')
@@ -196,6 +205,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
+  // 同时遵守策略和会话的数量上限；文件内容、大小及类型交由媒体协调器检查。
   Future<void> _add(XFile file, CapturePolicy policy, int epoch) async {
     if (imageCount >= policy.maxImageCount ||
         imageCount >= state.session!.maxImageCount) {
@@ -242,6 +252,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
+  /// 逐图串行执行签名、上传和确认；重试跳过已完成阶段，取消令牌用于上传流程。
   Future<void> upload() async {
     if (state.session == null) return;
     await _run((epoch) async {
@@ -328,6 +339,8 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
+  /// 全部本地图片确认后，每次提交或重新分析都重新核实 AI 同意。
+  /// 返回受理结果并失效共享查询；分析结果需另行查看。
   Future<CaptureSubmission?> submit({
     required String mealType,
     String? notes,

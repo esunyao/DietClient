@@ -21,6 +21,7 @@ class SelectedImage {
   final String contentType;
 }
 
+/// 从实际字节识别受支持格式，并检查首帧可解码及像素上限。
 String actualImageType(Uint8List bytes) {
   final decoder = image.findDecoderForData(bytes);
   final type = switch (decoder) {
@@ -66,6 +67,8 @@ class MediaCoordinator {
 
   String _purpose(MediaPurpose purpose, String? contextId) =>
       '${purpose.name}:${contextId ?? ''}';
+  /// 防止并发选图；Android 保存恢复归属，返回前核对登录代次。
+  /// 此处只选择文件，不检查内容或上传。
   Future<XFile?> pick({
     required MediaPurpose purpose,
     required ImageSource source,
@@ -102,6 +105,7 @@ class MediaCoordinator {
     }
   }
 
+  /// 共用一次恢复操作，按账户、代次和用途消费暂存文件；恢复不触发上传。
   Future<List<XFile>> recover({
     required MediaPurpose purpose,
     String? contextId,
@@ -122,6 +126,7 @@ class MediaCoordinator {
     }
     final prefs = preferences ?? SharedPreferencesAsync();
     final owner = _owner, epoch = ref.read(sessionEpochProvider);
+    // 先移除持久化标记，再消费平台丢失结果；只有归属匹配且不足一小时才暂存。
     final raw = await prefs.getString(_key);
     await prefs.remove(_key);
     final lost = await _picker.retrieveLostData();
@@ -149,6 +154,7 @@ class MediaCoordinator {
     }
   }
 
+  /// 读取前后均检查大小，再按实际格式和调用方允许类型校验。
   Future<SelectedImage> inspect(
     XFile file, {
     required int maxBytes,

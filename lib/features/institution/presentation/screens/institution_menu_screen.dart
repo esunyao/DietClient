@@ -7,6 +7,7 @@ import 'package:diet_client/demo/demo_store.dart';
 import 'package:diet_client/core/config/ui_preview_config.dart';
 import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
+/// 展示机构菜单演示；原生营养模式下改为显示暂未支持页面。
 class InstitutionMenuScreen extends ConsumerStatefulWidget {
   const InstitutionMenuScreen({super.key});
   @override
@@ -15,6 +16,7 @@ class InstitutionMenuScreen extends ConsumerStatefulWidget {
 }
 
 class _InstitutionMenuScreenState extends ConsumerState<InstitutionMenuScreen> {
+  // 套餐、餐别和提交标记只保存在当前页面；限制核对状态由 demoProvider 共享。
   String _selection = demoPlans.first.id;
   bool _submitted = false;
   int _meal = 2;
@@ -52,6 +54,7 @@ class _InstitutionMenuScreenState extends ConsumerState<InstitutionMenuScreen> {
                   _meal == 2 ? '供应时段 17:30—19:00' : '该餐别未提供演示菜单',
                   style: const TextStyle(color: AppColors.muted, fontSize: 14),
                 );
+                // 同时考虑窗口宽度、实际可用宽度和文字缩放，决定餐别栏是否横排。
                 final wide =
                     MediaQuery.sizeOf(context).width >=
                     AppLayout.columnsMinWidth + AppLayout.wideGutter * 2;
@@ -271,6 +274,7 @@ class _InstitutionMenuScreenState extends ConsumerState<InstitutionMenuScreen> {
                         child: const Text('联系食堂核实'),
                       ),
                     ),
+                    // 模拟核对解除阻挡后仅设置本页提交标记，不创建计划或实际摄入。
                     AppButton(
                       label: _submitted
                           ? '已确认选餐（演示）'

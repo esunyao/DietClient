@@ -23,6 +23,7 @@ class RouteLeaveRegistry {
     _busy.remove(owner);
   }
 
+  /// 从最近注册的检查开始依次确认，任一检查拒绝即停止。
   Future<bool> confirm() async {
     for (final owner in _checks.keys.toList().reversed) {
       final check = _checks[owner];
@@ -34,6 +35,7 @@ class RouteLeaveRegistry {
 
 final routeLeaveRegistryProvider = Provider((ref) => RouteLeaveRegistry());
 
+/// 优先弹出路由；GoRouter 无返回栈时转往指定位置，非 GoRouter 仅尝试弹出。
 void returnOrGo(BuildContext context, String fallbackLocation) {
   final router = GoRouter.maybeOf(context);
   if (router != null) {
@@ -47,6 +49,8 @@ void returnOrGo(BuildContext context, String fallbackLocation) {
   }
 }
 
+/// 将表单注册到共享离开检查，并通过 PopScope 保护系统返回。
+/// 保存中拒绝离开；存在未保存修改时由用户确认是否放弃。
 class UnsavedForm extends ConsumerStatefulWidget {
   const UnsavedForm({
     super.key,
@@ -79,6 +83,7 @@ class _UnsavedFormState extends ConsumerState<UnsavedForm> {
     );
   }
 
+  // 非当前路由不拦截，避免重复弹窗；对话框结束后再次检查挂载和保存状态。
   Future<bool> _confirm() async {
     if (!mounted) return true;
     if (_asking) return false;
@@ -112,6 +117,7 @@ class _UnsavedFormState extends ConsumerState<UnsavedForm> {
     }
   }
 
+  // 页面销毁时移除检查，避免注册表继续引用已离开的表单。
   @override
   void dispose() {
     _registry.remove(this);
@@ -123,6 +129,7 @@ class _UnsavedFormState extends ConsumerState<UnsavedForm> {
     canPop: !widget.busy && (!widget.dirty || _discard),
     onPopInvokedWithResult: (didPop, result) async {
       if (didPop || !await _confirm() || !mounted) return;
+      // 确认后在下一帧执行返回或无栈回退，并再次检查页面是否仍挂载。
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) returnOrGo(context, widget.fallbackLocation);
       });

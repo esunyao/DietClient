@@ -1,6 +1,7 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 
+/// 展示并选择玻璃档位；预览复用共享背景与镜片组件，不自行判断渲染能力。
 class GlassChoice extends StatelessWidget {
   const GlassChoice({
     super.key,
@@ -42,6 +43,7 @@ class GlassChoice extends StatelessWidget {
               child: SizedBox(
                 height: 94,
                 width: double.infinity,
+                // 在有界插画背景上叠加独立镜片，并将透明度偏好传给两者。
                 child: GlassBackdrop(
                   mode: mode,
                   reduceTransparency: reduceTransparency,

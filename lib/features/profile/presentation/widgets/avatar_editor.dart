@@ -11,6 +11,7 @@ import '../../../../core/media/media_coordinator.dart';
 import '../../application/profile_state.dart';
 import '../../data/avatar_image.dart';
 
+/// 协调头像选取、方形裁剪预览和确认上传；上传实现由资料 API 负责。
 class AvatarEditor extends ConsumerStatefulWidget {
   const AvatarEditor({super.key});
   @override
@@ -26,6 +27,7 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
   @override
   void initState() {
     super.initState();
+    // Android 在首帧后尝试恢复头像用途的丢失选图结果。
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _recover());
     }
@@ -63,6 +65,7 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
     }
   }
 
+  // 限制原图大小，异步预处理并裁剪；仅将当前登录代次的结果留作待上传预览。
   Future<void> _crop(XFile file) async {
     final session = ref.read(sessionEpochProvider);
     setState(() {
@@ -94,6 +97,7 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
     }
   }
 
+  // 上传失败保留裁剪结果供重试；成功且 API 仍匹配时更新头像并刷新身份。
   Future<void> _upload() async {
     final bytes = _pending;
     if (bytes == null) return;
@@ -127,6 +131,7 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
 
   @override
   Widget build(BuildContext context) {
+    // 切换账户时取消上传并清除本地预览；页面销毁时也会取消上传。
     ref.listen(sessionEpochProvider, (_, next) {
       _cancel?.cancel();
       setState(() {

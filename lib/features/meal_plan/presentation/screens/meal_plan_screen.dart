@@ -9,9 +9,11 @@ import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
 import '../widgets/meal_plan_widgets.dart';
 
+/// 组合配餐演示与共享计划状态；原生营养模式显示暂未支持。
 class MealPlanScreen extends ConsumerWidget {
   const MealPlanScreen({super.key});
 
+  // 弹层返回套餐 ID 后切换整个演示方案；取消弹层时不修改选择。
   Future<void> _replace(BuildContext context, WidgetRef ref) async {
     final selected = await showModalBottomSheet<String>(
       context: context,
@@ -56,6 +58,7 @@ class MealPlanScreen extends ConsumerWidget {
         showBack: false,
       );
     }
+    // 方案、今日汇总和分析中餐数均来自演示状态，不是实时生成结果。
     final state = ref.watch(demoProvider);
     final plan = state.selectedPlan;
     final analyzing = state.todayMeals
@@ -63,7 +66,9 @@ class MealPlanScreen extends ConsumerWidget {
         .length;
     return LayoutBuilder(
       builder: (context, constraints) {
+        // 此断点控制页面文案和内部排布；主侧栏组合交给 AdaptiveColumns。
         final wide = constraints.maxWidth >= 1024;
+        // 保存只更新演示计划状态，不把预计营养计入实际摄入。
         final save = AppButton(
           label: state.planSaved ? '已加入晚餐计划（演示）' : '加入晚餐计划',
           onPressed: state.planSaved

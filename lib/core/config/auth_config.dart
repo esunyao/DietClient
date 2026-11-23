@@ -40,6 +40,7 @@ class AppAuthConfig {
       return uri;
     }
 
+    // 同时校验原生和 Web 回调等公开参数，并汇总问题，而不是在首个错误处中断。
     final base = parseUri('AUTHENTIK_BASE_URL', https: true);
     if (base != null &&
         (base.hasQuery || (base.path.isNotEmpty && base.path != '/'))) {
@@ -68,6 +69,7 @@ class AppAuthConfig {
         issues.add('${entry.key} 格式无效');
       }
     }
+    // Web 提供当前源时，回调的协议、主机和端口必须与其一致。
     if (web &&
         webRedirect != null &&
         origin != null &&
@@ -76,6 +78,7 @@ class AppAuthConfig {
             origin.port != webRedirect.port)) {
       issues.add('AUTHENTIK_WEB_REDIRECT_URI 必须与当前页面同源');
     }
+    // 仅在本地校验通过后装配认证配置；构造时的 AuthFailure 转换为配置问题。
     if (issues.isEmpty) {
       try {
         authentik = AuthentikConfig(
@@ -96,6 +99,7 @@ class AppAuthConfig {
     }
   }
 
+  /// 从编译期变量装配配置；Web 额外传入当前页面源供回调校验。
   factory AppAuthConfig.fromEnvironment() => AppAuthConfig.fromValues(
     const {
       'AUTHENTIK_BASE_URL': String.fromEnvironment('AUTHENTIK_BASE_URL'),

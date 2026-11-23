@@ -17,6 +17,8 @@ class AccountIdentity {
   final String? avatarUrl;
 }
 
+/// 从真实账户接口读取共享身份；无 API 客户端时使用占位身份。
+/// 头像仅在用户资料声明存在时另行请求，名称优先采用非空 displayName。
 final accountIdentityProvider = FutureProvider<AccountIdentity>((ref) async {
   final api = ref.watch(apiClientProvider);
   if (api == null) return const AccountIdentity();
@@ -46,6 +48,7 @@ final confirmedAvatarProvider = NotifierProvider<ConfirmedAvatar, String?>(
   ConfirmedAvatar.new,
 );
 
+/// 保存已确认的头像地址，登录代次变化时重置；令牌续期本身不代表换号。
 class ConfirmedAvatar extends Notifier<String?> {
   @override
   String? build() {
@@ -56,6 +59,7 @@ class ConfirmedAvatar extends Notifier<String?> {
   void setUrl(String? url) => state = safeAvatarUrl(url);
 }
 
+/// 仅接受具有地址权限部分（authority）、无用户凭据的 HTTP(S) 地址，其他值按无头像处理。
 String? safeAvatarUrl(String? value) {
   final uri = Uri.tryParse(value ?? '');
   return uri != null &&
@@ -66,6 +70,8 @@ String? safeAvatarUrl(String? value) {
       : null;
 }
 
+/// 预览显示插画；真实界面优先使用已确认头像，再使用身份查询结果。
+/// 无地址或图片加载失败时显示占位图标。
 class AccountAvatar extends ConsumerWidget {
   const AccountAvatar({super.key, this.size = 48});
   final double size;

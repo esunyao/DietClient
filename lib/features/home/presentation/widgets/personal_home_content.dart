@@ -7,6 +7,7 @@ import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 import 'personal_nutrition_summary.dart';
 
+/// 个人演示首页组合：使用传入快照，按可用宽度安排主栏和午餐核对侧栏。
 class PersonalHomeContent extends StatelessWidget {
   const PersonalHomeContent({
     super.key,
@@ -94,6 +95,7 @@ class PersonalHomeContent extends StatelessWidget {
   );
 }
 
+/// 真实与演示首页共用的采集入口；餐碗资源是装饰图，不是餐食照片。
 class HomeRecordEntry extends StatelessWidget {
   const HomeRecordEntry({super.key});
 
@@ -169,6 +171,7 @@ class HomeRecordEntry extends StatelessWidget {
   );
 }
 
+/// 共用的手工记录、历史和健康档案路由入口，不持有业务状态。
 class HomeQuickActions extends StatelessWidget {
   const HomeQuickActions({super.key});
 
@@ -265,6 +268,7 @@ class _QuickAction extends StatelessWidget {
   );
 }
 
+/// 演示午餐存在时进入详情核对，否则退回历史入口。
 class _LunchCheck extends StatelessWidget {
   const _LunchCheck({required this.data});
   final DemoSnapshot data;

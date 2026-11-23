@@ -6,6 +6,7 @@ import '../../../../core/presentation/app_routes.dart';
 import '../../../../demo/demo_store.dart';
 import 'health_kind.dart';
 
+/// 共享身份卡；调用方可替换默认演示头像、身份标签和缺失身高的展示文本。
 class ProfileIdentityCard extends StatelessWidget {
   const ProfileIdentityCard({
     super.key,
@@ -112,6 +113,7 @@ class ProfileIdentityCard extends StatelessWidget {
   );
 }
 
+/// 展示基础资料；身高和饮水标签可由调用方覆盖，以表达真实数据缺失。
 class ProfileFactsCard extends StatelessWidget {
   const ProfileFactsCard({
     super.key,
@@ -157,6 +159,7 @@ class ProfileFactsCard extends StatelessWidget {
   );
 }
 
+/// 从传入的真实或演示摘要记录中组合最近测量、目标及过敏和缺失提示。
 class ProfileHealthSummary extends StatelessWidget {
   const ProfileHealthSummary({
     super.key,
@@ -257,6 +260,7 @@ class ProfileHealthSummary extends StatelessWidget {
                   icon: AppIcons.target,
                 ),
               ];
+              // 按卡片实际宽度和文字缩放决定摘要横排或纵排。
               if (constraints.maxWidth < 280 ||
                   MediaQuery.textScalerOf(context).scale(14) > 20) {
                 return Column(
@@ -312,6 +316,7 @@ class _FactRow extends StatelessWidget {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              // 基础资料行独立按剩余宽度和文字缩放切换紧凑布局。
               final compact =
                   constraints.maxWidth < 260 ||
                   MediaQuery.textScalerOf(context).scale(14) > 20;

@@ -10,6 +10,7 @@ import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../application/meal_edit.dart';
 import '../widgets/native_meal_widgets.dart';
 
+/// 通过共享餐食查询装配真实修正表单；无 mealId 时展示手工新建暂未支持。
 class NativeMealCorrectionScreen extends ConsumerWidget {
   const NativeMealCorrectionScreen({super.key, this.mealId});
   final String? mealId;
@@ -71,6 +72,7 @@ class _EditState extends ConsumerState<_MealEditForm> {
       .toList();
   bool _dirty = false, _itemsChanged = false, _busy = false;
   String? _error;
+  // 异步结果仅在表单仍挂载且登录代次未变时用于当前账户；这不是请求取消。
   bool get _current =>
       mounted && ref.read(sessionEpochProvider) == widget.epoch;
   @override
@@ -119,6 +121,7 @@ class _EditState extends ConsumerState<_MealEditForm> {
       final api = ref.read(nutritionApiProvider);
       if (api == null) throw const ApiFailure('请先登录');
       final Meal saved;
+      // 逐菜改动提交完整菜品列表；仅改餐次元数据时使用 PATCH，均传入原时区和当前备注。
       if (_itemsChanged) {
         if (_items.length > 100) throw const FormatException('最多 100 道菜');
         saved = await api.replaceItems(
@@ -168,6 +171,7 @@ class _EditState extends ConsumerState<_MealEditForm> {
       'DIETARY_FIBER': '膳食纤维 (g)',
       'SODIUM': '钠 (mg)',
     };
+    // 同时显示常用编码和服务端已有的其他编码，避免编辑时丢失不熟悉的指标。
     final codes = {...known.keys, ...item.amounts.keys};
     return AppCard(
       key: ObjectKey(item),
@@ -239,6 +243,7 @@ class _EditState extends ConsumerState<_MealEditForm> {
     );
   }
 
+  // 未保存草稿和保存中状态交给共享离开保护；失败时保留表单供修改或重试。
   @override
   Widget build(BuildContext context) => UnsavedForm(
     dirty: _dirty,

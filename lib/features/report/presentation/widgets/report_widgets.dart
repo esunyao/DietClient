@@ -39,6 +39,7 @@ class ReportSummaryRow extends StatelessWidget {
   );
 }
 
+/// 展示演示报告版本及过期标记，查看操作由调用方提供。
 class ReportVersionCard extends StatelessWidget {
   const ReportVersionCard({
     super.key,
@@ -64,6 +65,7 @@ class ReportVersionCard extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
+            // 非宽屏布局且卡片空间足够、文字未过度放大时，标记才放在标题行。
             final inlineBadge =
                 !wide &&
                 constraints.maxWidth >= 300 &&
@@ -149,6 +151,7 @@ class ReportVersionCard extends StatelessWidget {
   );
 }
 
+/// 并列展示报告快照日均和当前七日覆盖；两者可能因记录变化而不同。
 class ReportOverview extends StatelessWidget {
   const ReportOverview({
     super.key,
@@ -408,6 +411,7 @@ class ReportCoverageDetails extends StatelessWidget {
   );
 }
 
+/// 提供当前趋势的逐日能量读数，区分无餐食和有餐食但缺少能量。
 class ReportDailyValues extends StatelessWidget {
   const ReportDailyValues({super.key, required this.points});
   final List<TrendPoint> points;

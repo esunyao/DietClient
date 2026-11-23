@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/demo/demo_store.dart';
 
+/// 展示调用方计算的演示周期覆盖和餐食数量，不在组件内重新汇总。
 class TrendCoverage extends StatelessWidget {
   const TrendCoverage({
     super.key,
@@ -117,6 +118,7 @@ class TrendCoverage extends StatelessWidget {
   }
 }
 
+/// 为演示趋势提供逐日读数，区分未记录与已记录但该营养素待补充。
 class TrendDailyTable extends StatelessWidget {
   const TrendDailyTable({
     super.key,
@@ -151,6 +153,7 @@ class TrendDailyTable extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 11),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
+                      // 可用宽度不足或文字放大时，将数值移到下一行以保留读数。
                       final stacked =
                           constraints.maxWidth < 320 ||
                           MediaQuery.textScalerOf(context).scale(13) > 18;
@@ -334,6 +337,7 @@ class TrendReportEntry extends StatelessWidget {
   );
 }
 
+/// 展示调用方传入的已知值合计和日均；缺失日不参与分母。
 class TrendAverageCard extends StatelessWidget {
   const TrendAverageCard({
     super.key,

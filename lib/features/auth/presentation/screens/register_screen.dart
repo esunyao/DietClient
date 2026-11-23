@@ -11,6 +11,7 @@ import 'package:diet_client/core/presentation/app_routes.dart';
 import '../widgets/auth_field.dart';
 import '../widgets/auth_form_guard.dart';
 
+/// 注册表单：原生分支调用辅助控制器，预览分支只校验并进入演示流程。
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
   @override
@@ -33,6 +34,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _controller = ref.read(auxiliaryControllerProvider.notifier);
   }
 
+  // 离开时使页面提交回调失效并取消仍在进行的辅助操作。
   @override
   void dispose() {
     _submission++;
@@ -83,6 +85,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      // 字段错误由辅助控制器提供；昵称和确认密码兼容服务端字段名。
                       AuthField(
                         label: '用户名',
                         controller: _name,
@@ -142,6 +145,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   context.push(AppRoutes.verifyEmail);
                                   return;
                                 }
+                                // 页面提交编号防止取消或离开后的旧回调清空输入或导航。
                                 final submission = ++_submission;
                                 final accepted = await _controller.register(
                                   username: _name.text,

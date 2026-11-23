@@ -40,6 +40,7 @@ class _AuthentikGateway implements AuthGateway {
   void dispose() => client.dispose();
 }
 
+// 由身份服务配置装配网关，并在 provider 销毁时释放客户端。
 final authGatewayProvider = Provider<AuthGateway?>((ref) {
   final config = ref.watch(authConfigProvider).authentik;
   if (config == null) return null;
@@ -59,6 +60,7 @@ final loginControllerProvider = NotifierProvider<LoginController, LoginState>(
   LoginController.new,
 );
 
+/// 协调密码或弹窗登录、权限确认和会话建立；记住登录的恢复记录由会话层管理。
 class LoginController extends Notifier<LoginState> {
   int _attempt = 0;
   Completer<bool>? _consent;
@@ -97,6 +99,7 @@ class LoginController extends Notifier<LoginState> {
           : await gateway.password(
               username: username!.trim(),
               password: password!,
+              // 取消或销毁时以拒绝结束等待，并用尝试编号忽略过期的同意结果。
               onConsent: (consent) async {
                 if (attempt != _attempt || onConsent == null) return false;
                 final pending = Completer<bool>();
@@ -112,6 +115,8 @@ class LoginController extends Notifier<LoginState> {
                 }
               },
             );
+      // 先检查尝试是否仍有效及会话是否过期，再等待会话层完成建立。
+      // 弹窗登录向会话层传递的 rememberMe 固定为 false。
       if (attempt != _attempt) return;
       if (!hasActiveSession(session)) {
         state = const LoginState(error: '服务器返回的会话已过期，请重新登录。');
@@ -132,6 +137,7 @@ class LoginController extends Notifier<LoginState> {
     }
   }
 
+  /// 使当前尝试失效、结束待决同意并通知网关取消。
   void cancel() {
     _attempt++;
     if (_consent?.isCompleted == false) _consent!.complete(false);

@@ -8,6 +8,7 @@ import 'package:diet_client/core/config/ui_preview_config.dart';
 
 import 'native_recognition_screen.dart';
 
+/// 先按共享原生营养功能开关选择真实或演示页面，再创建对应页面状态。
 class RecognitionScreen extends ConsumerWidget {
   const RecognitionScreen({super.key});
   @override
@@ -17,6 +18,7 @@ class RecognitionScreen extends ConsumerWidget {
       : const _DemoRecognitionScreen();
 }
 
+/// 独立演示采集页：图片和草稿为本地示例，不调用真实采集 API。
 class _DemoRecognitionScreen extends ConsumerStatefulWidget {
   const _DemoRecognitionScreen();
   @override
@@ -119,6 +121,7 @@ class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
     );
   }
 
+  // 使用演示授权和表单写入共享内存记录；分析中状态不代表已发起真实分析。
   void _submit() {
     if (_saving || _images == 0 || !ref.read(demoProvider).aiConsent) return;
     setState(() => _saving = true);
@@ -180,6 +183,7 @@ class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
           equalWidth: true,
           onChanged: (value) => setState(() => _mode = value),
         ),
+        // 食堂菜单只负责进入独立演示；个人采集分支才显示示例表单和提交入口。
         if (_mode == 1) ...[
           const InfoBanner(text: '食堂菜单为独立演示。浏览菜单不会创建实际摄入记录。'),
           AppCard(

@@ -5,6 +5,7 @@ import '../../../../demo/demo_nutrition_targets.dart';
 import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 
+/// 个人演示营养摘要：以快照今日合计对照固定演示目标，不代表真实账户目标。
 class PersonalNutritionSummary extends StatelessWidget {
   const PersonalNutritionSummary({super.key, required this.data});
   final DemoSnapshot data;
@@ -142,6 +143,7 @@ class _Macro extends StatelessWidget {
   );
 }
 
+/// 未知值显示为未知；仅进度条长度钳制到 0–1，百分比仍显示实际计算结果。
 class _Progress extends StatelessWidget {
   const _Progress({
     required this.value,

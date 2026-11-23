@@ -7,6 +7,7 @@ String mealDate(DateTime d) =>
 String mealTime(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
+/// 演示餐食行：按分析状态展示能量或状态，并支持宽屏列表选中态。
 class MealRow extends StatelessWidget {
   const MealRow({
     super.key,
@@ -148,6 +149,7 @@ class MealRow extends StatelessWidget {
   }
 }
 
+/// 展示演示整餐营养；空指标保持未知，评分为未评估占位。
 class MealNutrients extends StatelessWidget {
   const MealNutrients({
     super.key,
@@ -248,6 +250,7 @@ class MealNutrients extends StatelessWidget {
         if (expanded) const SizedBox(height: 28) else const Divider(height: 28),
         LayoutBuilder(
           builder: (context, constraints) {
+            // 测量当前文字缩放下的数值宽度，再决定每行容纳一至三个营养项。
             var minimum = 68.0;
             for (final value in [
               nutrients.protein,

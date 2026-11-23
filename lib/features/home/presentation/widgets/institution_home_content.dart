@@ -8,6 +8,7 @@ import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 import 'seven_day_summary.dart';
 
+/// 机构演示首页：主栏展示快照统计，侧栏展示机构晚餐、报告和隐私入口。
 class InstitutionHomeContent extends StatelessWidget {
   const InstitutionHomeContent({super.key, required this.data});
   final DemoSnapshot data;
@@ -15,6 +16,7 @@ class InstitutionHomeContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      // 根据父级可用宽度切换双栏或纵向堆叠，不在此推断体验模式。
       final wide = constraints.maxWidth >= AppLayout.columnsMinWidth;
       final main = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -116,6 +118,7 @@ class _InstitutionDinner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 未确认时展示演示方案的标准份量；确认后展示快照中餐食的能量。
     final confirmed = data.institutionConfirmed;
     final dinner = data.meal('institution-dinner');
     final plan = demoPlans.firstWhere((plan) => plan.id == 'fish');
@@ -282,6 +285,7 @@ class _WeeklyReport extends StatelessWidget {
   }
 }
 
+/// 隐私入口只修改演示状态中的临时隐藏标志。
 class _PrivacyNotice extends ConsumerWidget {
   const _PrivacyNotice();
 

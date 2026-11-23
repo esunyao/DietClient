@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+/// 在表单有未保留输入时拦截返回，并请求用户确认是否放弃。
 class AuthFormGuard extends StatefulWidget {
   const AuthFormGuard({super.key, required this.dirty, required this.child});
   final bool dirty;
@@ -36,6 +37,7 @@ class _AuthFormGuardState extends State<AuthFormGuard> {
         ),
       );
       _asking = false;
+      // 确认后先更新返回许可，再于下一帧重试 pop；避免重复弹出确认框。
       if (discard == true && mounted) {
         setState(() => _discard = true);
         WidgetsBinding.instance.addPostFrameCallback((_) {

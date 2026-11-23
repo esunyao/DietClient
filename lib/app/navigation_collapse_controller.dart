@@ -14,6 +14,7 @@ class NavigationCollapseController extends ValueNotifier<double> {
     value = 0;
   }
 
+  /// 根据主体用户滚动更新收起进度；返回 false，让通知继续传播。
   bool handle(ScrollNotification notification) {
     if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
       return false;
@@ -25,6 +26,8 @@ class NavigationCollapseController extends ValueNotifier<double> {
         notification.direction != ScrollDirection.idle) {
       _userScroll = true;
     }
+    // 导航交互或越界时不累计；回顶、反向累计 12 后恢复。
+    // 向下累计 24 时进度到 1，继续至累计 120 时到 2。
     if (notification is ScrollUpdateNotification &&
         _userScroll &&
         !interacting &&

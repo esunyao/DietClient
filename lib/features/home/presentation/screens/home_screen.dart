@@ -9,6 +9,7 @@ import '../widgets/personal_home_content.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'native_home_screen.dart';
 
+/// 首页入口：先选择真实营养或演示实现，演示分支再按显式体验模式选择内容。
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -21,6 +22,7 @@ class HomeScreen extends ConsumerWidget {
     final institution = data.isInstitution;
     final date =
         '${demoDate.month}月${demoDate.day}日，星期${'一二三四五六日'[demoDate.weekday - 1]}';
+    // 此处根据页面宽度向个人内容传入布局参数；体验模式来自演示状态。
     return LayoutBuilder(
       builder: (context, pageConstraints) => AppPage(
         demoLabel: '设计样例 · 演示数据',

@@ -16,6 +16,7 @@ class DisplayController extends Notifier<DisplayState> {
   @override
   DisplayState build() => const DisplayState();
 
+  /// 选择模式时重新使用默认遮罩状态；遮罩切换则保留当前模式。
   void selectMode(ExperienceMode mode) => state = DisplayState(mode: mode);
   void setPrivacyHidden(bool hidden) =>
       state = DisplayState(mode: state.mode, privacyHidden: hidden);

@@ -6,12 +6,15 @@ import '../data/nutri_models.dart';
 import '../../network/api_client.dart';
 import '../../network/object_upload.dart';
 
+/// NutriMemo 用户侧采集、餐食和营养汇总接口的薄封装。
+/// 业务请求经 ApiClient，对象上传交给独立上传器；不提供演示数据。
 class NutriApi {
   NutriApi(this.client, {ObjectUploader? uploader})
     : _uploader = uploader ?? ObjectUploader();
   final ApiClient client;
   final ObjectUploader _uploader;
   static const _base = 'v1/nutri';
+  // 路径中的采集会话使用 UUID，餐食和图片等记录使用原样数字字符串。
   String _capture(String id) {
     if (!RegExp(
       r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
@@ -45,6 +48,7 @@ class NutriApi {
   );
   Future<CapturePolicy> capturePolicy() async =>
       CapturePolicy.fromJson(await _request('$_base/capture-policy'));
+  /// 创建采集会话时发送调用方提供的 UUID 幂等键。
   Future<CaptureSession> createCaptureSession({
     required String timezone,
     required String idempotencyKey,
@@ -90,6 +94,8 @@ class NutriApi {
       cancelToken: cancelToken,
     ),
   );
+  /// 使用预签名地址及指定请求头上传；上传前后检查客户端所属会话。
+  /// 取消和进度回调透传给对象上传器，确认图片需另行调用。
   Future<void> uploadImage(
     PresignedImage image,
     Uint8List bytes, {
@@ -156,6 +162,7 @@ class NutriApi {
       );
   Future<Meal> meal(String id) async =>
       Meal.fromJson(await _request('$_base/meals/${_numeric(id)}'));
+  /// 部分更新餐食；未提供的字段省略，可在 notes 为 null 时用 clearNotes 显式清空备注。
   Future<Meal> patchMeal(
     String id, {
     String? mealType,
@@ -176,6 +183,7 @@ class NutriApi {
       },
     ),
   );
+  /// 提交完整修正内容以替换餐食条目；调用方负责写入后的查询失效。
   Future<Meal> replaceItems(String id, MealCorrection correction) async =>
       Meal.fromJson(
         await _request(
@@ -201,5 +209,6 @@ class NutriApi {
       query: {'dateFrom': query.dateFrom, 'dateTo': query.dateTo},
     ),
   );
+  /// 释放本实例使用的对象上传器。
   void close() => _uploader.close();
 }

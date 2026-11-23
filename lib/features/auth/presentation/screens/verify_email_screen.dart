@@ -9,6 +9,7 @@ import '../../application/auxiliary_controller.dart';
 import '../widgets/auth_field.dart';
 import '../widgets/auth_preview_panel.dart';
 
+/// 原生分支提供重发与返回登录；演示分支不发送邮件，也不确认真实验证结果。
 class VerifyEmailScreen extends ConsumerStatefulWidget {
   const VerifyEmailScreen({super.key});
   @override
@@ -19,6 +20,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   final _email = TextEditingController();
   final _form = GlobalKey<FormState>();
   late final AuxiliaryController _controller;
+  // 初始邮箱取自辅助流程状态；离页时取消仍在进行的操作。
   @override
   void initState() {
     super.initState();
@@ -67,6 +69,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   if (state.error != null)
                     InfoBanner(text: state.error!, color: AppColors.red),
                   if (state.notice != null) Text(state.notice!),
+                  // 按控制器的忙碌和受理后冷却状态限制重发。
                   AppButton(
                     label: state.busy
                         ? '正在受理…'

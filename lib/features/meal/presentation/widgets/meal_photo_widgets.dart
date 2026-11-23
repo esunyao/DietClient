@@ -109,6 +109,7 @@ class MealPhotoStatus extends StatelessWidget {
   );
 }
 
+/// 从照片集合展示首张封面和总数；打开时向调用方传递图片 ID。
 class MealPhotoCover extends ConsumerWidget {
   const MealPhotoCover({
     super.key,
@@ -176,6 +177,7 @@ class MealPhotoCover extends ConsumerWidget {
   }
 }
 
+/// 分别处理链接缺失、字节加载和解码失败；链接重试刷新元数据，字节重试刷新字节查询。
 class MealPhotoImage extends ConsumerWidget {
   const MealPhotoImage({
     super.key,
@@ -254,6 +256,7 @@ class OwnedMealImage extends StatefulWidget {
 
 class _OwnedMealImageState extends State<OwnedMealImage> {
   late ImageProvider _image;
+  // 复制字节以隔离各实例的缓存键；指定尺寸时按等比例边界解码。
   void _create() {
     final memory = MemoryImage(Uint8List.fromList(widget.bytes));
     _image = widget.decodeWidth == null
@@ -298,6 +301,7 @@ class _OwnedMealImageState extends State<OwnedMealImage> {
   );
 }
 
+/// 展示本餐横向缩略图，并以选中的图片 ID 打开独立相册。
 class MealPhotoStrip extends ConsumerWidget {
   const MealPhotoStrip({super.key, required this.mealId});
   final String mealId;

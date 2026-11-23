@@ -26,6 +26,7 @@ const activityOptions = {
   'very_active': '极高活动',
 };
 
+/// 加载真实基础资料后创建表单；读取失败时通过失效查询重试。
 class RealEditProfileScreen extends ConsumerWidget {
   const RealEditProfileScreen({super.key});
   @override
@@ -44,6 +45,7 @@ class _ProfileForm extends ConsumerStatefulWidget {
   ConsumerState<_ProfileForm> createState() => _ProfileFormState();
 }
 
+/// 持有初始登录代次和编辑控制器；保存中交由未保存保护阻止离开。
 class _ProfileFormState extends ConsumerState<_ProfileForm> {
   final _form = GlobalKey<FormState>();
   late final Map<String, TextEditingController> _fields;
@@ -78,6 +80,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
       return;
     }
     if (!_form.currentState!.validate()) return;
+    // 空字段不发送；原有字段不能通过留空清除，避免将 PATCH 保留语义误作清空。
     final data = <String, dynamic>{};
     for (final entry in _fields.entries) {
       final value = entry.value.text.trim();
@@ -99,6 +102,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
     try {
       final api = ref.read(profileApiProvider);
       if (api == null) throw StateError('会话不可用');
+      // 成功结果须仍属于当前代次和 API，再更新已确认资料并在帧后返回。
       final saved = await api.saveProfile(data);
       if (!mounted ||
           _session != ref.read(sessionEpochProvider) ||
@@ -185,6 +189,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
                     value,
                   );
                   if (error != null || value.isEmpty) return error;
+                  // 按今年生日是否已过计算完整年龄，再检查允许范围。
                   final date = DateTime.parse(value), now = DateTime.now();
                   var age = now.year - date.year;
                   if (now.month < date.month ||

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/auth_config.dart';
 import '../../../core/config/ui_preview_config.dart';
 
+/// 注册和邮件重发的独立可替换边界。
 abstract interface class AuxiliaryGateway {
   Future<void> register({
     required String username,
@@ -44,6 +45,7 @@ class _Gateway implements AuxiliaryGateway {
   Future<void> dispose() => executor.dispose();
 }
 
+// 仅启用原生能力且有身份服务配置时提供工厂；每次操作创建独立网关。
 final auxiliaryGatewayFactoryProvider = Provider<AuxiliaryGateway Function()?>((
   ref,
 ) {
@@ -89,11 +91,13 @@ final auxiliaryNowProvider = Provider<DateTime Function()>(
   (ref) => DateTime.now,
 );
 
+/// 管理注册与重发状态；单次操作的返回值供调用页面决定后续导航。
 class AuxiliaryController extends Notifier<AuxiliaryState> {
   int _attempt = 0;
   AuxiliaryGateway? _gateway;
   Timer? _timer;
   DateTime? _cooldownUntil;
+  // 按截止时间计算剩余秒数并向上取整，定时器只负责刷新显示。
   int get _remaining => _cooldownUntil == null
       ? 0
       : ((_cooldownUntil!
@@ -150,6 +154,7 @@ class AuxiliaryController extends Notifier<AuxiliaryState> {
       state = AuxiliaryState(email: email, error: '注册或邮件服务配置不可用。');
       return false;
     }
+    // 尝试编号隔离取消或销毁后的旧响应；busy 和冷却阻止重复提交。
     final attempt = ++_attempt;
     AuxiliaryGateway? gateway;
     state = AuxiliaryState(
@@ -162,6 +167,7 @@ class AuxiliaryController extends Notifier<AuxiliaryState> {
       _gateway = gateway;
       await action(gateway);
       if (!ref.mounted || attempt != _attempt) return false;
+      // 只有重发请求受理后才开始冷却；受理不代表邮件已经送达。
       if (resend) {
         _cooldownUntil = ref
             .read(auxiliaryNowProvider)()
@@ -202,6 +208,7 @@ class AuxiliaryController extends Notifier<AuxiliaryState> {
           error: '未能确认结果，请先检查验证邮件，避免重复提交。',
         );
       }
+    // 每次操作都释放自己的网关，避免旧操作清除后续操作持有的网关。
     } finally {
       if (identical(_gateway, gateway)) _gateway = null;
       try {
