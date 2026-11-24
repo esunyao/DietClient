@@ -1,21 +1,21 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../core/presentation/unsaved_form.dart';
 import '../../../../core/privacy/ai_consent.dart';
 import '../../../../core/session/session_controller.dart';
 import '../../application/capture_controller.dart';
 
-/// @brief 原生真实餐食采集与识别提交页面。
-/// @details 组合服务端策略、草稿列表、AI 授权状态和本地表单，不使用演示采集状态。
+/// 原生真实餐食采集与识别提交页，组合策略、草稿、AI 授权与图片上传流程。
 class NativeRecognitionScreen extends ConsumerStatefulWidget {
   const NativeRecognitionScreen({super.key});
+
   @override
   ConsumerState<NativeRecognitionScreen> createState() =>
       _NativeRecognitionScreenState();
@@ -25,24 +25,21 @@ class _NativeRecognitionScreenState
     extends ConsumerState<NativeRecognitionScreen> {
   final _notes = TextEditingController();
   int _type = 1;
-  static const _types = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
-  static const _labels = ['早餐', '午餐', '晚餐', '加餐', '其他'];
+
   @override
   void dispose() {
     _notes.dispose();
     super.dispose();
   }
 
-  /// @brief 提交当前采集草稿或触发重新分析。
-  /// @details 受理不等于分析完成；仅在页面挂载、当前路由有效且登录代次未变时跳转餐食详情页。
-  /// @param retry 是否为重试分析提交。
   Future<void> _submit(bool retry) async {
     final epoch = ref.read(sessionEpochProvider);
+    final notesText = _notes.text.trim();
     final result = await ref
         .read(captureFlowProvider.notifier)
         .submit(
-          mealType: _types[_type],
-          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          mealType: kMealTypeKeys[_type],
+          notes: notesText.isEmpty ? null : notesText,
           retry: retry,
         );
     if (!mounted || epoch != ref.read(sessionEpochProvider) || result == null) {
@@ -51,45 +48,29 @@ class _NativeRecognitionScreenState
     if (ModalRoute.of(context)?.isCurrent == false) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('已受理，正在排队分析')));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted &&
-          epoch == ref.read(sessionEpochProvider) &&
-          ModalRoute.of(context)?.isCurrent != false) {
-        context.pushReplacement(AppRoutes.mealDetail(result.meal.mealId));
-      }
-    });
+    ref
+        .read(navigationManagerProvider)
+        .scheduleSafeReplace(
+          context,
+          AppRoutes.mealDetail(result.meal.mealId),
+          isValid: () => ref.read(sessionEpochProvider) == epoch,
+        );
   }
 
   Future<void> _delete(String id) async {
     final epoch = ref.read(sessionEpochProvider);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除这份草稿？'),
-        content: const Text('草稿及其图片将被移除。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '删除这份草稿？',
+      content: '草稿及其图片将被移除。',
+      confirmLabel: '删除',
     );
-    if (!mounted ||
-        confirmed != true ||
-        ref.read(sessionEpochProvider) != epoch) {
+    if (!mounted || !confirmed || ref.read(sessionEpochProvider) != epoch) {
       return;
     }
     await ref.read(captureFlowProvider.notifier).deleteDraft(id);
   }
 
-  /// @brief 打开或切换到指定的采集草稿。
-  /// @details 切换不同草稿且本页有未提交图片或备注时先请求用户确认；目标会话设置成功后重置页面表单。
-  /// @param id 目标采集会话 ID。
   Future<void> _open(String id) async {
     final controller = ref.read(captureFlowProvider.notifier);
     final previous = ref.read(captureFlowProvider);
@@ -99,26 +80,13 @@ class _NativeRecognitionScreenState
     }
     final epoch = ref.read(sessionEpochProvider);
     if (previous.pending.isNotEmpty || _notes.text.isNotEmpty) {
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('切换到这份草稿？'),
-          content: const Text('当前未上传的图片与备注只在本页保留，切换后会清除；已上传的图片留在服务端草稿中。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('切换草稿'),
-            ),
-          ],
-        ),
+      final proceed = await showAppConfirmDialog(
+        context,
+        title: '切换到这份草稿？',
+        content: '当前未上传的图片与备注只在本页保留，切换后会清除；已上传的图片留在服务端草稿中。',
+        confirmLabel: '切换草稿',
       );
-      if (!mounted ||
-          epoch != ref.read(sessionEpochProvider) ||
-          proceed != true) {
+      if (!mounted || epoch != ref.read(sessionEpochProvider) || !proceed) {
         return;
       }
     }
@@ -142,296 +110,53 @@ class _NativeRecognitionScreenState
     final policy = ref.watch(capturePolicyProvider);
     final drafts = ref.watch(draftsProvider);
     final consent = ref.watch(aiNutritionConsentProvider);
+    final navigation = ref.read(navigationManagerProvider);
+    final nutrition = ref.read(nutritionManagerProvider);
     final session = flow.session;
-    final failed = session?.status == 'failed';
-    // 草稿状态和有效期决定编辑入口；失败会话使用重新分析分支。
-    // 提交还要求没有未确认的本地图片，授权由控制器在提交时复查。
-    final editable =
-        session != null &&
-        ['created', 'uploading'].contains(session.status) &&
-        session.expiresAt.isAfter(DateTime.now());
-    final confirmedImages =
-        session?.images
-            .where((image) => image.status == 'confirmed')
-            .toList() ??
-        <CaptureImage>[];
-    final canSubmit =
-        !flow.busy &&
-        (failed || (editable && confirmedImages.isNotEmpty)) &&
-        !flow.pending.any(
-          (p) =>
-              p.confirmed == null &&
-              !confirmedImages.any((i) => i.imageId == p.signed?.imageId),
-        );
-    // 指定草稿状态下的备注或未确认本地图片触发离开保护；处理中由 busy 阻止离开。
+
     return UnsavedForm(
-      dirty:
-          session != null &&
-          const ['created', 'uploading', 'failed'].contains(session.status) &&
-          (_notes.text.isNotEmpty ||
-              flow.pending.any((p) => p.confirmed == null)),
+      dirty: flow.isDirtyFor(_notes.text),
       busy: flow.busy,
       child: AppPage(
         title: '记录这一餐',
         demoLabel: null,
         showBack: true,
-        footer: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              '提交后异步分析，可在餐食详情查看进度',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
-            const SizedBox(height: 8),
-            AppButton(
-              label: flow.busy
-                  ? '正在处理…'
-                  : failed
-                  ? '重新发起分析'
-                  : '提交并分析',
-              onPressed: canSubmit ? () => _submit(failed) : null,
-            ),
-          ],
+        footer: _CaptureFooter(
+          busy: flow.busy,
+          isFailed: flow.isFailed,
+          canSubmit: flow.canSubmit,
+          onSubmit: () => _submit(flow.isFailed),
         ),
         children: [
           if (flow.error != null) InfoBanner(text: flow.error!),
-          AppCard(
-            radius: 14,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    AppIcons.shieldCheck,
-                    color: AppColors.primary,
-                  ),
-                  title: Text(
-                    consent.when(
-                      data: (yes) => yes ? 'AI 营养分析已授权' : '请先授权 AI 营养分析',
-                      loading: () => '正在核实 AI 授权',
-                      error: (_, _) => 'AI 授权读取失败',
-                    ),
-                  ),
-                  subtitle: const Text('每次提交或重试都会重新核实授权'),
-                  trailing: const Icon(AppIcons.chevronRight),
-                  onTap: flow.busy
-                      ? null
-                      : () => context.push(AppRoutes.aiConsent),
-                ),
-                if (consent.hasError)
-                  TextButton(
-                    onPressed: () => ref.invalidate(consentRecordsProvider),
-                    child: const Text('重试读取授权'),
-                  ),
-              ],
-            ),
+          _ConsentStatusCard(
+            consent: consent,
+            busy: flow.busy,
+            onOpenConsent: () => navigation.openAiConsent(context),
+            onRetry: () => ref.read(aiConsentManagerProvider).refreshRecords(),
           ),
-          policy.when(
-            data: (value) => InfoBanner(
-              text:
-                  '每餐最多 ${value.maxImageCount} 张，每张不超过 ${(value.maxFileSizeBytes / 1024 / 1024).toStringAsFixed(0)} MB；支持 ${value.allowedContentTypes.map((v) => v.split('/').last).join(' / ')}。保留完整照片，不裁剪餐盘。',
-            ),
-            loading: () => const LinearProgressIndicator(),
-            error: (_, _) => AppCard(
-              child: Column(
-                children: [
-                  const Text('采集策略读取失败'),
-                  TextButton(
-                    onPressed: () => ref.invalidate(capturePolicyProvider),
-                    child: const Text('重试读取策略'),
-                  ),
-                ],
-              ),
-            ),
+          _CapturePolicyBanner(
+            policy: policy,
+            onRetry: nutrition.refreshPolicy,
           ),
           if (session == null)
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    '新建本餐草稿',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
-                  ),
-                  const SizedBox(height: 12),
-                  AppButton(
-                    label: flow.busy ? '正在新建…' : '新建草稿',
-                    onPressed: !flow.busy && policy.hasValue
-                        ? controller.create
-                        : null,
-                  ),
-                ],
-              ),
+            _NewDraftCard(
+              busy: flow.busy,
+              policyReady: policy.hasValue,
+              onCreate: controller.create,
             ),
           if (session != null) ...[
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '本餐图片 · ${controller.imageCount} 张',
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: flow.busy ? null : controller.refreshSession,
-                        child: const Text('刷新图片'),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    '状态：${_statusLabel(session.status)}',
-                    style: const TextStyle(color: AppColors.muted),
-                  ),
-                  if (session.expiresAt.isBefore(DateTime.now()))
-                    const InfoBanner(text: '草稿已过期，请删除后新建'),
-                  for (final image in session.images.where(
-                    (image) => image.status != 'deleted',
-                  ))
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (image.previewUrl != null &&
-                              image.status == 'confirmed')
-                            Image.network(
-                              image.previewUrl!,
-                              height: 160,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => TextButton(
-                                onPressed: flow.busy
-                                    ? null
-                                    : controller.refreshSession,
-                                child: const Text('图片链接已失效，点击刷新'),
-                              ),
-                            ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  image.status == 'confirmed'
-                                      ? '图片已确认'
-                                      : '图片尚未确认；可移除后重新选择',
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: '移除图片',
-                                onPressed: !flow.busy && editable
-                                    ? () =>
-                                          controller.removeImage(image.imageId)
-                                    : null,
-                                icon: const Icon(Icons.close, size: 18),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  // 已出现在服务端列表的签名图片不再重复显示本地卡片。
-                  for (final pending in flow.pending.where(
-                    (p) => !session.images.any(
-                      (i) =>
-                          i.status != 'deleted' &&
-                          i.imageId == p.signed?.imageId,
-                    ),
-                  ))
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Image.memory(
-                            pending.image.bytes,
-                            height: 160,
-                            fit: BoxFit.contain,
-                          ),
-                          Row(
-                            children: [
-                              Expanded(child: Text(pending.stage)),
-                              IconButton(
-                                tooltip: '移除待上传图片',
-                                onPressed: flow.busy
-                                    ? null
-                                    : () => controller.removePending(pending),
-                                icon: const Icon(Icons.close, size: 18),
-                              ),
-                            ],
-                          ),
-                          if (flow.busy)
-                            LinearProgressIndicator(value: pending.progress),
-                        ],
-                      ),
-                    ),
-                  if (flow.pending.any((p) => p.confirmed == null)) ...[
-                    const SizedBox(height: 10),
-                    AppButton(
-                      label: '上传所选图片 / 重试未完成步骤',
-                      onPressed: !flow.busy && editable
-                          ? controller.upload
-                          : null,
-                    ),
-                  ],
-                  if (flow.busy)
-                    TextButton(
-                      onPressed: controller.cancel,
-                      child: const Text('取消上传'),
-                    ),
-                  if (editable) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        if (defaultTargetPlatform ==
-                            TargetPlatform.android) ...[
-                          Expanded(
-                            child: FilledButton.tonalIcon(
-                              onPressed: !flow.busy && policy.hasValue
-                                  ? () => controller.pick(ImageSource.camera)
-                                  : null,
-                              icon: const Icon(AppIcons.camera, size: 18),
-                              label: const Text('拍照'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        Expanded(
-                          child: FilledButton.tonalIcon(
-                            onPressed: !flow.busy && policy.hasValue
-                                ? () => controller.pick(ImageSource.gallery)
-                                : null,
-                            icon: const Icon(AppIcons.image, size: 18),
-                            label: Text(
-                              defaultTargetPlatform == TargetPlatform.windows
-                                  ? '选择图片'
-                                  : '从相册选择',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  TextButton(
-                    onPressed: flow.busy
-                        ? null
-                        : () => _delete(session.captureSessionId),
-                    child: const Text('删除当前草稿'),
-                  ),
-                ],
-              ),
+            _ActiveDraftCard(
+              flow: flow,
+              session: session,
+              imageCount: controller.imageCount,
+              policyReady: policy.hasValue,
+              controller: controller,
+              onDelete: () => _delete(session.captureSessionId),
             ),
             const SectionHeading(title: '这是什么餐？'),
             AppSegmented(
-              labels: _labels,
+              labels: kMealTypeDisplayLabels,
               selected: _type,
               equalWidth: true,
               selectedFilled: true,
@@ -453,51 +178,12 @@ class _NativeRecognitionScreenState
             ),
           ],
           const SectionHeading(title: '服务端草稿'),
-          drafts.when(
-            data: (page) => AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (page.items.isEmpty) const Text('暂无未提交草稿'),
-                  for (final draft in page.items)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        '${draft.confirmedImageCount} 张已确认 · ${_statusLabel(draft.status)}',
-                      ),
-                      subtitle: Text(
-                        '更新于 ${draft.updatedAt.toLocal().toString().split('.').first}',
-                      ),
-                      trailing: IconButton(
-                        tooltip: '删除草稿',
-                        onPressed: flow.busy
-                            ? null
-                            : () => _delete(draft.captureSessionId),
-                        icon: const Icon(Icons.delete_outline),
-                      ),
-                      onTap: flow.busy
-                          ? null
-                          : () => _open(draft.captureSessionId),
-                    ),
-                  TextButton(
-                    onPressed: () => ref.invalidate(draftsProvider),
-                    child: const Text('刷新草稿'),
-                  ),
-                ],
-              ),
-            ),
-            loading: () => const LinearProgressIndicator(),
-            error: (_, _) => AppCard(
-              child: Column(
-                children: [
-                  const Text('草稿列表读取失败'),
-                  TextButton(
-                    onPressed: () => ref.invalidate(draftsProvider),
-                    child: const Text('重试读取草稿'),
-                  ),
-                ],
-              ),
-            ),
+          _ServerDraftsCard(
+            drafts: drafts,
+            busy: flow.busy,
+            onOpen: _open,
+            onDelete: _delete,
+            onRefresh: nutrition.refreshDrafts,
           ),
           const InfoBanner(
             text: '选择或恢复的图片先进入待确认区；点击上传后才会上传。离开页面保留服务端草稿，本地待上传图片不会持久保存。',
@@ -506,13 +192,347 @@ class _NativeRecognitionScreenState
       ),
     );
   }
+}
 
-  String _statusLabel(String status) => switch (status) {
-    'created' => '待添加图片',
-    'uploading' => '正在准备图片',
-    'failed' => '分析失败，可重新发起',
-    'submitted' || 'queued' || 'analyzing' => '已受理分析',
-    'completed' => '分析完成',
-    _ => status,
-  };
+class _CaptureFooter extends StatelessWidget {
+  const _CaptureFooter({
+    required this.busy,
+    required this.isFailed,
+    required this.canSubmit,
+    required this.onSubmit,
+  });
+
+  final bool busy;
+  final bool isFailed;
+  final bool canSubmit;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Text(
+        '提交后异步分析，可在餐食详情查看进度',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: AppColors.muted, fontSize: 12),
+      ),
+      const SizedBox(height: 8),
+      AppButton(
+        label: busy
+            ? '正在处理…'
+            : isFailed
+            ? '重新发起分析'
+            : '提交并分析',
+        onPressed: canSubmit ? onSubmit : null,
+      ),
+    ],
+  );
+}
+
+class _ConsentStatusCard extends StatelessWidget {
+  const _ConsentStatusCard({
+    required this.consent,
+    required this.busy,
+    required this.onOpenConsent,
+    required this.onRetry,
+  });
+
+  final AsyncValue<bool> consent;
+  final bool busy;
+  final VoidCallback onOpenConsent;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    radius: 14,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(AppIcons.shieldCheck, color: AppColors.primary),
+          title: Text(
+            consent.when(
+              data: (yes) => yes ? 'AI 营养分析已授权' : '请先授权 AI 营养分析',
+              loading: () => '正在核实 AI 授权',
+              error: (_, _) => 'AI 授权读取失败',
+            ),
+          ),
+          subtitle: const Text('每次提交或重试都会重新核实授权'),
+          trailing: const Icon(AppIcons.chevronRight),
+          onTap: busy ? null : onOpenConsent,
+        ),
+        if (consent.hasError)
+          TextButton(onPressed: onRetry, child: const Text('重试读取授权')),
+      ],
+    ),
+  );
+}
+
+class _CapturePolicyBanner extends StatelessWidget {
+  const _CapturePolicyBanner({required this.policy, required this.onRetry});
+
+  final AsyncValue<CapturePolicy> policy;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => policy.when(
+    data: (value) => InfoBanner(
+      text:
+          '每餐最多 ${value.maxImageCount} 张，每张不超过 ${(value.maxFileSizeBytes / 1024 / 1024).toStringAsFixed(0)} MB；支持 ${value.allowedContentTypes.map((v) => v.split('/').last).join(' / ')}。保留完整照片，不裁剪餐盘。',
+    ),
+    loading: () => const LinearProgressIndicator(),
+    error: (_, _) => AppCard(
+      child: Column(
+        children: [
+          const Text('采集策略读取失败'),
+          TextButton(onPressed: onRetry, child: const Text('重试读取策略')),
+        ],
+      ),
+    ),
+  );
+}
+
+class _NewDraftCard extends StatelessWidget {
+  const _NewDraftCard({
+    required this.busy,
+    required this.policyReady,
+    required this.onCreate,
+  });
+
+  final bool busy;
+  final bool policyReady;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          '新建本餐草稿',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+        ),
+        const SizedBox(height: 12),
+        AppButton(
+          label: busy ? '正在新建…' : '新建草稿',
+          onPressed: !busy && policyReady ? onCreate : null,
+        ),
+      ],
+    ),
+  );
+}
+
+class _ActiveDraftCard extends StatelessWidget {
+  const _ActiveDraftCard({
+    required this.flow,
+    required this.session,
+    required this.imageCount,
+    required this.policyReady,
+    required this.controller,
+    required this.onDelete,
+  });
+
+  final CaptureFlowState flow;
+  final CaptureSession session;
+  final int imageCount;
+  final bool policyReady;
+  final CaptureController controller;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '本餐图片 · $imageCount 张',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: flow.busy ? null : controller.refreshSession,
+              child: const Text('刷新图片'),
+            ),
+          ],
+        ),
+        Text(
+          '状态：${captureStatusLabel(session.status)}',
+          style: const TextStyle(color: AppColors.muted),
+        ),
+        if (flow.isExpired) const InfoBanner(text: '草稿已过期，请删除后新建'),
+        for (final image in flow.visibleServerImages)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (image.previewUrl != null && image.status == 'confirmed')
+                  Image.network(
+                    image.previewUrl!,
+                    height: 160,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => TextButton(
+                      onPressed: flow.busy ? null : controller.refreshSession,
+                      child: const Text('图片链接已失效，点击刷新'),
+                    ),
+                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        image.status == 'confirmed'
+                            ? '图片已确认'
+                            : '图片尚未确认；可移除后重新选择',
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '移除图片',
+                      onPressed: !flow.busy && flow.isEditable
+                          ? () => controller.removeImage(image.imageId)
+                          : null,
+                      icon: const Icon(Icons.close, size: 18),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        for (final pending in flow.visiblePendingImages)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Image.memory(
+                  pending.image.bytes,
+                  height: 160,
+                  fit: BoxFit.contain,
+                ),
+                Row(
+                  children: [
+                    Expanded(child: Text(pending.stage)),
+                    IconButton(
+                      tooltip: '移除待上传图片',
+                      onPressed: flow.busy
+                          ? null
+                          : () => controller.removePending(pending),
+                      icon: const Icon(Icons.close, size: 18),
+                    ),
+                  ],
+                ),
+                if (flow.busy) LinearProgressIndicator(value: pending.progress),
+              ],
+            ),
+          ),
+        if (flow.hasUnconfirmedPending) ...[
+          const SizedBox(height: 10),
+          AppButton(
+            label: '上传所选图片 / 重试未完成步骤',
+            onPressed: !flow.busy && flow.isEditable ? controller.upload : null,
+          ),
+        ],
+        if (flow.busy)
+          TextButton(onPressed: controller.cancel, child: const Text('取消上传')),
+        if (flow.isEditable) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (defaultTargetPlatform == TargetPlatform.android) ...[
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: !flow.busy && policyReady
+                        ? () => controller.pick(ImageSource.camera)
+                        : null,
+                    icon: const Icon(AppIcons.camera, size: 18),
+                    label: const Text('拍照'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: !flow.busy && policyReady
+                      ? () => controller.pick(ImageSource.gallery)
+                      : null,
+                  icon: const Icon(AppIcons.image, size: 18),
+                  label: Text(
+                    defaultTargetPlatform == TargetPlatform.windows
+                        ? '选择图片'
+                        : '从相册选择',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        TextButton(
+          onPressed: flow.busy ? null : onDelete,
+          child: const Text('删除当前草稿'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ServerDraftsCard extends StatelessWidget {
+  const _ServerDraftsCard({
+    required this.drafts,
+    required this.busy,
+    required this.onOpen,
+    required this.onDelete,
+    required this.onRefresh,
+  });
+
+  final AsyncValue<CaptureDraftPage> drafts;
+  final bool busy;
+  final ValueChanged<String> onOpen;
+  final ValueChanged<String> onDelete;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) => drafts.when(
+    data: (page) => AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (page.items.isEmpty) const Text('暂无未提交草稿'),
+          for (final draft in page.items)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                '${draft.confirmedImageCount} 张已确认 · ${captureStatusLabel(draft.status)}',
+              ),
+              subtitle: Text(
+                '更新于 ${draft.updatedAt.toLocal().toString().split('.').first}',
+              ),
+              trailing: IconButton(
+                tooltip: '删除草稿',
+                onPressed: busy ? null : () => onDelete(draft.captureSessionId),
+                icon: const Icon(Icons.delete_outline),
+              ),
+              onTap: busy ? null : () => onOpen(draft.captureSessionId),
+            ),
+          TextButton(onPressed: onRefresh, child: const Text('刷新草稿')),
+        ],
+      ),
+    ),
+    loading: () => const LinearProgressIndicator(),
+    error: (_, _) => AppCard(
+      child: Column(
+        children: [
+          const Text('草稿列表读取失败'),
+          TextButton(onPressed: onRefresh, child: const Text('重试读取草稿')),
+        ],
+      ),
+    ),
+  );
 }

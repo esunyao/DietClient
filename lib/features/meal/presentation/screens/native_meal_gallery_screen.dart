@@ -4,36 +4,38 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/nutrition/application/meal_photo_providers.dart';
+import '../../../../core/nutrition/application/nutrition_manager.dart';
 import '../../../../core/presentation/app_routes.dart';
-import '../../../../core/presentation/unsaved_form.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../core/presentation/ui_preferences.dart';
 import '../../../../core/session/session_controller.dart';
 import '../widgets/meal_photo_widgets.dart';
 
-/// @brief 原生餐食全屏照片相册页面。
-/// @details 路由装配在 AppShell 之外，页面仅接收并传递餐食记录与初始图片 ID。
+/// 原生餐食全屏照片相册页，支持多图翻页、双击缩放及键盘方向键切换。
 class NativeMealGalleryScreen extends ConsumerWidget {
   const NativeMealGalleryScreen({
     super.key,
     required this.mealId,
     this.imageId,
   });
+
   final String mealId;
   final String? imageId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    void close() => returnOrGo(context, AppRoutes.mealDetail(mealId));
+    final navigation = ref.read(navigationManagerProvider);
+    void close() =>
+        navigation.returnOrFallback(context, AppRoutes.mealDetail(mealId));
     if (kIsWeb) {
       return Scaffold(
         appBar: AppBar(title: const Text('餐食照片')),
         body: const Center(child: Text('Web 暂未接入真实餐食照片')),
       );
     }
-    // 无展示会话时不装配照片查询；元数据状态由共享照片展示边界处理。
+    // 无活动会话时不装配真实照片查询，元数据状态交由共享照片边界处理。
     final result = ref.watch(mealPhotoPresentationEnabledProvider)
         ? ref.watch(mealPhotosProvider(mealId))
         : AsyncValue<MealPhotoSet>.data(
@@ -43,8 +45,9 @@ class NativeMealGalleryScreen extends ConsumerWidget {
     final reduceMotion =
         MediaQuery.disableAnimationsOf(context) ||
         ref.watch(uiPreferencesProvider.select((value) => value.reduceMotion));
+
     return PopScope<Object?>(
-      canPop: GoRouter.maybeOf(context)?.canPop() ?? true,
+      canPop: navigation.canPop(context),
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) close();
       },
@@ -72,7 +75,8 @@ class NativeMealGalleryScreen extends ConsumerWidget {
                     const MealPhotoStatus(label: '读取照片信息', loading: true),
                 error: (_, _) => MealPhotoStatus(
                   label: '照片信息加载失败',
-                  retry: () => ref.invalidate(mealPhotosProvider(mealId)),
+                  retry: () =>
+                      ref.read(nutritionManagerProvider).refreshPhotos(mealId),
                 ),
                 data: (set) => set.photos.isEmpty
                     ? const MealPhotoStatus(label: '暂无照片')
@@ -100,10 +104,12 @@ class _GalleryPages extends StatefulWidget {
     required this.reduceMotion,
     this.imageId,
   });
+
   final String mealId;
   final List<MealPhoto> photos;
   final String? imageId;
   final bool reduceMotion;
+
   @override
   State<_GalleryPages> createState() => _GalleryPagesState();
 }
@@ -129,12 +135,10 @@ class _GalleryPagesState extends State<_GalleryPages> {
     });
   }
 
-  /// @brief 在照片集合更新时尽量保持当前浏览图片位置。
-  /// @details 同一账户的照片集合更新时优先按 imageId 定位当前页；找不到则回到首图。
-  /// @param oldWidget 更新前的相册分页组件实例。
   @override
   void didUpdateWidget(_GalleryPages oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 照片集合刷新后尽量保持当前浏览的图片位置，找不到时回到首图。
     final oldIndex = _index < oldWidget.photos.length
         ? _index
         : oldWidget.photos.length - 1;
@@ -143,10 +147,12 @@ class _GalleryPagesState extends State<_GalleryPages> {
       widget.imageId != oldWidget.imageId ? widget.imageId : oldId,
     );
     if (next != _index) {
-      _index = next;
-      _zoomed = false;
+      setState(() {
+        _index = next;
+        _zoomed = false;
+      });
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _pages.hasClients) _pages.jumpToPage(_index);
+        if (mounted && _pages.hasClients) _pages.jumpToPage(next);
       });
     }
   }
@@ -158,9 +164,6 @@ class _GalleryPagesState extends State<_GalleryPages> {
     super.dispose();
   }
 
-  /// @brief 按偏移量切换相册当前页。
-  /// @details 处于缩放放大状态时禁止翻页；开启减少动态时直接跳页，否则执行短动画切换。
-  /// @param delta 页码偏移量（例如 -1 或 +1）。
   void _move(int delta) {
     final target = _index + delta;
     if (_zoomed || target < 0 || target >= widget.photos.length) return;
@@ -255,10 +258,12 @@ class _ZoomPhoto extends StatefulWidget {
     required this.active,
     required this.onZoom,
   });
+
   final String mealId;
   final MealPhoto photo;
   final bool active;
   final ValueChanged<bool> onZoom;
+
   @override
   State<_ZoomPhoto> createState() => _ZoomPhotoState();
 }
@@ -267,6 +272,7 @@ class _ZoomPhotoState extends State<_ZoomPhoto> {
   final _transform = TransformationController();
   Offset _tap = Offset.zero;
   bool _zoomed = false;
+
   @override
   void initState() {
     super.initState();
@@ -288,7 +294,7 @@ class _ZoomPhotoState extends State<_ZoomPhoto> {
     }
   }
 
-  /// @brief 处理双击手势，在原始比例与围绕点击位置放大之间切换。
+  // 在原始比例与围绕双击位置 2.5x 放大之间切换。
   void _doubleTap() {
     _transform.value = _zoomed
         ? Matrix4.identity()
@@ -312,8 +318,7 @@ class _ZoomPhotoState extends State<_ZoomPhoto> {
       final media = MediaQuery.of(context);
       return MediaQuery(
         data: media.copyWith(
-          // At scale one, a single-finger pan belongs to PageView. Pinch
-          // detection still uses span/scale deltas, independent of pan slop.
+          // 原尺寸下保留单指横向滑动给 PageView 翻页；双指捏合仍可触发缩放。
           gestureSettings: _zoomed
               ? media.gestureSettings
               : DeviceGestureSettings(

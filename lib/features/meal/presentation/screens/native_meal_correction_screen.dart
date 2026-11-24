@@ -1,20 +1,22 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../core/presentation/unsaved_form.dart';
 import '../../../../core/session/session_controller.dart';
-import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../application/meal_edit.dart';
 import '../widgets/native_meal_widgets.dart';
 
-/// @brief 原生真实餐食修正页面。
-/// @details 通过共享餐食查询装配真实修正表单；未提供 mealId 时提示手工新建暂未支持。
+/// 原生真实餐食修正页，基于共享餐食查询装载并回写菜品或元数据修正。
 class NativeMealCorrectionScreen extends ConsumerWidget {
   const NativeMealCorrectionScreen({super.key, this.mealId});
+
   final String? mealId;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (mealId == null) {
@@ -27,7 +29,7 @@ class NativeMealCorrectionScreen extends ConsumerWidget {
     }
     final epoch = ref.watch(sessionEpochProvider);
     final result = ref.watch(mealProvider(mealId!));
-    // Keep the same form across query invalidation and normal token rotation.
+    // 查询刷新或常规令牌续期期间维持当前表单实例不重置用户输入。
     if (result.value case final meal?) {
       return _MealEditForm(
         key: ValueKey((mealId, epoch)),
@@ -48,7 +50,8 @@ class NativeMealCorrectionScreen extends ConsumerWidget {
                     (result.error as ApiFailure).status == 404
                 ? '记录不存在，无法编辑'
                 : result.error!,
-            retry: () => ref.invalidate(mealProvider(mealId!)),
+            retry: () =>
+                ref.read(nutritionManagerProvider).refreshMeal(mealId!),
           ),
       ],
     );
@@ -57,8 +60,10 @@ class NativeMealCorrectionScreen extends ConsumerWidget {
 
 class _MealEditForm extends ConsumerStatefulWidget {
   const _MealEditForm({super.key, required this.original, required this.epoch});
+
   final Meal original;
   final int epoch;
+
   @override
   ConsumerState<_MealEditForm> createState() => _EditState();
 }
@@ -71,14 +76,15 @@ class _EditState extends ConsumerState<_MealEditForm> {
   late final List<MealItemEdit> _items = _original.items
       .map((i) => MealItemEdit(original: i))
       .toList();
-  bool _dirty = false, _itemsChanged = false, _busy = false;
+  bool _dirty = false;
+  bool _itemsChanged = false;
+  bool _busy = false;
   String? _error;
 
-  /// @brief 检查表单是否仍挂载且处于初始登录代次。
-  /// @return 仍挂载且登录代次一致时返回 true，否则返回 false。
-  /// @note 仅用于隔离跨账户异步结果，不代表取消底层网络请求。
+  // 仅用于隔离跨账户异步回写结果，不代表取消底层网络请求。
   bool get _current =>
       mounted && ref.read(sessionEpochProvider) == widget.epoch;
+
   @override
   void dispose() {
     _notes.dispose();
@@ -89,6 +95,7 @@ class _EditState extends ConsumerState<_MealEditForm> {
     _dirty = true;
     _itemsChanged |= items;
   });
+
   Future<void> _pickTime() async {
     final date = await showDatePicker(
       context: context,
@@ -122,84 +129,193 @@ class _EditState extends ConsumerState<_MealEditForm> {
       if (_notes.text.length > 1000) {
         throw const FormatException('备注不能超过 1000 字');
       }
-      final api = ref.read(nutritionApiProvider);
-      if (api == null) throw const ApiFailure('请先登录');
-      final Meal saved;
-      // 逐菜改动提交完整菜品列表；仅改餐次元数据时使用 PATCH，均传入原时区和当前备注。
-      if (_itemsChanged) {
-        if (_items.length > 100) throw const FormatException('最多 100 道菜');
-        saved = await api.replaceItems(
-          _original.mealId,
-          MealCorrection(
+      final saved = await ref
+          .read(nutritionManagerProvider)
+          .saveMealCorrection(
+            original: _original,
             mealType: _type,
             consumedAt: date,
-            timezone: _original.timezone,
             notes: _notes.text,
+            itemsChanged: _itemsChanged,
             items: _items.map((i) => i.toInput()).toList(),
-          ),
-        );
-      } else {
-        saved = await api.patchMeal(
-          _original.mealId,
-          mealType: _type,
-          consumedAt: date,
-          timezone: _original.timezone,
-          notes: _notes.text,
-        );
-      }
-      if (!_current) return;
-      // The returned server record is authoritative; all linked queries refetch.
-      refreshNutrition(ref);
-      ref.read(mealProvider(saved.mealId));
-      setState(() {
-        _dirty = false;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_current && ModalRoute.of(context)?.isCurrent != false) {
-          returnOrGo(context, AppRoutes.mealDetail(saved.mealId));
-        }
-      });
-    } catch (e) {
-      if (_current) setState(() => _error = '$e');
+            epoch: widget.epoch,
+          );
+      if (!mounted || saved == null || !_current) return;
+      setState(() => _dirty = false);
+      ref
+          .read(navigationManagerProvider)
+          .scheduleSafeReturn(
+            context,
+            fallbackLocation: AppRoutes.mealDetail(saved.mealId),
+            isValid: () => _current,
+          );
+    } catch (error) {
+      if (_current) setState(() => _error = '$error');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Widget _item(MealItemEdit item) {
-    const known = {
-      'ENERGY_KCAL': '能量 (kcal)',
-      'PROTEIN': '蛋白质 (g)',
-      'CARBOHYDRATE': '碳水 (g)',
-      'FAT': '脂肪 (g)',
-      'DIETARY_FIBER': '膳食纤维 (g)',
-      'SODIUM': '钠 (mg)',
-    };
-    // 同时显示常用编码和服务端已有的其他编码，避免编辑时丢失不熟悉的指标。
-    final codes = {...known.keys, ...item.amounts.keys};
+  void _addItem() {
+    setState(() {
+      _items.add(MealItemEdit());
+      _dirty = true;
+      _itemsChanged = true;
+    });
+  }
+
+  void _removeItem(MealItemEdit item) {
+    setState(() {
+      _items.remove(item);
+      _dirty = true;
+      _itemsChanged = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => UnsavedForm(
+    dirty: _dirty,
+    busy: _busy,
+    fallbackLocation: AppRoutes.mealDetail(_original.mealId),
+    child: AppPage(
+      demoLabel: null,
+      title: '修正${mealTypeLabel(_type)}',
+      showBack: true,
+      footer: AppButton(
+        label: _busy ? '正在保存…' : '保存修正',
+        onPressed: _busy ? null : _save,
+      ),
+      children: [
+        if (_error != null) InfoBanner(text: _error!),
+        _MealMetaCard(
+          mealType: _type,
+          date: _date,
+          timezone: _original.timezone,
+          notesController: _notes,
+          busy: _busy,
+          onTypeChanged: (value) {
+            _type = value;
+            _changed();
+          },
+          onPickTime: _pickTime,
+          onNotesChanged: () => _changed(),
+        ),
+        const InfoBanner(text: '保存后更新本餐、当日和趋势统计。修改重量不会自动换算营养，请逐菜核对。'),
+        for (final item in _items)
+          Padding(
+            key: ObjectKey(item),
+            padding: const EdgeInsets.only(top: 12),
+            child: _MealItemEditCard(
+              item: item,
+              busy: _busy,
+              onChanged: () => _changed(items: true),
+              onRemove: () => _removeItem(item),
+            ),
+          ),
+        TextButton(
+          onPressed: _busy || _items.length >= 100 ? null : _addItem,
+          child: const Text('添加菜品'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _MealMetaCard extends StatelessWidget {
+  const _MealMetaCard({
+    required this.mealType,
+    required this.date,
+    required this.timezone,
+    required this.notesController,
+    required this.busy,
+    required this.onTypeChanged,
+    required this.onPickTime,
+    required this.onNotesChanged,
+  });
+
+  final String mealType;
+  final DateTime date;
+  final String timezone;
+  final TextEditingController notesController;
+  final bool busy;
+  final ValueChanged<String> onTypeChanged;
+  final VoidCallback onPickTime;
+  final VoidCallback onNotesChanged;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: mealType,
+          decoration: const InputDecoration(labelText: '餐别'),
+          items: kMealTypeLabels.entries
+              .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+              .toList(),
+          onChanged: busy
+              ? null
+              : (value) {
+                  if (value != null) onTypeChanged(value);
+                },
+        ),
+        OutlinedButton(
+          onPressed: busy ? null : onPickTime,
+          child: Text('用餐时间 ${formatLocalDateTimeMinute(date)}'),
+        ),
+        const Text('时间按设备本地时区显示', style: AppTypography.small),
+        Text('保留原记录时区：$timezone', style: AppTypography.small),
+        TextField(
+          controller: notesController,
+          enabled: !busy,
+          maxLength: 1000,
+          decoration: const InputDecoration(labelText: '本餐备注'),
+          onChanged: (_) => onNotesChanged(),
+        ),
+      ],
+    ),
+  );
+}
+
+class _MealItemEditCard extends StatelessWidget {
+  const _MealItemEditCard({
+    required this.item,
+    required this.busy,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final MealItemEdit item;
+  final bool busy;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    // 同时展示常用指标编码和服务端原有额外指标，防止编辑后丢失字段。
+    final codes = {...kEditableNutrientLabels.keys, ...item.amounts.keys};
     return AppCard(
-      key: ObjectKey(item),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextFormField(
             initialValue: item.name,
-            enabled: !_busy,
+            enabled: !busy,
             decoration: const InputDecoration(labelText: '菜品名称'),
             maxLength: 150,
             onChanged: (v) {
               item.name = v;
-              _changed(items: true);
+              onChanged();
             },
           ),
           TextFormField(
             initialValue: item.weight,
-            enabled: !_busy,
+            enabled: !busy,
             decoration: const InputDecoration(labelText: '实际食用量 (g)，未知可留空'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (v) {
               item.weight = v;
-              _changed(items: true);
+              onChanged();
             },
           ),
           const SizedBox(height: 12),
@@ -208,10 +324,10 @@ class _EditState extends ConsumerState<_MealEditForm> {
             TextFormField(
               key: ValueKey((item, code)),
               initialValue: item.amounts[code],
-              enabled: !_busy,
+              enabled: !busy,
               decoration: InputDecoration(
                 labelText:
-                    known[code] ??
+                    kEditableNutrientLabels[code] ??
                     '${item.original?.nutrients.where((n) => n.nutrientCode == code).firstOrNull?.nutrientName ?? code} ($code)',
               ),
               keyboardType: const TextInputType.numberWithOptions(
@@ -219,109 +335,25 @@ class _EditState extends ConsumerState<_MealEditForm> {
               ),
               onChanged: (v) {
                 item.amounts[code] = v;
-                _changed(items: true);
+                onChanged();
               },
             ),
           TextFormField(
             initialValue: item.notes,
-            enabled: !_busy,
+            enabled: !busy,
             decoration: const InputDecoration(labelText: '菜品备注'),
             maxLength: 500,
             onChanged: (v) {
               item.notes = v;
-              _changed(items: true);
+              onChanged();
             },
           ),
           TextButton(
-            onPressed: _busy
-                ? null
-                : () => setState(() {
-                    _items.remove(item);
-                    _dirty = true;
-                    _itemsChanged = true;
-                  }),
+            onPressed: busy ? null : onRemove,
             child: const Text('移除此菜品'),
           ),
         ],
       ),
     );
   }
-
-  /// @brief 构建受未保存离开保护包裹的真实餐食修正界面。
-  /// @details 将未保存草稿和保存中状态交给共享离开保护；提交失败时保留表单供修改或重试。
-  /// @param context 当前构建上下文。
-  /// @return 页面组件树。
-  @override
-  Widget build(BuildContext context) => UnsavedForm(
-    dirty: _dirty,
-    busy: _busy,
-    fallbackLocation: AppRoutes.mealDetail(_original.mealId),
-    child: AppPage(
-      demoLabel: null,
-      title: '修正${mealTypes[_type] ?? _type}',
-      showBack: true,
-      footer: AppButton(
-        label: _busy ? '正在保存…' : '保存修正',
-        onPressed: _busy ? null : _save,
-      ),
-      children: [
-        if (_error != null) InfoBanner(text: _error!),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: _type,
-                decoration: const InputDecoration(labelText: '餐别'),
-                items: mealTypes.entries
-                    .map(
-                      (e) =>
-                          DropdownMenuItem(value: e.key, child: Text(e.value)),
-                    )
-                    .toList(),
-                onChanged: _busy
-                    ? null
-                    : (v) {
-                        _type = v!;
-                        _changed();
-                      },
-              ),
-              OutlinedButton(
-                onPressed: _busy ? null : _pickTime,
-                child: Text(
-                  '用餐时间 ${nutritionDate(_date)} ${_date.hour.toString().padLeft(2, '0')}:${_date.minute.toString().padLeft(2, '0')}',
-                ),
-              ),
-              const Text('时间按设备本地时区显示', style: AppTypography.small),
-              Text('保留原记录时区：${_original.timezone}', style: AppTypography.small),
-              TextField(
-                controller: _notes,
-                enabled: !_busy,
-                maxLength: 1000,
-                decoration: const InputDecoration(labelText: '本餐备注'),
-                onChanged: (_) => _changed(),
-              ),
-            ],
-          ),
-        ),
-        const InfoBanner(text: '保存后更新本餐、当日和趋势统计。修改重量不会自动换算营养，请逐菜核对。'),
-        for (final item in _items)
-          Padding(
-            key: ObjectKey(item),
-            padding: const EdgeInsets.only(top: 12),
-            child: _item(item),
-          ),
-        TextButton(
-          onPressed: _busy || _items.length >= 100
-              ? null
-              : () => setState(() {
-                  _items.add(MealItemEdit());
-                  _dirty = true;
-                  _itemsChanged = true;
-                }),
-          child: const Text('添加菜品'),
-        ),
-      ],
-    ),
-  );
 }

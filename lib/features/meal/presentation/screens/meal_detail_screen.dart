@@ -1,18 +1,17 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:diet_ui/diet_ui.dart';
-import 'package:diet_client/demo/demo_store.dart';
-import 'package:diet_client/core/presentation/app_routes.dart';
 
-import '../widgets/meal_widgets.dart';
 import '../../../../core/config/ui_preview_config.dart';
+import '../../../../core/presentation/navigation_manager.dart';
+import '../../../../demo/demo_store.dart';
+import '../widgets/meal_widgets.dart';
 import 'native_meal_detail_screen.dart';
 
-/// @brief 单餐详情页入口组件。
-/// @details 真实营养启用时委托给原生详情页，否则读取共享演示记录展示。
+/// 单餐详情页路由入口，按原生营养功能开关切换真实详情页或演示详情页。
 class MealDetailScreen extends ConsumerWidget {
   const MealDetailScreen({super.key, required this.mealId});
+
   final String mealId;
 
   @override
@@ -29,10 +28,11 @@ class MealDetailScreen extends ConsumerWidget {
         children: [InfoBanner(text: '这条记录不存在，可能已在演示中删除。')],
       );
     }
-    // 演示中仅分析完成时展示已有整餐营养；其他状态以未知值呈现。
     final ready = meal.status == AnalysisStatus.ready;
-    void correct() => context.push(AppRoutes.mealCorrection(meal.id));
-    // 页级宽度决定修正操作是否放入底部；内容列再按实际约束选择布局。
+    final navigation = ref.read(navigationManagerProvider);
+    void openCorrection() => navigation.openMealCorrection(context, meal.id);
+
+    // 页级宽度决定底部按钮显隐，内容列再按实际约束切换双栏或单栏布局。
     final safeWidth =
         MediaQuery.sizeOf(context).width -
         MediaQuery.paddingOf(context).horizontal;
@@ -40,29 +40,12 @@ class MealDetailScreen extends ConsumerWidget {
     final wide =
         pageWidth - AppLayout.pageGutter(pageWidth) * 2 >=
         AppLayout.columnsMinWidth;
+
     return AppPage(
       demoLabel: '设计样例 · 演示数据',
       title: '${meal.type.label}营养',
       showBack: true,
-      footer: wide
-          ? null
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  '结果为估算，可按实际食用量修正',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                AppButton(
-                  label: '核对并修正',
-                  icon: AppIcons.edit,
-                  onPressed: correct,
-                ),
-              ],
-            ),
+      footer: wide ? null : _DemoDetailFooter(onCorrect: openCorrection),
       children: [
         LayoutBuilder(
           builder: (context, constraints) {
@@ -73,69 +56,7 @@ class MealDetailScreen extends ConsumerWidget {
             );
             return AdaptiveColumns(
               main: [
-                AppCard(
-                  radius: columns ? 16 : 20,
-                  color: AppColors.greenSoft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${meal.consumedAt.month}月${meal.consumedAt.day}日 ${mealTime(meal.consumedAt)}',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ),
-                          AppBadge(
-                            label: meal.status.label,
-                            color: ready
-                                ? AppColors.primary
-                                : AppColors.amberInk,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          PlateIllustration(size: columns ? 130 : 104),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  meal.title,
-                                  style: TextStyle(
-                                    fontSize: columns ? 23 : 19,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  '餐盘示意 / ${meal.source.label}',
-                                  style: const TextStyle(
-                                    color: AppColors.muted,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (meal.notes.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 14),
-                          child: Text(
-                            meal.notes,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                _DemoDetailHeaderCard(meal: meal, columns: columns),
                 if (!ready)
                   InfoBanner(
                     text: meal.status == AnalysisStatus.failed
@@ -147,76 +68,9 @@ class MealDetailScreen extends ConsumerWidget {
                 SectionHeading(
                   title: columns ? '本餐菜品' : '识别出的菜品',
                   detail: '核对份量',
-                  onTap: correct,
+                  onTap: openCorrection,
                 ),
-                AppCard(
-                  radius: columns ? 16 : 20,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 8,
-                  ),
-                  child: Column(
-                    children: [
-                      if (meal.foods.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Text('暂无菜品明细，可在修正中补充。'),
-                        ),
-                      for (var i = 0; i < meal.foods.length; i++) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Row(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceMuted,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.all(3),
-                                child: const PlateIllustration(size: 40),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      meal.foods[i].name,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 5),
-                                    Text(
-                                      '${formatAmount(meal.foods[i].grams)} g / ${meal.source.label}',
-                                      style: const TextStyle(
-                                        color: AppColors.muted,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                meal.foods[i].nutrients.energy == null
-                                    ? '待补充'
-                                    : '${formatAmount(meal.foods[i].nutrients.energy)} kcal',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (i < meal.foods.length - 1)
-                          const Divider(height: 1, indent: 60),
-                      ],
-                    ],
-                  ),
-                ),
+                _DemoFoodsListCard(meal: meal, columns: columns),
                 if (columns) ...[
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,7 +89,7 @@ class MealDetailScreen extends ConsumerWidget {
                         label: '核对并修正',
                         secondary: true,
                         icon: AppIcons.edit,
-                        onPressed: correct,
+                        onPressed: openCorrection,
                       ),
                     ],
                   ),
@@ -244,29 +98,7 @@ class MealDetailScreen extends ConsumerWidget {
                     style: TextStyle(color: AppColors.muted, fontSize: 12),
                   ),
                 ],
-                AppCard(
-                  radius: columns ? 16 : 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SectionHeading(title: '营养来源与覆盖'),
-                      const SizedBox(height: 12),
-                      Text(
-                        meal.source == RecordSource.photo
-                            ? '菜品与份量来自图片估算；营养为演示样例值。'
-                            : meal.source == RecordSource.manual
-                            ? '本餐来自人工记录，已填营养由用户核对。'
-                            : '本餐来自机构配方演示，需核对本人归属与实际食用量。',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        '未知指标保持未知。人工修正不会被静默覆盖，重新分析前应保留修正。',
-                        style: TextStyle(color: AppColors.muted, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
+                _DemoSourceInfoCard(source: meal.source, columns: columns),
               ],
               aside: [
                 if (columns) nutrients,
@@ -282,4 +114,197 @@ class MealDetailScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+class _DemoDetailFooter extends StatelessWidget {
+  const _DemoDetailFooter({required this.onCorrect});
+
+  final VoidCallback onCorrect;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Text(
+        '结果为估算，可按实际食用量修正',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: AppColors.muted, fontSize: 12),
+      ),
+      const SizedBox(height: 12),
+      AppButton(label: '核对并修正', icon: AppIcons.edit, onPressed: onCorrect),
+    ],
+  );
+}
+
+class _DemoDetailHeaderCard extends StatelessWidget {
+  const _DemoDetailHeaderCard({required this.meal, required this.columns});
+
+  final MealEntry meal;
+  final bool columns;
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = meal.status == AnalysisStatus.ready;
+    return AppCard(
+      radius: columns ? 16 : 20,
+      color: AppColors.greenSoft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${meal.consumedAt.month}月${meal.consumedAt.day}日 ${mealTime(meal.consumedAt)}',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+              AppBadge(
+                label: meal.status.label,
+                color: ready ? AppColors.primary : AppColors.amberInk,
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              PlateIllustration(size: columns ? 130 : 104),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      meal.title,
+                      style: TextStyle(
+                        fontSize: columns ? 23 : 19,
+                        fontWeight: FontWeight.w700,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '餐盘示意 / ${meal.source.label}',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (meal.notes.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Text(meal.notes, style: const TextStyle(fontSize: 14)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DemoFoodsListCard extends StatelessWidget {
+  const _DemoFoodsListCard({required this.meal, required this.columns});
+
+  final MealEntry meal;
+  final bool columns;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    radius: columns ? 16 : 20,
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+    child: Column(
+      children: [
+        if (meal.foods.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('暂无菜品明细，可在修正中补充。'),
+          ),
+        for (var i = 0; i < meal.foods.length; i++) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(3),
+                  child: const PlateIllustration(size: 40),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        meal.foods[i].name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        '${formatAmount(meal.foods[i].grams)} g / ${meal.source.label}',
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  meal.foods[i].nutrients.energy == null
+                      ? '待补充'
+                      : '${formatAmount(meal.foods[i].nutrients.energy)} kcal',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (i < meal.foods.length - 1) const Divider(height: 1, indent: 60),
+        ],
+      ],
+    ),
+  );
+}
+
+class _DemoSourceInfoCard extends StatelessWidget {
+  const _DemoSourceInfoCard({required this.source, required this.columns});
+
+  final RecordSource source;
+  final bool columns;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    radius: columns ? 16 : 20,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeading(title: '营养来源与覆盖'),
+        const SizedBox(height: 12),
+        Text(switch (source) {
+          RecordSource.photo => '菜品与份量来自图片估算；营养为演示样例值。',
+          RecordSource.manual => '本餐来自人工记录，已填营养由用户核对。',
+          RecordSource.institution => '本餐来自机构配方演示，需核对本人归属与实际食用量。',
+        }, style: const TextStyle(fontSize: 14)),
+        const SizedBox(height: 8),
+        const Text(
+          '未知指标保持未知。人工修正不会被静默覆盖，重新分析前应保留修正。',
+          style: TextStyle(color: AppColors.muted, fontSize: 13),
+        ),
+      ],
+    ),
+  );
 }

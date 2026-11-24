@@ -74,11 +74,11 @@ String analysisStatusLabel(String status, {String queuedLabel = '等待分析'})
 
 /// 将采集草稿状态编码转换为中文展示标签。
 String captureStatusLabel(String status) => switch (status) {
-  'created' => '已创建，待选择图片',
-  'uploading' => '待完成图片确认',
-  'submitted' => '已提交分析',
+  'created' => '待添加图片',
+  'uploading' => '正在准备图片',
   'failed' => '分析失败，可重新发起',
-  'completed' => '已完成',
+  'submitted' || 'queued' || 'analyzing' => '已受理分析',
+  'completed' => '分析完成',
   _ => status,
 };
 

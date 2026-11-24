@@ -1,17 +1,16 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:diet_ui/diet_ui.dart';
-import 'package:diet_client/core/presentation/app_routes.dart';
-import 'package:diet_client/demo/demo_store.dart';
-import 'package:diet_client/core/config/ui_preview_config.dart';
 
+import '../../../../core/config/ui_preview_config.dart';
+import '../../../../core/presentation/navigation_manager.dart';
+import '../../../../demo/demo_store.dart';
 import 'native_recognition_screen.dart';
 
-/// @brief 餐食采集识别页入口组件。
-/// @details 先按共享原生营养功能开关选择真实采集页或演示采集页，再创建对应页面状态。
+/// 餐食采集识别页路由入口，按原生营养功能开关切换真实采集页或演示页。
 class RecognitionScreen extends ConsumerWidget {
   const RecognitionScreen({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) =>
       ref.watch(nativeNutritionEnabledProvider)
@@ -19,10 +18,9 @@ class RecognitionScreen extends ConsumerWidget {
       : const _DemoRecognitionScreen();
 }
 
-/// @brief 独立演示餐食采集页面。
-/// @details 图片和草稿均为本地示例，不调用真实采集 API。
 class _DemoRecognitionScreen extends ConsumerStatefulWidget {
   const _DemoRecognitionScreen();
+
   @override
   ConsumerState<_DemoRecognitionScreen> createState() =>
       _RecognitionScreenState();
@@ -35,6 +33,7 @@ class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
   final _notes = TextEditingController();
   bool _hasDraft = true;
   bool _saving = false;
+
   @override
   void dispose() {
     _notes.dispose();
@@ -45,68 +44,43 @@ class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
     final add = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                '选择示例餐盘',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              const Center(child: PlateIllustration(size: 140)),
-              const SizedBox(height: 12),
-              const Text('餐盘示意，仅用于本地预览，不读取相机或相册。'),
-              const SizedBox(height: 20),
-              AppButton(
-                label: '使用此示例图片',
-                onPressed: () => Navigator.pop(context, true),
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: _buildSelectPlateSheet,
     );
     if (add == true && mounted) {
       setState(() => _images = (_images + 1).clamp(0, 3));
     }
   }
 
+  Widget _buildSelectPlateSheet(BuildContext sheetContext) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            '选择示例餐盘',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          const Center(child: PlateIllustration(size: 140)),
+          const SizedBox(height: 12),
+          const Text('餐盘示意，仅用于本地预览，不读取相机或相册。'),
+          const SizedBox(height: 20),
+          AppButton(
+            label: '使用此示例图片',
+            onPressed: () => Navigator.pop(sheetContext, true),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Future<void> _draft() async {
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                '未提交草稿 · 示例',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              const Text('昨日保存 / 1 张餐盘示意 / 午餐'),
-              const SizedBox(height: 20),
-              AppButton(
-                label: '继续编辑此草稿',
-                onPressed: () => Navigator.pop(context, 'restore'),
-              ),
-              const SizedBox(height: 12),
-              AppButton(
-                label: '移除示例草稿',
-                secondary: true,
-                onPressed: () => Navigator.pop(context, 'delete'),
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: _buildDraftSheet,
     );
     if (!mounted || action == null) return;
     setState(() {
@@ -123,8 +97,35 @@ class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
     );
   }
 
-  /// @brief 按演示授权与当前表单内容写入共享内存餐食记录。
-  /// @note 写入的分析中状态仅用于演示展示，不代表已发起真实分析。
+  Widget _buildDraftSheet(BuildContext sheetContext) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            '未提交草稿 · 示例',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          const Text('昨日保存 / 1 张餐盘示意 / 午餐'),
+          const SizedBox(height: 20),
+          AppButton(
+            label: '继续编辑此草稿',
+            onPressed: () => Navigator.pop(sheetContext, 'restore'),
+          ),
+          const SizedBox(height: 12),
+          AppButton(
+            label: '移除示例草稿',
+            secondary: true,
+            onPressed: () => Navigator.pop(sheetContext, 'delete'),
+          ),
+        ],
+      ),
+    ),
+  );
+
   void _submit() {
     if (_saving || _images == 0 || !ref.read(demoProvider).aiConsent) return;
     setState(() => _saving = true);
@@ -148,35 +149,22 @@ class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
           ),
         );
     showDemoMessage(context, '已加入内存演示记录；未上传图片或发起真实分析');
-    context.pushReplacement(AppRoutes.mealDetail(id));
+    ref.read(navigationManagerProvider).replaceWithMealDetail(context, id);
   }
 
   @override
   Widget build(BuildContext context) {
     final consent = ref.watch(demoProvider).aiConsent;
+    final navigation = ref.read(navigationManagerProvider);
     return AppPage(
       demoLabel: '设计样例 · 演示数据',
       title: '记录这一餐',
       showBack: true,
       footer: _mode == 0
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  '示例图片仅供预览，不发起真实分析',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                AppButton(
-                  label: _saving ? '正在更新演示…' : '提交并分析（演示）',
-                  icon: AppIcons.camera,
-                  onPressed: _images > 0 && consent && !_saving
-                      ? _submit
-                      : null,
-                ),
-              ],
+          ? _DemoCaptureFooter(
+              saving: _saving,
+              canSubmit: _images > 0 && consent && !_saving,
+              onSubmit: _submit,
             )
           : null,
       children: [
@@ -187,277 +175,24 @@ class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
           onChanged: (value) => setState(() => _mode = value),
         ),
         // 食堂菜单只负责进入独立演示；个人采集分支才显示示例表单和提交入口。
-        if (_mode == 1) ...[
-          const InfoBanner(text: '食堂菜单为独立演示。浏览菜单不会创建实际摄入记录。'),
-          AppCard(
-            child: Column(
-              children: [
-                const PlateIllustration(size: 140),
-                const SizedBox(height: 16),
-                const Text(
-                  '食堂菜单（演示）',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                AppButton(
-                  label: '查看食堂菜单',
-                  onPressed: () => context.push(AppRoutes.institutionMenu),
-                ),
-              ],
-            ),
-          ),
-        ] else ...[
-          AppCard(
-            radius: 14,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: InkWell(
-              onTap: () => context.push(AppRoutes.aiConsent),
-              child: Row(
-                children: [
-                  const Icon(AppIcons.shieldCheck, color: AppColors.primary),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          consent ? 'AI 营养分析演示已开启' : 'AI 分析演示已关闭',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          consent ? '仅用于本餐演示，可在隐私页撤回' : '仍可编辑草稿，提交分析不可用',
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    AppIcons.chevronRight,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
-                ],
-              ),
-            ),
+        if (_mode == 1)
+          _DemoInstitutionMenuIntro(
+            onOpenMenu: () => navigation.openInstitutionMenu(context),
+          )
+        else ...[
+          _DemoConsentBannerCard(
+            consent: consent,
+            onTap: () => navigation.openAiConsent(context),
           ),
           AdaptiveColumns(
             main: [
-              AppCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            '本餐图片',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        AppBadge(label: '$_images 张示例已选择'),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_images > 0) ...[
-                          Expanded(
-                            flex: 5,
-                            child: Container(
-                              constraints: const BoxConstraints(minHeight: 118),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceMuted,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Stack(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      8,
-                                      8,
-                                      8,
-                                      6,
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        LayoutBuilder(
-                                          builder: (context, constraints) =>
-                                              Center(
-                                                child: PlateIllustration(
-                                                  size: constraints.maxWidth
-                                                      .clamp(0.0, 96.0)
-                                                      .toDouble(),
-                                                ),
-                                              ),
-                                        ),
-                                        const Text(
-                                          '餐盘示意',
-                                          style: TextStyle(
-                                            color: AppColors.muted,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: 0,
-                                    right: 0,
-                                    child: IconButton(
-                                      tooltip: '移除示例图片',
-                                      icon: const Icon(
-                                        AppIcons.close,
-                                        size: 16,
-                                      ),
-                                      onPressed: () =>
-                                          setState(() => _images--),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                        ],
-                        Expanded(
-                          flex: 7,
-                          child: OutlinedButton(
-                            onPressed: _images < 3 ? _selectImage : null,
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: AppColors.canvas,
-                              minimumSize: const Size(0, 118),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 16,
-                              ),
-                              side: const BorderSide(color: AppColors.line),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(AppIcons.plus, size: 30),
-                                const SizedBox(height: 10),
-                                Text(
-                                  _images == 0
-                                      ? '添加餐盘示例'
-                                      : _images == 3
-                                      ? '已选满 3 张示例'
-                                      : '补充同一餐图片',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: AppColors.muted,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                const Text(
-                                  '多角度不会重复计量',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: AppColors.muted,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              _DemoPlateCard(
+                images: _images,
+                onRemove: () => setState(() => _images--),
+                onAdd: _images < 3 ? _selectImage : null,
               ),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.tonalIcon(
-                      label: const Text('拍照（示例）', textAlign: TextAlign.center),
-                      icon: const Icon(AppIcons.camera, size: 18),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.greenSoft,
-                        foregroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
-                      onPressed: _images < 3 ? _selectImage : null,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: FilledButton.tonalIcon(
-                      label: const Text('从相册选择', textAlign: TextAlign.center),
-                      icon: const Icon(AppIcons.image, size: 18),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.greenSoft,
-                        foregroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
-                      onPressed: _images < 3 ? _selectImage : null,
-                    ),
-                  ),
-                ],
-              ),
-              if (_hasDraft)
-                AppCard(
-                  radius: 14,
-                  color: AppColors.greenSoft,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  child: InkWell(
-                    onTap: _draft,
-                    child: Row(
-                      children: [
-                        const Icon(AppIcons.history, color: AppColors.primary),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '另有 1 份未提交草稿',
-                                style: TextStyle(fontSize: 14),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                '昨日保存，进入后可继续编辑',
-                                style: TextStyle(
-                                  color: AppColors.muted,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(
-                          AppIcons.chevronRight,
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              _DemoCaptureButtons(canPick: _images < 3, onPick: _selectImage),
+              if (_hasDraft) _DemoDraftBanner(onTap: _draft),
             ],
             aside: [
               const SectionHeading(title: '这是什么餐？'),
@@ -495,4 +230,307 @@ class _RecognitionScreenState extends ConsumerState<_DemoRecognitionScreen> {
       ],
     );
   }
+}
+
+class _DemoCaptureFooter extends StatelessWidget {
+  const _DemoCaptureFooter({
+    required this.saving,
+    required this.canSubmit,
+    required this.onSubmit,
+  });
+
+  final bool saving;
+  final bool canSubmit;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Text(
+        '示例图片仅供预览，不发起真实分析',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: AppColors.muted, fontSize: 12),
+      ),
+      const SizedBox(height: 12),
+      AppButton(
+        label: saving ? '正在更新演示…' : '提交并分析（演示）',
+        icon: AppIcons.camera,
+        onPressed: canSubmit ? onSubmit : null,
+      ),
+    ],
+  );
+}
+
+class _DemoInstitutionMenuIntro extends StatelessWidget {
+  const _DemoInstitutionMenuIntro({required this.onOpenMenu});
+
+  final VoidCallback onOpenMenu;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const InfoBanner(text: '食堂菜单为独立演示。浏览菜单不会创建实际摄入记录。'),
+      const SizedBox(height: 16),
+      AppCard(
+        child: Column(
+          children: [
+            const PlateIllustration(size: 140),
+            const SizedBox(height: 16),
+            const Text(
+              '食堂菜单（演示）',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            AppButton(label: '查看食堂菜单', onPressed: onOpenMenu),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _DemoConsentBannerCard extends StatelessWidget {
+  const _DemoConsentBannerCard({required this.consent, required this.onTap});
+
+  final bool consent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    radius: 14,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          const Icon(AppIcons.shieldCheck, color: AppColors.primary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  consent ? 'AI 营养分析演示已开启' : 'AI 分析演示已关闭',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  consent ? '仅用于本餐演示，可在隐私页撤回' : '仍可编辑草稿，提交分析不可用',
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const Icon(AppIcons.chevronRight, size: 18, color: AppColors.primary),
+        ],
+      ),
+    ),
+  );
+}
+
+class _DemoPlateCard extends StatelessWidget {
+  const _DemoPlateCard({
+    required this.images,
+    required this.onRemove,
+    required this.onAdd,
+  });
+
+  final int images;
+  final VoidCallback onRemove;
+  final VoidCallback? onAdd;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '本餐图片',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+            ),
+            AppBadge(label: '$images 张示例已选择'),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (images > 0) ...[
+              Expanded(
+                flex: 5,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 118),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Stack(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                        child: Column(
+                          children: [
+                            LayoutBuilder(
+                              builder: (context, constraints) => Center(
+                                child: PlateIllustration(
+                                  size: constraints.maxWidth
+                                      .clamp(0.0, 96.0)
+                                      .toDouble(),
+                                ),
+                              ),
+                            ),
+                            const Text(
+                              '餐盘示意',
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: IconButton(
+                          tooltip: '移除示例图片',
+                          icon: const Icon(AppIcons.close, size: 16),
+                          onPressed: onRemove,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+            ],
+            Expanded(
+              flex: 7,
+              child: OutlinedButton(
+                onPressed: onAdd,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.canvas,
+                  minimumSize: const Size(0, 118),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 16,
+                  ),
+                  side: const BorderSide(color: AppColors.line),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(AppIcons.plus, size: 30),
+                    const SizedBox(height: 10),
+                    Text(
+                      images == 0
+                          ? '添加餐盘示例'
+                          : images == 3
+                          ? '已选满 3 张示例'
+                          : '补充同一餐图片',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      '多角度不会重复计量',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _DemoCaptureButtons extends StatelessWidget {
+  const _DemoCaptureButtons({required this.canPick, required this.onPick});
+
+  final bool canPick;
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: FilledButton.tonalIcon(
+          label: const Text('拍照（示例）', textAlign: TextAlign.center),
+          icon: const Icon(AppIcons.camera, size: 18),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.greenSoft,
+            foregroundColor: AppColors.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          ),
+          onPressed: canPick ? onPick : null,
+        ),
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: FilledButton.tonalIcon(
+          label: const Text('从相册选择', textAlign: TextAlign.center),
+          icon: const Icon(AppIcons.image, size: 18),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.greenSoft,
+            foregroundColor: AppColors.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          ),
+          onPressed: canPick ? onPick : null,
+        ),
+      ),
+    ],
+  );
+}
+
+class _DemoDraftBanner extends StatelessWidget {
+  const _DemoDraftBanner({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    radius: 14,
+    color: AppColors.greenSoft,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    child: InkWell(
+      onTap: onTap,
+      child: const Row(
+        children: [
+          Icon(AppIcons.history, color: AppColors.primary),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('另有 1 份未提交草稿', style: TextStyle(fontSize: 14)),
+                SizedBox(height: 4),
+                Text(
+                  '昨日保存，进入后可继续编辑',
+                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          Icon(AppIcons.chevronRight, size: 18, color: AppColors.primary),
+        ],
+      ),
+    ),
+  );
 }

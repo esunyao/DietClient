@@ -5,61 +5,35 @@ import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../../core/presentation/ui_preferences.dart';
 import 'meal_photo_widgets.dart';
 
-String nutritionDate(DateTime date) =>
-    '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-const mealTypes = {
-  'breakfast': '早餐',
-  'lunch': '午餐',
-  'dinner': '晚餐',
-  'snack': '加餐',
-  'other': '其他',
-};
-String statusLabel(String status) => switch (status) {
-  'queued' || 'pending' => '等待分析',
-  'analysing' || 'analyzing' => '分析中',
-  'completed' => '已分析',
-  'failed' => '分析失败',
-  'needs_review' => '需要核对',
-  _ => status,
-};
-String amountText(double? amount) => amount == null
-    ? '未知'
-    : amount.toStringAsFixed(amount == amount.roundToDouble() ? 0 : 2);
-
-/// @brief 真实餐食营养素列表展示组件。
-/// @details 缺失的常用指标显示未知，其他服务端返回的额外指标按原名称和单位展示。
+/// 真实餐食营养素展示组，缺失的核心指标显示“未知”，额外指标保留原名称与单位。
 class NativeNutrients extends StatelessWidget {
   const NativeNutrients({super.key, required this.values});
+
   final List<NutrientValue> values;
+
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 20,
-    runSpacing: 12,
-    children: [
-      for (final field in const [
-        ('ENERGY_KCAL', '能量', 'kcal'),
-        ('PROTEIN', '蛋白质', 'g'),
-        ('CARBOHYDRATE', '碳水', 'g'),
-        ('FAT', '脂肪', 'g'),
-      ])
-        Text(
-          '${field.$2} ${amountText(nutrientAmount(values, field.$1))} ${field.$3}',
-        ),
-      for (final value in values.where(
-        (n) => !const [
-          'ENERGY_KCAL',
-          'PROTEIN',
-          'CARBOHYDRATE',
-          'FAT',
-        ].contains(n.nutrientCode),
-      ))
-        Text('${value.nutrientName} ${amountText(value.amount)} ${value.unit}'),
-    ],
-  );
+  Widget build(BuildContext context) {
+    const coreCodes = {'ENERGY_KCAL', 'PROTEIN', 'CARBOHYDRATE', 'FAT'};
+    return Wrap(
+      spacing: 20,
+      runSpacing: 12,
+      children: [
+        for (final field in kCoreNutrientFields)
+          Text(
+            '${field.$2} ${formatNutrientAmount(nutrientAmount(values, field.$1))} ${field.$3}',
+          ),
+        for (final value in values.where(
+          (n) => !coreCodes.contains(n.nutrientCode),
+        ))
+          Text(
+            '${value.nutrientName} ${formatNutrientAmount(value.amount)} ${value.unit}',
+          ),
+      ],
+    );
+  }
 }
 
-/// @brief 真实历史餐食列表项组件。
-/// @details 按外观偏好切换紧凑行或照片卡片视图；点击照片与点击文字分别触发对应回调。
+/// 真实历史餐食列表项组件，按外观偏好渲染紧凑行或照片卡片视图。
 class NativeMealTile extends StatelessWidget {
   const NativeMealTile({
     super.key,
@@ -68,10 +42,12 @@ class NativeMealTile extends StatelessWidget {
     required this.onPhotoTap,
     this.layout = MealHistoryLayout.compact,
   });
+
   final MealHistoryItem meal;
   final VoidCallback onTap;
   final ValueChanged<String> onPhotoTap;
   final MealHistoryLayout layout;
+
   @override
   Widget build(BuildContext context) {
     final details = InkWell(
@@ -83,15 +59,15 @@ class NativeMealTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${meal.localDate} · ${mealTypes[meal.mealType] ?? meal.mealType}',
+              '${meal.localDate} · ${mealTypeLabel(meal.mealType)}',
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
             ),
             Text(
-              '${meal.consumedAt.toLocal().hour.toString().padLeft(2, '0')}:${meal.consumedAt.toLocal().minute.toString().padLeft(2, '0')} · ${statusLabel(meal.analysisStatus)}',
+              '${formatLocalTime(meal.consumedAt)} · ${analysisStatusLabel(meal.analysisStatus)}',
               style: AppTypography.small,
             ),
             Text(
-              '${amountText(nutrientAmount(meal.nutrients, 'ENERGY_KCAL'))} kcal',
+              '${formatNutrientAmount(nutrientAmount(meal.nutrients, 'ENERGY_KCAL'))} kcal',
             ),
             if (meal.notes?.isNotEmpty ?? false)
               Text(meal.notes!, maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -129,12 +105,13 @@ class NativeMealTile extends StatelessWidget {
   }
 }
 
-/// @brief 营养查询错误提示与重试卡片组件。
-/// @details 展示调用方提供的查询错误，并将重试操作交还给调用方处理。
+/// 营养查询失败提示卡片，将重试操作交还给调用方。
 class NutritionError extends StatelessWidget {
   const NutritionError({super.key, required this.error, required this.retry});
+
   final Object error;
   final VoidCallback retry;
+
   @override
   Widget build(BuildContext context) => AppCard(
     child: Column(

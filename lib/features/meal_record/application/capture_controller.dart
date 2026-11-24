@@ -9,16 +9,18 @@ import '../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../core/privacy/ai_consent.dart';
 import '../../../core/session/session_controller.dart';
 
-/// @brief 本页内存中的待处理餐食图片及上传阶段状态模型。
-/// @details 失败重试时复用已完成的签名、上传或确认结果。
+/// 本页内存中的待处理餐食图片及上传进度状态。
 class PendingMealImage {
   PendingMealImage(this.image);
+
   final SelectedImage image;
   PresignedImage? signed;
   DateTime? signedAt;
   bool uploaded = false;
   CaptureImage? confirmed;
   double progress = 0;
+
+  /// 当前图片的中文阶段文案。
   String get stage => confirmed != null
       ? '已确认'
       : uploaded
@@ -28,8 +30,7 @@ class PendingMealImage {
       : '待上传';
 }
 
-/// @brief 餐食采集流程聚合状态模型。
-/// @details 聚合服务端采集会话、本地待处理图片、忙碌标记与错误信息；备注输入由页面持有。
+/// 餐食采集流程聚合状态，统一提供会话状态与提交条件派生属性。
 class CaptureFlowState {
   const CaptureFlowState({
     this.session,
@@ -37,25 +38,78 @@ class CaptureFlowState {
     this.busy = false,
     this.error,
   });
+
   final CaptureSession? session;
   final List<PendingMealImage> pending;
   final bool busy;
   final String? error;
+
+  /// 当前草稿是否已过期。
+  bool get isExpired =>
+      session != null && session!.expiresAt.isBefore(DateTime.now());
+
+  /// 当前采集会话是否处于分析失败状态。
+  bool get isFailed => session?.status == 'failed';
+
+  /// 当前草稿是否允许增删图片与上传。
+  bool get isEditable =>
+      session != null &&
+      const ['created', 'uploading'].contains(session!.status) &&
+      session!.expiresAt.isAfter(DateTime.now());
+
+  /// 服务端已确认的图片列表。
+  List<CaptureImage> get confirmedImages =>
+      session?.images.where((i) => i.status == 'confirmed').toList() ??
+      const [];
+
+  /// 服务端未被删除的图片列表。
+  List<CaptureImage> get visibleServerImages =>
+      session?.images.where((i) => i.status != 'deleted').toList() ?? const [];
+
+  /// 尚未同步到服务端列表的本地待处理图片。
+  List<PendingMealImage> get visiblePendingImages => pending
+      .where(
+        (p) => !visibleServerImages.any((i) => i.imageId == p.signed?.imageId),
+      )
+      .toList();
+
+  /// 是否存在未确认的本地待处理图片。
+  bool get hasUnconfirmedPending => pending.any((p) => p.confirmed == null);
+
+  /// 本地队列中是否存在未确认且未出现在服务端已确认列表中的图片。
+  bool get hasBlockingUnconfirmedPending => pending.any(
+    (p) =>
+        p.confirmed == null &&
+        !confirmedImages.any((i) => i.imageId == p.signed?.imageId),
+  );
+
+  /// 当前会话是否满足提交分析或重试分析条件。
+  bool get canSubmit =>
+      !busy &&
+      (isFailed || (isEditable && confirmedImages.isNotEmpty)) &&
+      !hasBlockingUnconfirmedPending;
+
+  /// 判断包含备注文本的当前草稿是否需要离开拦截。
+  bool isDirtyFor(String notes) =>
+      session != null &&
+      const ['created', 'uploading', 'failed'].contains(session!.status) &&
+      (notes.isNotEmpty || hasUnconfirmedPending);
 }
 
+/// 真实餐食采集流程控制器 Provider，按登录代次隔离状态。
 final captureFlowProvider =
     NotifierProvider.autoDispose<CaptureController, CaptureFlowState>(
       CaptureController.new,
     );
 
-/// @brief 真实餐食采集流程控制器。
-/// @details 协调真实采集 API、媒体选择和授权检查，并按登录代次隔离异步结果。
+/// 真实餐食采集流程控制器，协调草稿生命周期、图片上传及 AI 分析提交。
 class CaptureController extends Notifier<CaptureFlowState> {
   CancelToken? _cancel;
   String? _createKey;
+
   @override
   CaptureFlowState build() {
-    // 登录代次变化时重建状态；销毁时取消当前上传请求。
+    // 登录代次变化时重置草稿状态；销毁时取消进行中的上传请求。
     ref.watch(sessionEpochProvider);
     _createKey = null;
     ref.onDispose(() => _cancel?.cancel('采集页面已关闭'));
@@ -64,8 +118,12 @@ class CaptureController extends Notifier<CaptureFlowState> {
 
   NutriApi get _api =>
       ref.read(nutritionApiProvider) ?? (throw const ApiFailure('请先登录'));
+
+  NutritionManager get _nutrition => ref.read(nutritionManagerProvider);
+
   bool _current(int epoch) =>
       ref.mounted && ref.read(sessionEpochProvider) == epoch;
+
   void _emit({
     CaptureSession? session,
     List<PendingMealImage>? pending,
@@ -80,10 +138,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
     );
   }
 
-  /// @brief 在互斥保护下执行单个异步采集操作。
-  /// @details 仅在控制器仍挂载且登录代次未变时回写错误和忙碌状态；发生冲突时尝试刷新服务端会话并保留本地输入供核对。
-  /// @param action 接收当前登录代次的异步业务操作。
-  /// @return 操作返回值；若已有操作进行中或捕获异常则返回 null。
+  /// 在互斥保护下执行单个异步采集操作，发生 409 冲突时尝试刷新服务端会话。
   Future<T?> _run<T>(Future<T?> Function(int epoch) action) async {
     if (state.busy) return null;
     final epoch = ref.read(sessionEpochProvider);
@@ -93,28 +148,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
       return await action(epoch);
     } catch (error) {
       if (_current(epoch)) {
-        final cancelled = _cancel?.isCancelled == true;
-        _emit(
-          error: cancelled
-              ? '已取消；已完成的图片保留，可显式重试'
-              : error is ApiFailure || error is FormatException
-              ? '$error'
-              : '操作失败，请检查网络后重试',
-        );
-        if (error is ApiFailure &&
-            (error.status == 409 || error.code == 409) &&
-            state.session != null) {
-          try {
-            final fresh = await _api.captureSession(
-              state.session!.captureSessionId,
-            );
-            if (_current(epoch)) {
-              _emit(session: fresh, error: '服务端状态已更新，请核对后重试；本地图片与备注已保留');
-            }
-          } catch (_) {
-            /* Keep the safe local inputs if refresh also fails. */
-          }
-        }
+        await _handleRunError(error, epoch);
       }
       return null;
     } finally {
@@ -122,9 +156,32 @@ class CaptureController extends Notifier<CaptureFlowState> {
     }
   }
 
-  /// @brief 创建新的服务端餐食采集会话。
-  /// @details 新建失败后的显式重试复用同一幂等键；成功后清除该键并失效共享营养查询。
-  /// @return 创建成功的采集会话；失败或会话更换时返回 null。
+  Future<void> _handleRunError(Object error, int epoch) async {
+    final cancelled = _cancel?.isCancelled == true;
+    _emit(
+      error: cancelled
+          ? '已取消；已完成的图片保留，可显式重试'
+          : error is ApiFailure || error is FormatException
+          ? '$error'
+          : '操作失败，请检查网络后重试',
+    );
+    if (error is ApiFailure &&
+        (error.status == 409 || error.code == 409) &&
+        state.session != null) {
+      try {
+        final fresh = await _api.captureSession(
+          state.session!.captureSessionId,
+        );
+        if (_current(epoch)) {
+          _emit(session: fresh, error: '服务端状态已更新，请核对后重试；本地图片与备注已保留');
+        }
+      } catch (_) {
+        // 冲突刷新也失败时保留本地已输入图片和备注供用户处理。
+      }
+    }
+  }
+
+  /// 创建新的服务端餐食采集会话；失败重试复用同一幂等键。
   Future<CaptureSession?> create() => _run((epoch) async {
     _createKey ??= const Uuid().v4();
     final timezone = await ref.read(deviceTimezoneProvider.future);
@@ -136,13 +193,11 @@ class CaptureController extends Notifier<CaptureFlowState> {
     if (!_current(epoch)) return null;
     _emit(session: created, pending: []);
     _createKey = null;
-    invalidateNutrition(ref);
+    _nutrition.refreshAll();
     return created;
   });
 
-  /// @brief 打开并恢复指定的服务端采集草稿。
-  /// @details 同时通过媒体协调器按餐食用途和会话 ID 恢复 Android 可能丢失的选图结果。
-  /// @param id 目标采集会话 ID。
+  /// 打开指定采集草稿，并恢复可能从系统选择器丢失的待传图片。
   Future<void> open(String id) async {
     await _run((epoch) async {
       final session = await _api.captureSession(id);
@@ -161,6 +216,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
+  /// 刷新当前激活采集会话的远程状态（如签名预览链接）。
   Future<void> refreshSession() async {
     final id = state.session?.captureSessionId;
     if (id == null) return;
@@ -170,6 +226,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
+  /// 删除指定采集草稿，并失效共享营养查询。
   Future<void> deleteDraft(String id) async {
     await _run((epoch) async {
       await _api.deleteCaptureSession(id);
@@ -177,29 +234,22 @@ class CaptureController extends Notifier<CaptureFlowState> {
       if (state.session?.captureSessionId == id) {
         state = const CaptureFlowState(busy: true);
       }
-      invalidateNutrition(ref);
+      _nutrition.refreshAll();
     });
   }
 
-  /// @brief 计算当前采集会话中的有效图片总数。
-  /// @details 合并未删除的服务端图片和本地待处理图片，按签名图片 ID 去重计数。
-  /// @return 当前已计入上限的图片数量。
+  /// 计算当前采集会话与本地队列合计的未删除图片总数。
   int get imageCount =>
-      (state.session?.images
-              .where((image) => image.status != 'deleted')
-              .length ??
-          0) +
+      state.visibleServerImages.length +
       state.pending
           .where(
-            (p) =>
-                !(state.session?.images.any(
-                      (i) =>
-                          i.status != 'deleted' &&
-                          i.imageId == p.signed?.imageId,
-                    ) ??
-                    false),
+            (p) => !state.visibleServerImages.any(
+              (i) => i.imageId == p.signed?.imageId,
+            ),
           )
           .length;
+
+  /// 从相机或相册选择图片并加入本地待上传队列。
   Future<void> pick(ImageSource source) async {
     if (state.session == null) return;
     await _run((epoch) async {
@@ -217,12 +267,6 @@ class CaptureController extends Notifier<CaptureFlowState> {
     });
   }
 
-  /// @brief 校验并向待上传队列追加单张图片。
-  /// @details 同时遵守策略和会话的数量上限；文件内容、大小及类型交由媒体协调器检查。
-  /// @param file 待加入的本地图片文件。
-  /// @param policy 服务端采集策略。
-  /// @param epoch 发起操作时的登录代次。
-  /// @throws ApiFailure 当本餐图片数量已达上限时抛出。
   Future<void> _add(XFile file, CapturePolicy policy, int epoch) async {
     if (imageCount >= policy.maxImageCount ||
         imageCount >= state.session!.maxImageCount) {
@@ -240,7 +284,10 @@ class CaptureController extends Notifier<CaptureFlowState> {
     }
   }
 
+  /// 取消当前正在进行的图片上传请求。
   void cancel() => _cancel?.cancel('用户取消上传');
+
+  /// 移除本地待上传图片；若已申请服务端预签名则同步删除远程占位。
   Future<void> removePending(PendingMealImage pending) async {
     if (state.busy) return;
     if (pending.signed == null) {
@@ -250,6 +297,7 @@ class CaptureController extends Notifier<CaptureFlowState> {
     }
   }
 
+  /// 从当前草稿中删除指定的服务端图片并同步刷新会话与查询。
   Future<void> removeImage(String imageId) async {
     final id = state.session?.captureSessionId;
     if (id == null) return;
@@ -264,13 +312,12 @@ class CaptureController extends Notifier<CaptureFlowState> {
       final fresh = await _api.captureSession(id);
       if (_current(epoch)) {
         _emit(session: fresh);
-        invalidateNutrition(ref);
+        _nutrition.refreshAll();
       }
     });
   }
 
-  /// @brief 串行执行本地待处理图片的预签名、上传和确认流程。
-  /// @details 重试时自动跳过已完成的阶段，并向对象上传流程传递取消令牌。
+  /// 串行执行待处理图片的预签名、对象上传与确认，重试时自动跳过已完成步骤。
   Future<void> upload() async {
     if (state.session == null) return;
     await _run((epoch) async {
@@ -279,91 +326,86 @@ class CaptureController extends Notifier<CaptureFlowState> {
       final cancel = _cancel = CancelToken();
       for (final pending in state.pending) {
         if (!_current(epoch) || cancel.isCancelled) return;
-        if (pending.confirmed != null ||
-            state.session!.images.any(
-              (i) =>
-                  i.imageId == pending.signed?.imageId &&
-                  i.status == 'confirmed',
-            )) {
-          continue;
-        }
-        final type = pending.image.contentType;
-        final extension = switch (type) {
-          'image/jpeg' => 'jpg',
-          'image/png' => 'png',
-          'image/webp' => 'webp',
-          _ => throw const FormatException('图片格式不受支持'),
-        };
-        // Only an explicit upload/retry releases an expired reservation.
-        if (pending.signed != null &&
-            !pending.uploaded &&
-            DateTime.now().difference(pending.signedAt!).inSeconds >=
-                pending.signed!.expiresInSeconds) {
-          await api.deleteImage(id, pending.signed!.imageId);
-          if (!_current(epoch)) return;
-          pending.signed = null;
-          pending.signedAt = null;
-          pending.progress = 0;
-          _emit();
-          if (cancel.isCancelled) return;
-        }
-        if (pending.signed == null) {
-          final signed = await api.presignImage(
-            id,
-            fileName: 'meal-${const Uuid().v4()}.$extension',
-            contentType: type,
-            contentLength: pending.image.bytes.length,
-            cancelToken: cancel,
-          );
-          if (!_current(epoch)) return;
-          pending.signed = signed;
-          pending.signedAt = DateTime.now();
-          _emit();
-          if (cancel.isCancelled) return;
-        }
-        if (!pending.uploaded) {
-          await api.uploadImage(
-            pending.signed!,
-            pending.image.bytes,
-            cancelToken: cancel,
-            onProgress: (sent, total) {
-              if (_current(epoch) && !cancel.isCancelled) {
-                pending.progress = total > 0 ? sent / total : 0;
-                _emit();
-              }
-            },
-          );
-          if (!_current(epoch)) return;
-          pending.uploaded = true;
-          _emit();
-          if (cancel.isCancelled) return;
-        }
-        final confirmed = await api.confirmImage(
-          id,
-          pending.signed!.imageId,
-          cancelToken: cancel,
-        );
-        if (!_current(epoch)) return;
-        pending.confirmed = confirmed;
-        _emit();
-        if (cancel.isCancelled) return;
+        if (_isPendingConfirmed(state.session!, pending)) continue;
+        await _uploadSinglePending(api, id, pending, cancel, epoch);
       }
       if (!_current(epoch) || cancel.isCancelled) return;
       final fresh = await api.captureSession(id);
       if (_current(epoch)) {
         _emit(session: fresh);
-        invalidateNutrition(ref);
+        _nutrition.refreshAll();
       }
     });
   }
 
-  /// @brief 提交采集会话或触发重新分析。
-  /// @details 确认全部本地图片已上传确认，并每次都向服务端重新核实 AI 同意；成功后失效共享营养查询。
-  /// @param mealType 餐别标识。
-  /// @param notes 可选餐食备注。
-  /// @param retry 是否为失败后的重新分析提交，默认为 false。
-  /// @return 服务端返回的采集受理结果；未通过检查或失败时返回 null。
-  /// @note 返回受理结果不代表分析已完成，具体分析结果需另行查看。
+  Future<void> _uploadSinglePending(
+    NutriApi api,
+    String sessionId,
+    PendingMealImage pending,
+    CancelToken cancel,
+    int epoch,
+  ) async {
+    final type = pending.image.contentType;
+    final extension = _extensionFor(type);
+
+    // 仅在显式上传或重试时清理已过期的未上传预签名占位。
+    if (pending.signed != null &&
+        !pending.uploaded &&
+        DateTime.now().difference(pending.signedAt!).inSeconds >=
+            pending.signed!.expiresInSeconds) {
+      await api.deleteImage(sessionId, pending.signed!.imageId);
+      if (!_current(epoch)) return;
+      pending.signed = null;
+      pending.signedAt = null;
+      pending.progress = 0;
+      _emit();
+      if (cancel.isCancelled) return;
+    }
+
+    if (pending.signed == null) {
+      final signed = await api.presignImage(
+        sessionId,
+        fileName: 'meal-${const Uuid().v4()}.$extension',
+        contentType: type,
+        contentLength: pending.image.bytes.length,
+        cancelToken: cancel,
+      );
+      if (!_current(epoch)) return;
+      pending.signed = signed;
+      pending.signedAt = DateTime.now();
+      _emit();
+      if (cancel.isCancelled) return;
+    }
+
+    if (!pending.uploaded) {
+      await api.uploadImage(
+        pending.signed!,
+        pending.image.bytes,
+        cancelToken: cancel,
+        onProgress: (sent, total) {
+          if (_current(epoch) && !cancel.isCancelled) {
+            pending.progress = total > 0 ? sent / total : 0;
+            _emit();
+          }
+        },
+      );
+      if (!_current(epoch)) return;
+      pending.uploaded = true;
+      _emit();
+      if (cancel.isCancelled) return;
+    }
+
+    final confirmed = await api.confirmImage(
+      sessionId,
+      pending.signed!.imageId,
+      cancelToken: cancel,
+    );
+    if (!_current(epoch)) return;
+    pending.confirmed = confirmed;
+    _emit();
+  }
+
+  /// 校验全部图片并实时复核 AI 授权后，提交采集会话或触发重新分析。
   Future<CaptureSubmission?> submit({
     required String mealType,
     String? notes,
@@ -371,16 +413,10 @@ class CaptureController extends Notifier<CaptureFlowState> {
   }) => _run((epoch) async {
     final session = state.session;
     if (session == null) throw const ApiFailure('请先新建或恢复草稿');
-    if (state.pending.any(
-      (p) =>
-          p.confirmed == null &&
-          !session.images.any(
-            (i) => i.imageId == p.signed?.imageId && i.status == 'confirmed',
-          ),
-    )) {
+    if (state.pending.any((p) => !_isPendingConfirmed(session, p))) {
       throw const ApiFailure('请先上传并确认全部图片');
     }
-    await requireAiNutritionConsent(ref);
+    await ref.read(aiConsentManagerProvider).requireGranted();
     if (!_current(epoch)) return null;
     final result = retry
         ? await _api.retry(session.captureSessionId)
@@ -391,7 +427,20 @@ class CaptureController extends Notifier<CaptureFlowState> {
           );
     if (!_current(epoch)) return null;
     _emit(session: result.captureSession);
-    invalidateNutrition(ref);
+    _nutrition.refreshAll();
     return result;
   });
+
+  bool _isPendingConfirmed(CaptureSession session, PendingMealImage pending) =>
+      pending.confirmed != null ||
+      session.images.any(
+        (i) => i.imageId == pending.signed?.imageId && i.status == 'confirmed',
+      );
+
+  String _extensionFor(String contentType) => switch (contentType) {
+    'image/jpeg' => 'jpg',
+    'image/png' => 'png',
+    'image/webp' => 'webp',
+    _ => throw const FormatException('图片格式不受支持'),
+  };
 }

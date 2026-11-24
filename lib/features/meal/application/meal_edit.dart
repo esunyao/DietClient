@@ -1,7 +1,6 @@
 import '../../../core/nutrition/data/nutri_models.dart';
 
-/// @brief Editable draft model for a single meal item during correction.
-/// @details Per-item values keep the original server codes, including unfamiliar metrics.
+/// 单道菜品在核对修正表单中的可编辑草稿模型，保留原始指标编码。
 class MealItemEdit {
   MealItemEdit({this.original})
     : name = original?.displayName ?? '',
@@ -11,14 +10,14 @@ class MealItemEdit {
         for (final n in original?.nutrients ?? <NutrientValue>[])
           n.nutrientCode: n.amount.toString(),
       };
+
   final MealItem? original;
-  String name, weight, notes;
+  String name;
+  String weight;
+  String notes;
   final Map<String, String> amounts;
 
-  /// @brief 校验当前菜品草稿并转换为修正提交载荷。
-  /// @details 重量可留空，空营养输入不提交；每道菜至少需一项有效营养值，保留原菜品 ID，修改重量不会自动推算营养。
-  /// @return 校验通过的 MealCorrectionItem 对象。
-  /// @throws FormatException 当菜品名称、备注、重量或营养输入不符合约束时抛出。
+  /// 校验当前菜品草稿并转换为服务端修正载荷；字段不合法时抛出 [FormatException]。
   MealCorrectionItem toInput() {
     if (name.trim().isEmpty || name.trim().length > 150) {
       throw const FormatException('菜品名称需为 1–150 字');

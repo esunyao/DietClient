@@ -118,6 +118,18 @@ class AppNavigationManager {
   void returnOrFallback(BuildContext context, String fallbackLocation) =>
       returnOrGo(context, fallbackLocation);
 
+  /// 判断当前上下文是否存在可弹出路由；未接入路由容器时视为可弹出。
+  bool canPop(BuildContext context) =>
+      GoRouter.maybeOf(context)?.canPop() ?? true;
+
+  /// 关闭当前栈顶页面并可选回传结果。
+  void pop<T extends Object?>(BuildContext context, [T? result]) =>
+      Navigator.of(context).pop(result);
+
+  /// 请求执行路由系统返回检查，保留未保存表单离开拦截。
+  Future<bool> maybePop(BuildContext context) =>
+      Navigator.of(context).maybePop();
+
   /// 在下一帧执行安全返回；仅在页面存活、[isValid] 通过且仍为当前路由时生效。
   void scheduleSafeReturn(
     BuildContext context, {
