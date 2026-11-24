@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/presentation/ui_preferences.dart';
 
-/// @brief 饮食历史视图布局选择卡片组件。
-/// @details 展示紧凑列表或照片卡片布局选项；选中状态与保存回调由调用方提供。
+/// 饮食历史布局选项卡片，展示紧凑列表与照片卡片预览。
 class MealHistoryLayoutChoice extends StatelessWidget {
   const MealHistoryLayoutChoice({
     super.key,
@@ -81,8 +80,6 @@ class MealHistoryLayoutChoice extends StatelessWidget {
   }
 }
 
-/// @brief 历史布局示意缩略预览组件。
-/// @details 使用装饰性 Flutter 控件示意紧凑列表与照片卡片两种布局，不读取真实餐食或照片。
 class _LayoutPreview extends StatelessWidget {
   const _LayoutPreview({required this.compact});
 

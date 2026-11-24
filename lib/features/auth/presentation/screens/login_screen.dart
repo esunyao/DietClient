@@ -3,18 +3,17 @@ import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/config/auth_config.dart';
-import '../../../../core/presentation/app_routes.dart';
-import '../../application/login_controller.dart';
 import '../../../../core/config/ui_preview_config.dart';
+import '../../../../core/presentation/navigation_manager.dart';
+import '../../application/login_controller.dart';
 import '../widgets/auth_field.dart';
 
-/// @brief 真实登录入口页面。
-/// @details Web 端使用 SSO 弹窗登录，非 Web 端收集账号密码并交给登录控制器处理。
+/// 真实登录入口页面，Web 端使用 SSO 弹窗，原生端使用账号密码表单。
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
+
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
@@ -25,6 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   BuildContext? _consentContext;
   bool _rememberMe = false;
+
   @override
   void dispose() {
     _username.dispose();
@@ -32,11 +32,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  /// @brief 弹窗展示登录请求的权限列表并等待用户确认。
-  /// @details 弹窗被取消或未返回结果时按拒绝处理。
-  /// @param consent 认证流程返回的权限同意请求。
-  /// @return 用户同意授权时返回 true，否则返回 false。
-  Future<bool> _confirmConsent(AuthentikConsent consent) async {
+  /// 弹窗展示 OAuth 权限清单；保留对弹窗上下文路由的引用，便于外部取消时移除。
+  Future<bool> _showAuthorizationConsentDialog(AuthentikConsent consent) async {
     if (!mounted) return false;
     try {
       return await showDialog<bool>(
@@ -102,19 +99,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           password: _password.text,
           popup: kIsWeb,
           rememberMe: _rememberMe,
-          onConsent: _confirmConsent,
+          onConsent: _showAuthorizationConsentDialog,
         );
     if (mounted) _password.clear();
+  }
+
+  void _cancelSignIn() {
+    ref.read(loginControllerProvider.notifier).cancel();
+    _password.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     final config = ref.watch(authConfigProvider);
     final login = ref.watch(loginControllerProvider);
-    // 登录不再进行时移除仍打开的同意弹窗，避免取消后弹窗残留。
+    final navigation = ref.read(navigationManagerProvider);
+
+    // 登录结束或被取消时移除仍激活的权限同意弹窗，防止状态不同步。
     ref.listen(loginControllerProvider, (previous, next) {
       if (!next.busy) _dismissConsent();
     });
+
     return PopScope(
       canPop: !login.busy,
       child: Scaffold(
@@ -127,122 +132,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(AppIcons.plan, size: 25, color: AppColors.primary),
-                        SizedBox(width: 10),
-                        Text(
-                          '膳食健康',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                    const _LoginBrandHeader(),
                     const SizedBox(height: 24),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: PlateIllustration(size: 72),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      '欢迎回来',
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontSize: 28),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '登录膳食健康，连接你的身份服务',
-                      style: TextStyle(color: AppColors.muted, fontSize: 14),
-                    ),
-                    const SizedBox(height: 24),
-                    AppCard(
-                      child: Form(
-                        key: _form,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              '账号登录',
-                              style: TextStyle(
-                                fontSize: 19,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 15),
-                            if (kIsWeb)
-                              const Padding(
-                                padding: EdgeInsets.only(bottom: 20),
-                                child: Text('通过 Authentik 单点登录。此页面不会收集你的密码。'),
-                              ),
-                            if (!kIsWeb)
-                              AutofillGroup(
-                                child: AbsorbPointer(
-                                  absorbing: login.busy,
-                                  child: Column(
-                                    children: [
-                                      AuthField(
-                                        label: '用户名或邮箱',
-                                        controller: _username,
-                                        validator: (value) =>
-                                            value == null ||
-                                                value.trim().isEmpty
-                                            ? '请填写用户名或邮箱'
-                                            : null,
-                                      ),
-                                      AuthField(
-                                        label: '密码',
-                                        controller: _password,
-                                        password: true,
-                                        validator: (value) =>
-                                            value == null || value.isEmpty
-                                            ? '请填写密码'
-                                            : null,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            if (ref.watch(nativeNutritionEnabledProvider))
-                              CheckboxListTile(
-                                value: _rememberMe,
-                                contentPadding: EdgeInsets.zero,
-                                title: const Text('记住登录'),
-                                // subtitle: const Text('仅在本机安全存储续期凭据'),
-                                onChanged: login.busy
-                                    ? null
-                                    : (value) => setState(
-                                        () => _rememberMe = value ?? false,
-                                      ),
-                              ),
-                            AppButton(
-                              label: login.busy
-                                  ? '正在登录…'
-                                  : kIsWeb
-                                  ? '通过 SSO 弹窗登录'
-                                  : '登录',
-                              icon: AppIcons.signIn,
-                              onPressed: login.busy || !config.isReady
-                                  ? null
-                                  : _signIn,
-                            ),
-                            if (login.busy) ...[
-                              const SizedBox(height: 16),
-                              const LinearProgressIndicator(),
-                              TextButton(
-                                onPressed: () {
-                                  ref
-                                      .read(loginControllerProvider.notifier)
-                                      .cancel();
-                                  _password.clear();
-                                },
-                                child: const Text('取消登录'),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
+                    _LoginFormCard(
+                      formKey: _form,
+                      usernameController: _username,
+                      passwordController: _password,
+                      rememberMe: _rememberMe,
+                      showRememberMe: ref.watch(nativeNutritionEnabledProvider),
+                      busy: login.busy,
+                      configReady: config.isReady,
+                      onRememberChanged: (value) =>
+                          setState(() => _rememberMe = value ?? false),
+                      onSignIn: _signIn,
+                      onCancel: _cancelSignIn,
                     ),
                     if (!config.isReady)
                       Padding(
@@ -269,37 +172,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     const SizedBox(height: 20),
-                    const Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          AppIcons.shield,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            '登录连接真实身份服务。膳食业务仍使用演示数据；登录会话只保留在内存，关闭或过期后需重新登录。',
-                            style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 13,
-                              height: 1.7,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    const _LoginTrustNotice(),
                     TextButton(
                       onPressed: login.busy
                           ? null
-                          : () => context.push(AppRoutes.register),
+                          : () => navigation.openRegister(context),
                       child: const Text('查看注册界面演示'),
                     ),
                     TextButton(
                       onPressed: login.busy
                           ? null
-                          : () => context.push(AppRoutes.verifyEmail),
+                          : () => navigation.openVerifyEmail(context),
                       child: const Text('查看邮箱验证演示'),
                     ),
                   ],
@@ -311,4 +194,154 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+}
+
+class _LoginBrandHeader extends StatelessWidget {
+  const _LoginBrandHeader();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Row(
+        children: [
+          Icon(AppIcons.plan, size: 25, color: AppColors.primary),
+          SizedBox(width: 10),
+          Text(
+            '膳食健康',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+      const SizedBox(height: 24),
+      const Align(
+        alignment: Alignment.centerLeft,
+        child: PlateIllustration(size: 72),
+      ),
+      const SizedBox(height: 24),
+      Text(
+        '欢迎回来',
+        style: Theme.of(context).textTheme.headlineMedium
+            ?.copyWith(fontSize: 28),
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        '登录膳食健康，连接你的身份服务',
+        style: TextStyle(color: AppColors.muted, fontSize: 14),
+      ),
+    ],
+  );
+}
+
+class _LoginFormCard extends StatelessWidget {
+  const _LoginFormCard({
+    required this.formKey,
+    required this.usernameController,
+    required this.passwordController,
+    required this.rememberMe,
+    required this.showRememberMe,
+    required this.busy,
+    required this.configReady,
+    required this.onRememberChanged,
+    required this.onSignIn,
+    required this.onCancel,
+  });
+
+  final GlobalKey<FormState> formKey;
+  final TextEditingController usernameController;
+  final TextEditingController passwordController;
+  final bool rememberMe;
+  final bool showRememberMe;
+  final bool busy;
+  final bool configReady;
+  final ValueChanged<bool?> onRememberChanged;
+  final VoidCallback onSignIn;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    child: Form(
+      key: formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            '账号登录',
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 15),
+          if (kIsWeb)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 20),
+              child: Text('通过 Authentik 单点登录。此页面不会收集你的密码。'),
+            ),
+          if (!kIsWeb)
+            AutofillGroup(
+              child: AbsorbPointer(
+                absorbing: busy,
+                child: Column(
+                  children: [
+                    AuthField(
+                      label: '用户名或邮箱',
+                      controller: usernameController,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? '请填写用户名或邮箱'
+                          : null,
+                    ),
+                    AuthField(
+                      label: '密码',
+                      controller: passwordController,
+                      password: true,
+                      validator: (value) =>
+                          value == null || value.isEmpty ? '请填写密码' : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (showRememberMe)
+            CheckboxListTile(
+              value: rememberMe,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('记住登录'),
+              onChanged: busy ? null : onRememberChanged,
+            ),
+          AppButton(
+            label: busy
+                ? '正在登录…'
+                : kIsWeb
+                ? '通过 SSO 弹窗登录'
+                : '登录',
+            icon: AppIcons.signIn,
+            onPressed: busy || !configReady ? null : onSignIn,
+          ),
+          if (busy) ...[
+            const SizedBox(height: 16),
+            const LinearProgressIndicator(),
+            TextButton(onPressed: onCancel, child: const Text('取消登录')),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+class _LoginTrustNotice extends StatelessWidget {
+  const _LoginTrustNotice();
+
+  @override
+  Widget build(BuildContext context) => const Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(AppIcons.shield, color: AppColors.primary, size: 20),
+      SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          '登录连接真实身份服务。膳食业务仍使用演示数据；登录会话只保留在内存，关闭或过期后需重新登录。',
+          style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.7),
+        ),
+      ),
+    ],
+  );
 }

@@ -1,51 +1,49 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// @brief 认证表单离开拦截保护组件。
-/// @details 当表单存在未保留输入时拦截返回操作，并弹窗请求用户确认是否放弃。
-class AuthFormGuard extends StatefulWidget {
+import '../../../../core/presentation/navigation_manager.dart';
+
+/// 认证表单未保存离开拦截组件，存在未提交输入时弹窗请求确认。
+class AuthFormGuard extends ConsumerStatefulWidget {
   const AuthFormGuard({super.key, required this.dirty, required this.child});
+
   final bool dirty;
   final Widget child;
+
   @override
-  State<AuthFormGuard> createState() => _AuthFormGuardState();
+  ConsumerState<AuthFormGuard> createState() => _AuthFormGuardState();
 }
 
-class _AuthFormGuardState extends State<AuthFormGuard> {
+class _AuthFormGuardState extends ConsumerState<AuthFormGuard> {
   bool _discard = false;
   bool _asking = false;
+
+  Future<void> _onPopInvoked(bool didPop, Object? result) async {
+    if (didPop || _asking) return;
+    _asking = true;
+    final discard = await showAppConfirmDialog(
+      context,
+      title: '放弃未保留的修改？',
+      content: '继续编辑会保留当前输入；放弃后不会更新演示资料。',
+      confirmLabel: '放弃修改',
+      cancelLabel: '继续编辑',
+    );
+    _asking = false;
+    // 先允许再次出栈，再于下一帧调用导航出栈，避免重复触发离开确认框。
+    if (discard && mounted) {
+      setState(() => _discard = true);
+      final navigation = ref.read(navigationManagerProvider);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) navigation.pop(context);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) => PopScope<Object?>(
     canPop: !widget.dirty || _discard,
-    onPopInvokedWithResult: (didPop, result) async {
-      if (didPop || _asking) return;
-      _asking = true;
-      final discard = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('放弃未保留的修改？'),
-          content: const Text('继续编辑会保留当前输入；放弃后不会更新演示资料。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('继续编辑'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('放弃修改'),
-            ),
-          ],
-        ),
-      );
-      _asking = false;
-      // 确认后先更新返回许可，再于下一帧重试 pop；避免重复弹出确认框。
-      if (discard == true && mounted) {
-        setState(() => _discard = true);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) context.pop();
-        });
-      }
-    },
+    onPopInvokedWithResult: _onPopInvoked,
     child: widget.child,
   );
 }

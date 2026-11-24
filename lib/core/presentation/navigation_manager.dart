@@ -122,9 +122,14 @@ class AppNavigationManager {
   bool canPop(BuildContext context) =>
       GoRouter.maybeOf(context)?.canPop() ?? true;
 
-  /// 关闭当前栈顶页面并可选回传结果。
-  void pop<T extends Object?>(BuildContext context, [T? result]) =>
+  /// 关闭当前栈顶页面并可选回传结果，优先使用路由器出栈。
+  void pop<T extends Object?>(BuildContext context, [T? result]) {
+    if (GoRouter.maybeOf(context) != null) {
+      context.pop(result);
+    } else {
       Navigator.of(context).pop(result);
+    }
+  }
 
   /// 请求执行路由系统返回检查，保留未保存表单离开拦截。
   Future<bool> maybePop(BuildContext context) =>

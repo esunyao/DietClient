@@ -6,23 +6,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/auth_config.dart';
 import '../../../core/session/session_controller.dart';
 
-/// @brief 认证网关抽象接口。
-/// @details 作为薄可替换边界，供无网络门禁与取消流程测试使用。
+/// 认证网关抽象接口，便于门禁与取消流程测试注入替身。
 abstract interface class AuthGateway {
   Future<OidcSession> password({
     required String username,
     required String password,
     Future<bool> Function(AuthentikConsent)? onConsent,
   });
+
   Future<OidcSession> popup();
+
   void cancel();
+
   void dispose();
 }
 
 class _AuthentikGateway implements AuthGateway {
   _AuthentikGateway(AuthentikConfig config)
     : client = AuthentikAuthClient(config);
+
   final AuthentikAuthClient client;
+
   @override
   Future<OidcSession> password({
     required String username,
@@ -33,16 +37,18 @@ class _AuthentikGateway implements AuthGateway {
     password: password,
     onConsent: onConsent,
   );
+
   @override
   Future<OidcSession> popup() => client.signInWithPopup();
+
   @override
   void cancel() => client.cancel();
+
   @override
   void dispose() => client.dispose();
 }
 
-/// @brief 认证网关 Provider。
-/// @details 由身份服务配置装配网关，并在 Provider 销毁时释放客户端资源。
+/// 认证网关 Provider，由身份服务配置装配并在销毁时释放资源。
 final authGatewayProvider = Provider<AuthGateway?>((ref) {
   final config = ref.watch(authConfigProvider).authentik;
   if (config == null) return null;
@@ -51,22 +57,25 @@ final authGatewayProvider = Provider<AuthGateway?>((ref) {
   return gateway;
 });
 
+/// 登录流程视图状态。
 class LoginState {
   const LoginState({this.busy = false, this.error, this.cancelled = false});
+
   final bool busy;
   final String? error;
   final bool cancelled;
 }
 
+/// 登录控制器 Provider。
 final loginControllerProvider = NotifierProvider<LoginController, LoginState>(
   LoginController.new,
 );
 
-/// @brief 登录流程状态控制器。
-/// @details 协调密码或弹窗登录、权限确认和会话建立；记住登录的恢复记录由会话层管理。
+/// 登录流程状态控制器，协调密码与弹窗登录、权限同意等待及会话建立。
 class LoginController extends Notifier<LoginState> {
   int _attempt = 0;
   Completer<bool>? _consent;
+
   @override
   LoginState build() {
     ref.onDispose(() {
@@ -76,6 +85,7 @@ class LoginController extends Notifier<LoginState> {
     return const LoginState();
   }
 
+  /// 发起账号密码登录或 Web 弹窗登录，校验通过后写入会话控制器。
   Future<void> signIn({
     String? username,
     String? password,
@@ -102,29 +112,15 @@ class LoginController extends Notifier<LoginState> {
           : await gateway.password(
               username: username!.trim(),
               password: password!,
-              // 取消或销毁时以拒绝结束等待，并用尝试编号忽略过期的同意结果。
-              onConsent: (consent) async {
-                if (attempt != _attempt || onConsent == null) return false;
-                final pending = Completer<bool>();
-                _consent = pending;
-                try {
-                  return await Future.any([
-                        onConsent(consent),
-                        pending.future,
-                      ]) &&
-                      attempt == _attempt;
-                } finally {
-                  if (identical(_consent, pending)) _consent = null;
-                }
-              },
+              onConsent: (consent) =>
+                  _waitConsent(consent, attempt: attempt, onConsent: onConsent),
             );
-      // 先检查尝试是否仍有效及会话是否过期，再等待会话层完成建立。
-      // 弹窗登录向会话层传递的 rememberMe 固定为 false。
       if (attempt != _attempt) return;
       if (!hasActiveSession(session)) {
         state = const LoginState(error: '服务器返回的会话已过期，请重新登录。');
         return;
       }
+      // 弹窗登录不启用长期本地续期，rememberMe 固定传 false。
       await ref
           .read(sessionProvider.notifier)
           .establish(session, rememberMe: !popup && rememberMe);
@@ -136,12 +132,29 @@ class LoginController extends Notifier<LoginState> {
           ? const LoginState(cancelled: true)
           : LoginState(error: failure.message);
     } catch (_) {
-      if (attempt == _attempt) state = const LoginState(error: '暂时无法完成登录，请重试。');
+      if (attempt == _attempt) {
+        state = const LoginState(error: '暂时无法完成登录，请重试。');
+      }
     }
   }
 
-  /// @brief 取消当前进行中的登录尝试。
-  /// @details 使当前尝试失效、结束待决权限同意并通知认证网关取消请求。
+  Future<bool> _waitConsent(
+    AuthentikConsent consent, {
+    required int attempt,
+    required Future<bool> Function(AuthentikConsent)? onConsent,
+  }) async {
+    if (attempt != _attempt || onConsent == null) return false;
+    final pending = Completer<bool>();
+    _consent = pending;
+    try {
+      return await Future.any([onConsent(consent), pending.future]) &&
+          attempt == _attempt;
+    } finally {
+      if (identical(_consent, pending)) _consent = null;
+    }
+  }
+
+  /// 取消当前进行中的登录尝试并立即结束权限同意等待。
   void cancel() {
     _attempt++;
     if (_consent?.isCompleted == false) _consent!.complete(false);
