@@ -1,6 +1,6 @@
 # Core
 
-提供统一路由路径及 Riverpod UI 偏好，包含玻璃模式、减少透明度和减少动态。Android/Windows 外观偏好通过普通键值存储保存，系统无障碍设置拥有优先级；不在偏好中保存 Token、健康资料或签名 URL。
+提供统一路由协议 `AppRoutes`、导航管理器 `AppNavigationManager`（含受保护设置入口、健康记录 `extra` 透传与安全返回）、`NutritionManager`/`nutrition_format.dart`、`AiConsentManager` 及 Riverpod UI 偏好（玻璃档位、减少透明度和减少动态）。Android/Windows 外观偏好通过普通键值存储保存，系统无障碍设置优先；不在偏好中保存 Token、健康资料或签名 URL。
 
 共享视觉实现位于 diet_ui，core 原主题和组件路径是薄导出。业务展示模型位于 diet_models，业务演示状态位于 demo。
 

@@ -1,6 +1,6 @@
 # 架构
 
-单应用按功能分层，Dart Pub workspace 管理 diet_models、diet_ui、diet_oidc 和 diet_auth。app 负责启动登录门控、路由和外壳，core 提供配置装配、内存会话、路径协议与展示偏好，demo 持有共享业务演示场景，feature 组合页面；feature 不相互导入。
+单应用按功能分层，Dart Pub workspace 管理 `diet_models`、`diet_ui`、`diet_oidc` 和 `diet_auth`。`app` 负责启动恢复门控、路由注册、导航外壳与生命周期管理（`AppLifecycleManager`）；`core` 提供配置装配、内存会话、统一路由协议（`AppRoutes`）、全局导航管理器（`AppNavigationManager`）、营养与同意管理器及展示偏好；`demo` 持有共享业务演示场景；`feature` 仅通过对应业务管理器与公共格式/路由入口组合页面，feature 之间与 `app` 层不相互反向或横向导入。
 
 diet_models 只定义营养、餐食、来源、覆盖和报告等展示模型；diet_ui 封装主题、组件、响应式布局、玻璃、图表与本地插画。diet_oidc 提供通用协议与 Web 弹窗通信；diet_auth 依赖 diet_oidc，执行 Authentik 流程及 Dio 内存 Cookie 管理。四个 package 均不依赖应用；协议包不引入 Flutter 或 Riverpod。
 
@@ -18,4 +18,4 @@ Web 构建可显式启用默认关闭的 WEB_UI_PREVIEW；core/config 提供纯�
 
 真实临时显示状态（模式／遮罩）、本地日期与共享离开保护位于 core/presentation；演示业务仍独立位于 demo。可编辑路由共用离开检查，保存中阻止离开，认证失效优先。真实／演示页面在入口选择实现后再创建各自控制器。AppPage 默认不标记数据来源，演示页面显式声明。
 
-历史餐食照片由 core/nutrition 的照片集合与字节查询统一提供，组合餐食详情和采集会话公开接口；core/network 独立读取预签名对象，不共享业务认证。meal 负责紧凑列表、照片卡片、详情缩略图和相册展示，settings 通过已有外观偏好切换布局。相册路由位于 app 根导航器，沿用认证门控，不显示 AppShell。照片与签名只在账户范围的内存中使用。
+历史餐食照片由 `core/nutrition` 统一提供元数据与字节查询，`NutritionManager` 集中协调查询刷新、轮询空闲刷新及写操作代次隔离，`nutrition_format.dart` 提供统一日期、餐别、状态与数值格式化。`ProfileManager` 与 `SettingsManager` 分别收拢资料及外观设置操作；全部确认弹窗复用 `diet_ui` 的 `showAppConfirmDialog`。相册路由位于 `app` 根导航器，沿用认证门控，不显示 `AppShell`；照片与签名仅在账户范围内存中使用。

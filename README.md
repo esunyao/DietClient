@@ -289,3 +289,16 @@ Android/Windows 已增加紧凑列表与照片卡片，默认紧凑列表，在�
 先前专项检查暴露的页面高度约束、键盘焦点与重试点击问题已修复。追加集成用例实际复现了慢签名刷新导致重试预算重置、快速首帧滑动被缩放手势截获的问题，修复后上述专项及完整测试通过。离线测试不代表真实后端照片或签名可达；真实照片、两布局切换、相册返回和应用重启恢复仍由用户验收。
 
 测试入口见 [照片回归导航](test/AGENTS.md)、[构建工具](tool/AGENTS.md)；运行日志仅保存在忽略的 .local/meal-photo-*.log。全部变更在 dev/feature 当前分支完成，没有创建工作树、切换分支或推送。
+
+## 架构管理器重构与文档注释规范化（2026-11-24）
+
+全仓统一完善路由协议（`AppRoutes`）并引入 `AppNavigationManager`、`AppLifecycleManager`、`NutritionManager`、`AiConsentManager`、`ProfileManager`、`SettingsManager` 及通用确认弹窗 `showAppConfirmDialog`；消除页面层与导航外壳中的散落直调导航及长内联回调，统一重构为简洁中文 Dartdoc（清零 `@brief`/`@details`/`@param`/`@return` 等 Doxygen 标签），同步精简受影响的公开说明文档。新增 [manager_architecture_test.dart](test/manager_architecture_test.dart) 覆盖路由协议与核心管理器行为。
+
+| 检查 | 实际结果 |
+|---|---|
+| Dart 格式检查 | `dart format --output=none --set-exit-if-changed lib packages test`：169 文件、0 改动，退出 0 |
+| 静态分析 | `tool/flutter.ps1 analyze --no-pub`：No issues found，退出 0 |
+| 协议与执行器测试 | `dart test packages/diet_oidc/test packages/diet_auth/test`：34 项全部通过 |
+| 完整 Flutter 离线测试 | `tool/flutter.ps1 test --no-pub test`：289 项全部通过（含新增管理器及路由回归） |
+| 规范与分层审计 | 0 处 Doxygen 残留、0 处越层/跨 feature 导入、feature 与外壳 0 处直调路由跳转；改动 Markdown 严格 UTF-8 无 BOM 与相对链接检查通过 |
+| 平台构建与真机联调 | 本轮未执行 Android/Windows/Web 编译构建及真机端到端验收 |

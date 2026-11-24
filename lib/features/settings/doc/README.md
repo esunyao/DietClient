@@ -4,7 +4,7 @@
 
 Android/Windows 使用 SharedPreferencesAsync 的单个版本化外观记录，保存玻璃档位、减少透明度、减少动态及饮食历史显示方式。启动异步加载不改变业务会话；加载期间忽略重复加载与保存，避免迟到读取覆盖保存。历史显示方式为紧凑列表（compact，默认）或照片卡片（photoCard），设置页提供标准 Flutter 控件小样。mealHistoryLayout 增量加入既有 diet.appearance.v1 JSON；旧记录缺少此字段、未知值或错误类型仅将历史布局回退为紧凑列表，保留其他有效偏好。未知玻璃档位、无效 JSON 或类型仍按原规则回退。读取失败可重试，写入失败保留此前值并明确提示，重试同一操作即可重新保存。不会使用普通偏好保存 Token 或健康数据。
 
-真实模式的重置将历史显示方式恢复为紧凑列表，并恢复默认玻璃、透明度和动态效果，不清除餐食、健康资料、AI 同意或会话。个人/机构内个人是显式显示选择，不赋予机构身份；信息遮罩仅为临时显示。Web 的外观与历史布局偏好仅保留在本次内存会话，保留原有内存演示及演示重置。
+真实模式的重置将历史显示方式恢复为紧凑列表，并恢复默认玻璃、透明度和动态效果，不清除餐食、健康资料、AI 同意或会话。设置页通过 `SettingsManager`（`application/settings_manager.dart`）统一调用 `uiPreferencesProvider`、`displayStateProvider` 与 `demoProvider`，并借助 `showAppConfirmDialog` 确认重置。个人/机构内个人是显式显示选择，不赋予机构身份；信息遮罩仅为临时显示。Web 的外观与历史布局偏好仅保留在本次内存会话，保留原有内存演示及演示重置。
 
 回归见 [preferences_functional_test.dart](../../../../test/preferences_functional_test.dart)，覆盖旧 JSON 兼容、重启恢复、未知值、保存失败与重试、其他偏好保留、Web 内存边界、窄屏大字选择及重置隔离；实际设备持久化和视觉仍需验收。
 
