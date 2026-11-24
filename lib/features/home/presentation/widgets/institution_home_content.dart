@@ -1,125 +1,159 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 import 'seven_day_summary.dart';
 
-/// @brief 机构演示模式首页内容布局组件。
-/// @details 主栏展示快照统计，侧栏展示机构晚餐、报告和隐私入口。
-class InstitutionHomeContent extends StatelessWidget {
+/// 机构演示模式首页内容布局，主栏展示当日统计，侧栏展示机构晚餐、报告及隐私提示。
+class InstitutionHomeContent extends ConsumerWidget {
   const InstitutionHomeContent({super.key, required this.data});
+
   final DemoSnapshot data;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      // 根据父级可用宽度切换双栏或纵向堆叠，不在此推断体验模式。
-      final wide = constraints.maxWidth >= AppLayout.columnsMinWidth;
-      final main = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          HomeNutritionSummary(data: data, wide: wide),
-          if (!wide) const SizedBox(height: 12),
-          HomeMeals(meals: data.todayMeals, wide: wide),
-          const SizedBox(height: 22),
-          SevenDaySummary(points: data.trend(7)),
-        ],
-      );
-      final aside = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _InstitutionDinner(data: data),
-          const SizedBox(height: 24),
-          _WeeklyReport(data: data),
-          const SizedBox(height: 24),
-          const _PrivacyNotice(),
-        ],
-      );
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (wide)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: AppLayout.mainColumnWidth.toInt(), child: main),
-                const SizedBox(width: AppLayout.columnGap),
-                Expanded(
-                  flex: AppLayout.asideColumnWidth.toInt(),
-                  child: aside,
-                ),
-              ],
-            )
-          else ...[
-            main,
-            const SizedBox(height: 24),
-            aside,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final navigation = ref.read(navigationManagerProvider);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 按可用列宽决定双栏还是纵向堆叠，体验模式由上层显式指定。
+        final wide = constraints.maxWidth >= AppLayout.columnsMinWidth;
+        final main = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            HomeNutritionSummary(data: data, wide: wide),
+            if (!wide) const SizedBox(height: 12),
+            HomeMeals(meals: data.todayMeals, wide: wide),
+            const SizedBox(height: 22),
+            SevenDaySummary(points: data.trend(7)),
           ],
-          const SizedBox(height: 48),
-          const Text(
-            '更完整地理解这些记录',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 16),
-          const AppCard(
-            radius: 16,
-            padding: EdgeInsets.all(24),
-            child: Text(
-              '已记录合计只包含已确认且有数值的分析结果，不从未记录时段推断是否进食或全天营养缺口。\n\n如实际份量与估算不同，保存修正后，单餐、今日合计与趋势会同步更新。',
-              style: TextStyle(
-                color: AppColors.muted,
-                fontSize: 14,
-                height: 1.6,
-              ),
+        );
+        final aside = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _InstitutionDinner(
+              data: data,
+              onOpenSync: () => navigation.openInstitutionSync(context),
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            '需要补充时',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => context.push(AppRoutes.capture),
-                icon: Icon(AppIcons.camera, size: 22),
-                label: const Text('拍照记录'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => context.push(AppRoutes.manualMeal),
-                icon: Icon(AppIcons.edit, size: 22),
-                label: const Text('手工补录'),
-              ),
-              TextButton(
-                onPressed: () => context.push(AppRoutes.healthRecords),
-                child: const Text('管理健康档案'),
-              ),
-              TextButton(
-                onPressed: () => context.push(AppRoutes.institutionMenu),
-                child: const Text('食堂菜单'),
-              ),
+            const SizedBox(height: 24),
+            _WeeklyReport(
+              data: data,
+              onOpenReports: () => navigation.openReports(context),
+            ),
+            const SizedBox(height: 24),
+            const _PrivacyNotice(),
+          ],
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (wide)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: AppLayout.mainColumnWidth.toInt(),
+                    child: main,
+                  ),
+                  const SizedBox(width: AppLayout.columnGap),
+                  Expanded(
+                    flex: AppLayout.asideColumnWidth.toInt(),
+                    child: aside,
+                  ),
+                ],
+              )
+            else ...[
+              main,
+              const SizedBox(height: 24),
+              aside,
             ],
+            const SizedBox(height: 48),
+            const _InstitutionGuideCard(),
+            const SizedBox(height: 24),
+            _InstitutionSupplementActions(navigation: navigation),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _InstitutionGuideCard extends StatelessWidget {
+  const _InstitutionGuideCard();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        '更完整地理解这些记录',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      ),
+      SizedBox(height: 16),
+      AppCard(
+        radius: 16,
+        padding: EdgeInsets.all(24),
+        child: Text(
+          '已记录合计只包含已确认且有数值的分析结果，不从未记录时段推断是否进食或全天营养缺口。\n\n如实际份量与估算不同，保存修正后，单餐、今日合计与趋势会同步更新。',
+          style: TextStyle(color: AppColors.muted, fontSize: 14, height: 1.6),
+        ),
+      ),
+    ],
+  );
+}
+
+class _InstitutionSupplementActions extends StatelessWidget {
+  const _InstitutionSupplementActions({required this.navigation});
+
+  final AppNavigationManager navigation;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Text(
+        '需要补充时',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 16,
+        runSpacing: 12,
+        children: [
+          OutlinedButton.icon(
+            onPressed: () => navigation.openCapture(context),
+            icon: const Icon(AppIcons.camera, size: 22),
+            label: const Text('拍照记录'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => navigation.openManualMeal(context),
+            icon: const Icon(AppIcons.edit, size: 22),
+            label: const Text('手工补录'),
+          ),
+          TextButton(
+            onPressed: () => navigation.openHealthRecords(context),
+            child: const Text('管理健康档案'),
+          ),
+          TextButton(
+            onPressed: () => navigation.openInstitutionMenu(context),
+            child: const Text('食堂菜单'),
           ),
         ],
-      );
-    },
+      ),
+    ],
   );
 }
 
 class _InstitutionDinner extends StatelessWidget {
-  const _InstitutionDinner({required this.data});
+  const _InstitutionDinner({required this.data, required this.onOpenSync});
+
   final DemoSnapshot data;
+  final VoidCallback onOpenSync;
 
   @override
   Widget build(BuildContext context) {
-    // 未确认时展示演示方案的标准份量；确认后展示快照中餐食的能量。
     final confirmed = data.institutionConfirmed;
     final dinner = data.meal('institution-dinner');
     final plan = demoPlans.firstWhere((plan) => plan.id == 'fish');
@@ -195,8 +229,8 @@ class _InstitutionDinner extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            onPressed: () => context.push(AppRoutes.institutionSync),
-            icon: Icon(AppIcons.checkCircle, size: 22),
+            onPressed: onOpenSync,
+            icon: const Icon(AppIcons.checkCircle, size: 22),
             label: Text(confirmed ? '查看确认结果' : '核对机构餐食'),
           ),
           const SizedBox(height: 6),
@@ -215,8 +249,10 @@ class _InstitutionDinner extends StatelessWidget {
 }
 
 class _WeeklyReport extends StatelessWidget {
-  const _WeeklyReport({required this.data});
+  const _WeeklyReport({required this.data, required this.onOpenReports});
+
   final DemoSnapshot data;
+  final VoidCallback onOpenReports;
 
   @override
   Widget build(BuildContext context) {
@@ -236,7 +272,7 @@ class _WeeklyReport extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(AppIcons.reports, color: AppColors.primary, size: 27),
+              const Icon(AppIcons.reports, color: AppColors.primary, size: 27),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
@@ -276,7 +312,7 @@ class _WeeklyReport extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () => context.push(AppRoutes.reports),
+              onPressed: onOpenReports,
               child: const Text('查看报告', style: TextStyle(fontSize: 15)),
             ),
           ),
@@ -286,8 +322,6 @@ class _WeeklyReport extends StatelessWidget {
   }
 }
 
-/// @brief 机构首页隐私隐藏提示入口卡片。
-/// @note 仅修改演示状态中的临时隐藏标志。
 class _PrivacyNotice extends ConsumerWidget {
   const _PrivacyNotice();
 
@@ -304,12 +338,12 @@ class _PrivacyNotice extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 50),
-            child: Row(
+            child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(AppIcons.shieldCheck, color: AppColors.primary, size: 26),
-                const SizedBox(width: 14),
-                const Expanded(
+                SizedBox(width: 14),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

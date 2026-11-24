@@ -5,12 +5,12 @@ import '../../../../demo/demo_nutrition_targets.dart';
 import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 
-/// @brief 个人演示营养摘要卡片组件。
-/// @details 以演示快照今日合计对照固定演示目标。
-/// @note 演示目标不代表真实账户的营养目标。
+/// 个人演示营养摘要卡片，使用固定演示目标对照展示今日已记录合计。
 class PersonalNutritionSummary extends StatelessWidget {
   const PersonalNutritionSummary({super.key, required this.data});
+
   final DemoSnapshot data;
+
   @override
   Widget build(BuildContext context) {
     final total = data.todayTotal;
@@ -125,10 +125,12 @@ class _Macro extends StatelessWidget {
     required this.target,
     required this.color,
   });
+
   final String label;
   final double? value;
   final double target;
   final Color color;
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,17 +147,17 @@ class _Macro extends StatelessWidget {
   );
 }
 
-/// @brief 营养素进度条展示子组件。
-/// @details 未知值显示为未知；仅进度条长度钳制到 0 至 1，百分比文案仍显示实际计算结果。
 class _Progress extends StatelessWidget {
   const _Progress({
     required this.value,
     required this.target,
     required this.color,
   });
+
   final double? value;
   final double target;
   final Color color;
+
   @override
   Widget build(BuildContext context) => Row(
     children: [

@@ -1,40 +1,31 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/nutrition/application/nutrition_providers.dart';
 import '../../../../core/presentation/current_date.dart';
 
-String _date(DateTime date) =>
-    '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-String _amount(double? v) => v == null ? '未知' : v.toStringAsFixed(1);
+String _formatTrendAmount(double? value) =>
+    value == null ? '未知' : value.toStringAsFixed(1);
 
-/// @brief Extracts a recorded nutrient amount for a calendar day, preserving unknown days as null.
-/// @details Empty calendar dates and days without meals stay unknown, even if the server emits zero totals.
-/// @param day Daily summary returned by the server, or null for empty dates.
-/// @param code Target nutrient code.
-/// @return Recorded nutrient amount, or null when unrecorded or unavailable.
+/// 提取单日已记录营养值；空日期及零餐次日期保持 `null`，不按零补齐。
 double? recordedNutrient(DailySummary? day, String code) =>
     day == null || day.mealCount == 0
     ? null
     : nutrientAmount(day.nutrients, code);
 
-/// @brief 原生真实营养趋势页面。
-/// @details 通过共享 daily-trend 查询展示真实多日趋势，周期与营养素选择保存在页面局部状态中。
+/// 原生真实营养趋势页面，按共享本地日期窗口查询并展示多日趋势。
 class NativeTrendsScreen extends ConsumerStatefulWidget {
   const NativeTrendsScreen({super.key});
+
   @override
   ConsumerState<NativeTrendsScreen> createState() => _TrendsState();
 }
 
 class _TrendsState extends ConsumerState<NativeTrendsScreen> {
-  int _range = 0, _nutrient = 0;
-  static const _fields = [
-    ('ENERGY_KCAL', '能量', 'kcal'),
-    ('PROTEIN', '蛋白质', 'g'),
-    ('CARBOHYDRATE', '碳水', 'g'),
-    ('FAT', '脂肪', 'g'),
-  ];
+  int _range = 0;
+  int _nutrient = 0;
+
   @override
   Widget build(BuildContext context) {
     final days = [7, 30, 90][_range];
@@ -44,22 +35,26 @@ class _TrendsState extends ConsumerState<NativeTrendsScreen> {
       days,
       (i) => DateTime(end.year, end.month, end.day - days + i + 1),
     );
-    final query = (dateFrom: _date(dates.first), dateTo: _date(end));
+    final query = (
+      dateFrom: formatIsoDate(dates.first),
+      dateTo: formatIsoDate(end),
+    );
     final result = ref.watch(dailyTrendProvider(query));
-    final field = _fields[_nutrient];
-    // 按日期对齐服务端结果与完整窗口，缺失日仍进入图表和逐日表。
+    final field = kCoreNutrientFields[_nutrient];
     final byDate = {
       for (final day in result.value?.days ?? <DailySummary>[])
         day.localDate: day,
     };
     final values = [
-      for (final date in dates) recordedNutrient(byDate[_date(date)], field.$1),
+      for (final date in dates)
+        recordedNutrient(byDate[formatIsoDate(date)], field.$1),
     ];
-    // 均值只除以所选营养素有数值的记录日，显式记录的零仍参与计算。
+    // 均值分母只统计本营养素存在数值的记录日，显式零值同样计入。
     final known = values.whereType<double>().toList();
     final average = known.isEmpty
         ? null
         : known.reduce((a, b) => a + b) / known.length;
+
     return AppPage(
       demoLabel: null,
       title: '营养趋势',
@@ -69,52 +64,32 @@ class _TrendsState extends ConsumerState<NativeTrendsScreen> {
           labels: const ['7 日', '30 日', '90 日'],
           selected: _range,
           equalWidth: true,
-          onChanged: (v) => setState(() => _range = v),
+          onChanged: (value) => setState(() => _range = value),
         ),
         AppSegmented(
-          labels: _fields.map((f) => f.$2).toList(),
+          labels: kCoreNutrientFields.map((f) => f.$2).toList(),
           selected: _nutrient,
           equalWidth: true,
-          onChanged: (v) => setState(() => _nutrient = v),
+          onChanged: (value) => setState(() => _nutrient = value),
         ),
-        // 首次无值加载显示进度；错误可失效当前日期查询重试，有值时仍展示数据。
         if (result.isLoading && result.value == null)
           const Center(child: CircularProgressIndicator()),
         if (result.hasError)
-          AppCard(
-            child: Column(
-              children: [
-                Text('${result.error}'),
-                TextButton(
-                  onPressed: () => ref.invalidate(dailyTrendProvider(query)),
-                  child: const Text('重试'),
-                ),
-              ],
-            ),
+          _TrendErrorCard(
+            error: result.error!,
+            onRetry: () =>
+                ref.read(nutritionManagerProvider).refreshDailyTrend(query),
           ),
         if (result.value != null) ...[
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SectionHeading(title: '${field.$2}每日变化', detail: field.$3),
-                Text(
-                  '日均 ${_amount(average)} ${field.$3} · ${known.length} 个有数值记录日',
-                ),
-                const SizedBox(height: 18),
-                NutritionBarChart(
-                  values: values,
-                  labels: dates.map((d) => '${d.month}/${d.day}').toList(),
-                  unit: field.$3,
-                  highlightLast: true,
-                  showValueLabels: days == 7,
-                  missingLabels: [
-                    for (final date in dates)
-                      (byDate[_date(date)]?.mealCount ?? 0) == 0 ? '未记录' : '未知',
-                  ],
-                ),
-              ],
-            ),
+          _NativeTrendChartCard(
+            label: field.$2,
+            unit: field.$3,
+            average: average,
+            knownCount: known.length,
+            days: days,
+            dates: dates,
+            values: values,
+            byDate: byDate,
           ),
           AppCard(
             child: Text(
@@ -122,28 +97,110 @@ class _TrendsState extends ConsumerState<NativeTrendsScreen> {
             ),
           ),
           const SectionHeading(title: '逐日记录概况'),
-          AppCard(
-            child: Column(
-              children: [
-                for (var i = 0; i < dates.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(_date(dates[i]))),
-                        Text('${byDate[_date(dates[i])]?.mealCount ?? 0} 餐'),
-                        const SizedBox(width: 18),
-                        Flexible(
-                          child: Text('${_amount(values[i])} ${field.$3}'),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+          _DailyTrendBreakdownCard(
+            dates: dates,
+            values: values,
+            byDate: byDate,
+            unit: field.$3,
           ),
         ],
       ],
     );
   }
+}
+
+class _TrendErrorCard extends StatelessWidget {
+  const _TrendErrorCard({required this.error, required this.onRetry});
+
+  final Object error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    child: Column(
+      children: [
+        Text('$error'),
+        TextButton(onPressed: onRetry, child: const Text('重试')),
+      ],
+    ),
+  );
+}
+
+class _NativeTrendChartCard extends StatelessWidget {
+  const _NativeTrendChartCard({
+    required this.label,
+    required this.unit,
+    required this.average,
+    required this.knownCount,
+    required this.days,
+    required this.dates,
+    required this.values,
+    required this.byDate,
+  });
+
+  final String label;
+  final String unit;
+  final double? average;
+  final int knownCount;
+  final int days;
+  final List<DateTime> dates;
+  final List<double?> values;
+  final Map<String, DailySummary> byDate;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeading(title: '$label每日变化', detail: unit),
+        Text('日均 ${_formatTrendAmount(average)} $unit · $knownCount 个有数值记录日'),
+        const SizedBox(height: 18),
+        NutritionBarChart(
+          values: values,
+          labels: dates.map((d) => '${d.month}/${d.day}').toList(),
+          unit: unit,
+          highlightLast: true,
+          showValueLabels: days == 7,
+          missingLabels: [
+            for (final date in dates)
+              (byDate[formatIsoDate(date)]?.mealCount ?? 0) == 0 ? '未记录' : '未知',
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _DailyTrendBreakdownCard extends StatelessWidget {
+  const _DailyTrendBreakdownCard({
+    required this.dates,
+    required this.values,
+    required this.byDate,
+    required this.unit,
+  });
+
+  final List<DateTime> dates;
+  final List<double?> values;
+  final Map<String, DailySummary> byDate;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    child: Column(
+      children: [
+        for (var i = 0; i < dates.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Expanded(child: Text(formatIsoDate(dates[i]))),
+                Text('${byDate[formatIsoDate(dates[i])]?.mealCount ?? 0} 餐'),
+                const SizedBox(width: 18),
+                Flexible(child: Text('${_formatTrendAmount(values[i])} $unit')),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
 }

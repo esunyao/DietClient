@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/demo/demo_store.dart';
 
-/// @brief 营养趋势周期覆盖概览卡片组件。
-/// @details 直接展示调用方计算好的周期覆盖天数和餐食数量，不在组件内部重新汇总。
+/// 营养趋势周期覆盖概览卡片组件。
 class TrendCoverage extends StatelessWidget {
   const TrendCoverage({
     super.key,
@@ -119,8 +118,7 @@ class TrendCoverage extends StatelessWidget {
   }
 }
 
-/// @brief 趋势逐日营养读数折叠明细组件。
-/// @details 展示周期内逐日数值，并区分未记录日期与已记录但该营养素待补充的日期。
+/// 趋势逐日营养读数折叠明细卡片。
 class TrendDailyTable extends StatelessWidget {
   const TrendDailyTable({
     super.key,
@@ -339,8 +337,7 @@ class TrendReportEntry extends StatelessWidget {
   );
 }
 
-/// @brief 周期营养已知值合计与日均摘要卡片组件。
-/// @details 展示调用方传入的已知值合计和日均，缺失数据的日期不计入分母。
+/// 周期已知营养值合计与日均摘要卡片，缺失数据不计入平均分母。
 class TrendAverageCard extends StatelessWidget {
   const TrendAverageCard({
     super.key,

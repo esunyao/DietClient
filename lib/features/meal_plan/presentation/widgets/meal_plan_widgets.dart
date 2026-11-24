@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:diet_ui/diet_ui.dart';
 import 'package:diet_client/demo/demo_store.dart';
 
-/// @brief 配餐方案对比选择组件。
-/// @details 比较共享演示套餐并通过回调返回选中的套餐 ID，组件自身不保存状态。
+/// 配餐方案对比选择卡片。
 class PlanComparison extends StatelessWidget {
   const PlanComparison({
     super.key,
@@ -192,8 +191,7 @@ class PlanComparison extends StatelessWidget {
   );
 }
 
-/// @brief 所选配餐方案的菜品与计划份量卡片组件。
-/// @details 角色标签仅按样例食物 ID 映射。
+/// 所选配餐方案的菜品与计划份量卡片。
 class PlanDishes extends StatelessWidget {
   const PlanDishes({super.key, required this.plan, required this.wide});
 
@@ -290,8 +288,7 @@ class PlanDishes extends StatelessWidget {
   );
 }
 
-/// @brief 配餐上下文概览卡片组件。
-/// @details 展示调用方传入的演示目标、今日已记录能量及分析中餐数。
+/// 配餐上下文概览卡片，展示演示目标、今日已记录能量及分析中餐数。
 class PlanContextCard extends StatelessWidget {
   const PlanContextCard({
     super.key,
@@ -353,8 +350,7 @@ class PlanContextCard extends StatelessWidget {
   );
 }
 
-/// @brief 配餐方案推荐依据与过敏提示卡片组件。
-/// @details 展示方案依据与固定过敏核对提示，健康档案跳转回调由调用方提供。
+/// 配餐方案推荐依据与过敏核对引导卡片。
 class PlanReasonCard extends StatelessWidget {
   const PlanReasonCard({
     super.key,
@@ -396,8 +392,7 @@ class PlanReasonCard extends StatelessWidget {
   );
 }
 
-/// @brief 机构食堂菜单入口卡片组件。
-/// @details 菜单导航回调由调用方提供。
+/// 机构食堂菜单入口卡片。
 class PlanMenuCard extends StatelessWidget {
   const PlanMenuCard({super.key, required this.wide, required this.onMenu});
   final bool wide;

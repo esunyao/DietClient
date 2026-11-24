@@ -1,14 +1,13 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:diet_ui/diet_ui.dart';
-import 'package:diet_client/demo/demo_store.dart';
-import 'package:diet_client/core/config/ui_preview_config.dart';
-import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
+import '../../../../core/config/ui_preview_config.dart';
+import '../../../../core/presentation/unsupported_feature_page.dart';
+import '../../../../demo/demo_store.dart';
 import '../widgets/report_widgets.dart';
 
-/// @brief 营养报告页面组件。
-/// @details 真实营养模式显示暂未支持页面；其余分支使用共享内存演示报告数据。
+/// 营养报告页面，演示模式展示版本快照与覆盖概览，原生模式显示暂未支持。
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
 
@@ -16,7 +15,7 @@ class ReportsScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -48,7 +47,7 @@ class ReportsScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
                 AppButton(
                   label: '关闭摘要',
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(sheetContext),
                 ),
               ],
             ),
@@ -56,6 +55,11 @@ class ReportsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _generateReport(BuildContext context, WidgetRef ref) {
+    ref.read(demoProvider.notifier).generateReport();
+    showDemoMessage(context, '已在内存中生成新的演示版本，历史版本保留原内容。');
   }
 
   @override
@@ -66,12 +70,10 @@ class ReportsScreen extends ConsumerWidget {
         description: '报告生成、历史版本与导出暂未支持。真实每日营养汇总已在首页和趋势中提供。',
       );
     }
-    // 报告列表提供版本快照；七日趋势则提供当前覆盖与图表数据。
     final state = ref.watch(demoProvider);
     final latest = state.reports.first;
     final history = state.reports.skip(1).toList();
     final points = state.trend(7);
-    // 仅汇总有能量数值的日期；没有可用值时保留未知，而非生成零值摘要。
     final known = points
         .map((p) => p.nutrients.energy)
         .whereType<double>()
@@ -82,25 +84,14 @@ class ReportsScreen extends ConsumerWidget {
       0,
       (sum, point) => sum + point.analyzingCount,
     );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 1024;
-        final historySection = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SectionHeading(title: wide ? '历史版本' : '历史与生成任务'),
-            const SizedBox(height: 14),
-            for (var i = 0; i < history.length; i++) ...[
-              ReportVersionCard(
-                report: history[i],
-                onTap: () => _preview(context, history[i]),
-                wide: wide,
-              ),
-              if (i < history.length - 1) const SizedBox(height: 16),
-            ],
-            if (history.isEmpty)
-              const AppCard(child: Text('尚无其他历史版本，生成后将在本次演示中保留。')),
-          ],
+        final historySection = _HistoryVersionSection(
+          wide: wide,
+          history: history,
+          onTapReport: (report) => _preview(context, report),
         );
         final versionNotice = ReportVersionNotice(
           hasStale: state.reports.any((report) => report.stale),
@@ -113,47 +104,18 @@ class ReportsScreen extends ConsumerWidget {
           analyzing: analyzing,
           wide: wide,
         );
+
         return AppPage(
           demoLabel: '设计样例 · 演示数据',
           title: wide ? latest.title : '报告中心',
           subtitle: wide ? '${latest.period} · 参考报告，未经专业审核' : null,
           showBack: true,
-          footer: Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: wide ? 352 : double.infinity,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    known.isEmpty ? '补充能量记录后可生成摘要' : '仅在本次演示中生成，不下载或分享',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.muted,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  AppButton(
-                    label: '生成新报告（演示）',
-                    icon: AppIcons.reports,
-                    onPressed: known.isEmpty
-                        ? null
-                        : () {
-                            ref.read(demoProvider.notifier).generateReport();
-                            showDemoMessage(
-                              context,
-                              '已在内存中生成新的演示版本，历史版本保留原内容。',
-                            );
-                          },
-                  ),
-                ],
-              ),
-            ),
+          footer: _ReportFooter(
+            wide: wide,
+            canGenerate: known.isNotEmpty,
+            onGenerate: () => _generateReport(context, ref),
           ),
           children: [
-            // 宽屏将历史和版本说明放侧栏；窄屏将历史与说明排入主流程。
             AdaptiveColumns(
               main: [
                 ReportOverview(
@@ -162,77 +124,22 @@ class ReportsScreen extends ConsumerWidget {
                   analyzing: analyzing,
                   wide: wide,
                 ),
-                if (!wide) ...[
-                  const SectionHeading(title: '本期摘要'),
-                  AppCard(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    child: Column(
-                      children: [
-                        ReportSummaryRow(
-                          icon: AppIcons.checkCircle,
-                          text: '当前7天内有 ${known.length} 天存在可用能量记录',
-                        ),
-                        ReportSummaryRow(
-                          icon: AppIcons.history,
-                          text: analyzing > 0
-                              ? '本周期仍有 $analyzing 餐分析中'
-                              : '本周期没有分析中的记录',
-                        ),
-                        const ReportSummaryRow(
-                          icon: AppIcons.warningCircle,
-                          text: '记录日均不代表完整全天平均',
-                          warning: true,
-                        ),
-                      ],
-                    ),
+                if (!wide)
+                  _NarrowPeriodSummarySection(
+                    knownDays: known.length,
+                    analyzing: analyzing,
                   ),
-                ],
                 AppButton(
                   label: '查看完整摘要',
                   secondary: true,
                   onPressed: () => _preview(context, latest),
                 ),
-                if (wide) ...[
-                  const SectionHeading(title: '能量记录概览'),
-                  AppCard(
-                    radius: 16,
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // 图表读取当前趋势，不是历史报告的版本快照。
-                        NutritionBarChart(
-                          values: points
-                              .map((p) => p.nutrients.energy)
-                              .toList(),
-                          labels: points
-                              .map((p) => '${p.date.month}/${p.date.day}')
-                              .toList(),
-                          height: 210,
-                          highlightLast: true,
-                          showValueLabels: true,
-                          missingLabels: [
-                            for (final point in points)
-                              point.recordCount == 0 ? '未记录' : '待补充',
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          latest.stale
-                              ? '当前记录已变化，图表不是原报告快照；未知值不补零。'
-                              : '当前已知记录；缺失日期保持缺失，不补零。',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else
+                if (wide)
+                  _WideEnergyOverviewSection(
+                    points: points,
+                    stale: latest.stale,
+                  )
+                else
                   historySection,
               ],
               aside: wide
@@ -259,4 +166,153 @@ class ReportsScreen extends ConsumerWidget {
       },
     );
   }
+}
+
+class _ReportFooter extends StatelessWidget {
+  const _ReportFooter({
+    required this.wide,
+    required this.canGenerate,
+    required this.onGenerate,
+  });
+
+  final bool wide;
+  final bool canGenerate;
+  final VoidCallback onGenerate;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerRight,
+    child: SizedBox(
+      width: wide ? 352 : double.infinity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            canGenerate ? '仅在本次演示中生成，不下载或分享' : '补充能量记录后可生成摘要',
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          AppButton(
+            label: '生成新报告（演示）',
+            icon: AppIcons.reports,
+            onPressed: canGenerate ? onGenerate : null,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _HistoryVersionSection extends StatelessWidget {
+  const _HistoryVersionSection({
+    required this.wide,
+    required this.history,
+    required this.onTapReport,
+  });
+
+  final bool wide;
+  final List<ReportPreview> history;
+  final ValueChanged<ReportPreview> onTapReport;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SectionHeading(title: wide ? '历史版本' : '历史与生成任务'),
+      const SizedBox(height: 14),
+      for (var i = 0; i < history.length; i++) ...[
+        ReportVersionCard(
+          report: history[i],
+          onTap: () => onTapReport(history[i]),
+          wide: wide,
+        ),
+        if (i < history.length - 1) const SizedBox(height: 16),
+      ],
+      if (history.isEmpty) const AppCard(child: Text('尚无其他历史版本，生成后将在本次演示中保留。')),
+    ],
+  );
+}
+
+class _NarrowPeriodSummarySection extends StatelessWidget {
+  const _NarrowPeriodSummarySection({
+    required this.knownDays,
+    required this.analyzing,
+  });
+
+  final int knownDays;
+  final int analyzing;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const SectionHeading(title: '本期摘要'),
+      const SizedBox(height: 14),
+      AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Column(
+          children: [
+            ReportSummaryRow(
+              icon: AppIcons.checkCircle,
+              text: '当前7天内有 $knownDays 天存在可用能量记录',
+            ),
+            ReportSummaryRow(
+              icon: AppIcons.history,
+              text: analyzing > 0 ? '本周期仍有 $analyzing 餐分析中' : '本周期没有分析中的记录',
+            ),
+            const ReportSummaryRow(
+              icon: AppIcons.warningCircle,
+              text: '记录日均不代表完整全天平均',
+              warning: true,
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _WideEnergyOverviewSection extends StatelessWidget {
+  const _WideEnergyOverviewSection({required this.points, required this.stale});
+
+  final List<TrendPoint> points;
+  final bool stale;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const SectionHeading(title: '能量记录概览'),
+      const SizedBox(height: 14),
+      AppCard(
+        radius: 16,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            NutritionBarChart(
+              values: points.map((p) => p.nutrients.energy).toList(),
+              labels: points
+                  .map((p) => '${p.date.month}/${p.date.day}')
+                  .toList(),
+              height: 210,
+              highlightLast: true,
+              showValueLabels: true,
+              missingLabels: [
+                for (final point in points)
+                  point.recordCount == 0 ? '未记录' : '待补充',
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              stale ? '当前记录已变化，图表不是原报告快照；未知值不补零。' : '当前已知记录；缺失日期保持缺失，不补零。',
+              style: const TextStyle(fontSize: 13, color: AppColors.muted),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 }

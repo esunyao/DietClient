@@ -2,20 +2,20 @@ import 'dart:math' as math;
 
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 
-/// @brief 七日能量趋势概览卡片组件。
-/// @details 展示传入的演示趋势及记录日均，点击进入趋势页；缺失能量的日期不参与平均计算。
-class SevenDaySummary extends StatelessWidget {
+/// 七日能量趋势概览卡片，缺失能量的日期不计入平均分母，点击跳转趋势页。
+class SevenDaySummary extends ConsumerWidget {
   const SevenDaySummary({super.key, required this.points});
+
   final List<TrendPoint> points;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final known = points
         .map((point) => point.nutrients.energy)
         .whereType<double>()
@@ -71,7 +71,7 @@ class SevenDaySummary extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push(AppRoutes.trends),
+        onTap: () => ref.read(navigationManagerProvider).openTrends(context),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           child: LayoutBuilder(
@@ -117,6 +117,7 @@ class SevenDaySummary extends StatelessWidget {
 
 class _EnergyBars extends StatelessWidget {
   const _EnergyBars({required this.points});
+
   final List<TrendPoint> points;
 
   @override
@@ -124,7 +125,7 @@ class _EnergyBars extends StatelessWidget {
     final known = points
         .map((point) => point.nutrients.energy)
         .whereType<double>();
-    // 柱图以至少 1800 的最大值归一化；缺失日绘制纹理而不是补零。
+    // 柱高按至少 1800 的基准归一化；缺失日绘制斜纹而非补零。
     final maximum = known.fold<double>(1800, math.max);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,

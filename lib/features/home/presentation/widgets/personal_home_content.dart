@@ -1,25 +1,25 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../demo/demo_store.dart';
 import 'home_summary.dart';
 import 'personal_nutrition_summary.dart';
 
-/// @brief 个人演示模式首页内容组合组件。
-/// @details 使用传入快照，按可用宽度安排主栏和午餐核对侧栏。
-class PersonalHomeContent extends StatelessWidget {
+/// 个人演示模式首页内容布局组件，按可用宽度组织主栏与侧栏。
+class PersonalHomeContent extends ConsumerWidget {
   const PersonalHomeContent({
     super.key,
     required this.data,
     this.narrowPage = false,
   });
+
   final DemoSnapshot data;
   final bool narrowPage;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
+  Widget build(BuildContext context, WidgetRef ref) => LayoutBuilder(
     builder: (context, constraints) {
       final wide = constraints.maxWidth >= AppLayout.columnsMinWidth;
       final main = Column(
@@ -51,41 +51,9 @@ class PersonalHomeContent extends StatelessWidget {
               children: [
                 _LunchCheck(data: data),
                 const SizedBox(height: 24),
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            AppIcons.reports,
-                            color: AppColors.primary,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Text(
-                              '本周营养报告',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        '汇总已有记录，保留缺失日期',
-                        style: TextStyle(color: AppColors.muted, fontSize: 13),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () => context.push(AppRoutes.reports),
-                        child: const Text('查看报告'),
-                      ),
-                    ],
-                  ),
+                _WeeklyReportShortcutCard(
+                  onOpenReports: () =>
+                      ref.read(navigationManagerProvider).openReports(context),
                 ),
               ],
             ),
@@ -96,14 +64,46 @@ class PersonalHomeContent extends StatelessWidget {
   );
 }
 
-/// @brief 首页餐食采集主入口卡片。
-/// @details 由真实首页与演示首页共用。
-/// @note 餐碗图片资源仅为装饰图，并非真实餐食照片。
-class HomeRecordEntry extends StatelessWidget {
-  const HomeRecordEntry({super.key});
+class _WeeklyReportShortcutCard extends StatelessWidget {
+  const _WeeklyReportShortcutCard({required this.onOpenReports});
+
+  final VoidCallback onOpenReports;
 
   @override
   Widget build(BuildContext context) => AppCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Icon(AppIcons.reports, color: AppColors.primary, size: 24),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '本周营养报告',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          '汇总已有记录，保留缺失日期',
+          style: TextStyle(color: AppColors.muted, fontSize: 13),
+        ),
+        const SizedBox(height: 12),
+        TextButton(onPressed: onOpenReports, child: const Text('查看报告')),
+      ],
+    ),
+  );
+}
+
+/// 首页拍照采集主入口卡片（由真实首页与演示首页共用）；餐碗插画仅为装饰。
+class HomeRecordEntry extends ConsumerWidget {
+  const HomeRecordEntry({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => AppCard(
     color: AppColors.primary,
     radius: 24,
     padding: const EdgeInsets.fromLTRB(20, 8, 8, 10),
@@ -150,8 +150,10 @@ class HomeRecordEntry extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    onPressed: () => context.push(AppRoutes.capture),
-                    icon: Icon(AppIcons.camera, size: 20),
+                    onPressed: () => ref
+                        .read(navigationManagerProvider)
+                        .openCapture(context),
+                    icon: const Icon(AppIcons.camera, size: 20),
                     label: const Text('拍照记录'),
                   ),
                 ],
@@ -174,58 +176,61 @@ class HomeRecordEntry extends StatelessWidget {
   );
 }
 
-/// @brief 首页快捷操作入口栏组件。
-/// @details 提供共用的手工记录、饮食历史和健康档案路由入口，不持有业务状态。
-class HomeQuickActions extends StatelessWidget {
+/// 首页快捷操作栏，提供手工记录、历史记录和健康档案入口。
+class HomeQuickActions extends ConsumerWidget {
   const HomeQuickActions({super.key});
 
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(
-        child: _QuickAction(
-          label: '手工记录',
-          icon: AppIcons.edit,
-          route: AppRoutes.manualMeal,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final navigation = ref.read(navigationManagerProvider);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _QuickAction(
+            label: '手工记录',
+            icon: AppIcons.edit,
+            onTap: () => navigation.openManualMeal(context),
+          ),
         ),
-      ),
-      const SizedBox(width: 14),
-      Expanded(
-        child: _QuickAction(
-          label: '历史记录',
-          icon: AppIcons.history,
-          route: AppRoutes.mealHistory,
+        const SizedBox(width: 14),
+        Expanded(
+          child: _QuickAction(
+            label: '历史记录',
+            icon: AppIcons.history,
+            onTap: () => navigation.openMealHistory(context),
+          ),
         ),
-      ),
-      const SizedBox(width: 14),
-      Expanded(
-        child: _QuickAction(
-          label: '健康档案',
-          icon: AppIcons.healthRecord,
-          route: AppRoutes.healthRecords,
+        const SizedBox(width: 14),
+        Expanded(
+          child: _QuickAction(
+            label: '健康档案',
+            icon: AppIcons.healthRecord,
+            onTap: () => navigation.openHealthRecords(context),
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _QuickAction extends StatelessWidget {
   const _QuickAction({
     required this.label,
     required this.icon,
-    required this.route,
+    required this.onTap,
   });
+
   final String label;
   final IconData icon;
-  final String route;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Material(
     color: Colors.transparent,
     child: InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: () => context.push(route),
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: LayoutBuilder(
@@ -272,31 +277,33 @@ class _QuickAction extends StatelessWidget {
   );
 }
 
-/// @brief 演示午餐核对引导卡片组件。
-/// @details 演示午餐存在时跳转至详情核对，否则退回历史入口。
-class _LunchCheck extends StatelessWidget {
+class _LunchCheck extends ConsumerWidget {
   const _LunchCheck({required this.data});
+
   final DemoSnapshot data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final lunch = data.meal('lunch');
+    final navigation = ref.read(navigationManagerProvider);
     return AppCard(
       color: AppColors.greenSoft,
       padding: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => context.push(
-          lunch == null
-              ? AppRoutes.mealHistory
-              : AppRoutes.mealDetail(lunch.id),
-        ),
+        onTap: () => lunch == null
+            ? navigation.openMealHistory(context)
+            : navigation.openMealDetail(context, lunch.id),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(AppIcons.checkCircle, color: AppColors.primary, size: 24),
+              const Icon(
+                AppIcons.checkCircle,
+                color: AppColors.primary,
+                size: 24,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -324,7 +331,11 @@ class _LunchCheck extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(AppIcons.chevronRight, color: AppColors.primary, size: 18),
+              const Icon(
+                AppIcons.chevronRight,
+                color: AppColors.primary,
+                size: 18,
+              ),
             ],
           ),
         ),

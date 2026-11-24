@@ -2,15 +2,14 @@ import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../demo/demo_store.dart';
+import '../../../../core/config/ui_preview_config.dart';
 import '../../../../core/presentation/account_identity.dart';
+import '../../../../demo/demo_store.dart';
 import '../widgets/institution_home_content.dart';
 import '../widgets/personal_home_content.dart';
-import '../../../../core/config/ui_preview_config.dart';
 import 'native_home_screen.dart';
 
-/// @brief 应用首页入口组件。
-/// @details 优先按平台开关选择真实营养首页或演示首页；演示分支再按显式体验模式选择个人或机构内容。
+/// 应用首页路由入口，按平台开关与显式体验模式分发内容。
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -23,7 +22,7 @@ class HomeScreen extends ConsumerWidget {
     final institution = data.isInstitution;
     final date =
         '${demoDate.month}月${demoDate.day}日，星期${'一二三四五六日'[demoDate.weekday - 1]}';
-    // 此处根据页面宽度向个人内容传入布局参数；体验模式来自演示状态。
+
     return LayoutBuilder(
       builder: (context, pageConstraints) => AppPage(
         demoLabel: '设计样例 · 演示数据',

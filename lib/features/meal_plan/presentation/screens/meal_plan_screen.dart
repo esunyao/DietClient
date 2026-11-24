@@ -1,56 +1,59 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:diet_ui/diet_ui.dart';
-import 'package:diet_client/core/presentation/app_routes.dart';
-import 'package:diet_client/demo/demo_store.dart';
-import 'package:diet_client/core/config/ui_preview_config.dart';
-import 'package:diet_client/core/presentation/unsupported_feature_page.dart';
 
+import '../../../../core/config/ui_preview_config.dart';
+import '../../../../core/presentation/navigation_manager.dart';
+import '../../../../core/presentation/unsupported_feature_page.dart';
+import '../../../../demo/demo_store.dart';
 import '../widgets/meal_plan_widgets.dart';
 
-/// @brief 配餐推荐页面组件。
-/// @details 组合配餐演示与共享计划状态；原生营养模式下显示暂未支持页面。
+/// 配餐推荐页面，演示模式下支持方案切换与加入晚餐计划，原生模式显示暂未支持。
 class MealPlanScreen extends ConsumerWidget {
   const MealPlanScreen({super.key});
 
-  /// @brief 打开套餐替换底部弹层并在确认后切换演示配餐方案。
-  /// @details 弹层返回套餐 ID 后切换整个演示方案；取消弹层时不修改当前选择。
-  /// @param context 当前构建上下文。
-  /// @param ref Riverpod 组件引用。
-  Future<void> _replace(BuildContext context, WidgetRef ref) async {
+  Future<void> _replacePlan(BuildContext context, WidgetRef ref) async {
     final selected = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '换一个菜',
-                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                const Text('选择另一个完整套餐示例，预计营养与制作时间一并更新；单菜替换需核对配方。'),
-                for (final plan in demoPlans)
-                  ListTile(
-                    title: Text(plan.name),
-                    subtitle: Text(
-                      '${formatAmount(plan.energy)} kcal · 蛋白质 ${formatAmount(plan.protein)} g',
-                    ),
-                    onTap: () => Navigator.pop(context, plan.id),
-                  ),
-              ],
+      builder: _buildReplacePlanSheet,
+    );
+    if (selected != null) {
+      ref.read(demoProvider.notifier).selectPlan(selected);
+    }
+  }
+
+  Widget _buildReplacePlanSheet(BuildContext sheetContext) => SafeArea(
+    child: SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '换一个菜',
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
             ),
-          ),
+            const SizedBox(height: 12),
+            const Text('选择另一个完整套餐示例，预计营养与制作时间一并更新；单菜替换需核对配方。'),
+            for (final plan in demoPlans)
+              ListTile(
+                title: Text(plan.name),
+                subtitle: Text(
+                  '${formatAmount(plan.energy)} kcal · 蛋白质 ${formatAmount(plan.protein)} g',
+                ),
+                onTap: () => Navigator.pop(sheetContext, plan.id),
+              ),
+          ],
         ),
       ),
-    );
-    if (selected != null) ref.read(demoProvider.notifier).selectPlan(selected);
+    ),
+  );
+
+  void _handleSavePlan(BuildContext context, WidgetRef ref) {
+    ref.read(demoProvider.notifier).savePlan();
+    showDemoMessage(context, '晚餐计划已在本次演示中更新，未增加实际摄入。');
   }
 
   @override
@@ -62,62 +65,24 @@ class MealPlanScreen extends ConsumerWidget {
         showBack: false,
       );
     }
-    // 方案、今日汇总和分析中餐数均来自演示状态，不是实时生成结果。
     final state = ref.watch(demoProvider);
     final plan = state.selectedPlan;
     final analyzing = state.todayMeals
         .where((meal) => meal.status == AnalysisStatus.analyzing)
         .length;
+    final navigation = ref.read(navigationManagerProvider);
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        // 此断点控制页面文案和内部排布；主侧栏组合交给 AdaptiveColumns。
         final wide = constraints.maxWidth >= 1024;
-        // 保存只更新演示计划状态，不把预计营养计入实际摄入。
-        final save = AppButton(
+        final saveButton = AppButton(
           label: state.planSaved ? '已加入晚餐计划（演示）' : '加入晚餐计划',
           onPressed: state.planSaved
               ? null
-              : () {
-                  ref.read(demoProvider.notifier).savePlan();
-                  showDemoMessage(context, '晚餐计划已在本次演示中更新，未增加实际摄入。');
-                },
+              : () => _handleSavePlan(context, ref),
         );
-        final nutrition = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!wide)
-              const Text(
-                '预计营养',
-                style: TextStyle(fontSize: 12, color: AppColors.muted),
-              ),
-            Wrap(
-              spacing: wide ? 8 : 24,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  '${wide ? '预计营养 ' : ''}${formatAmount(plan.energy)} kcal',
-                  style: TextStyle(
-                    fontSize: wide ? 16 : 20,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  '${wide ? '· ' : ''}蛋白质 ${formatAmount(plan.protein)} g',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: wide ? AppColors.ink : AppColors.muted,
-                    fontWeight: wide ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '方案仅供参考，加入计划不计入已摄入',
-              style: TextStyle(fontSize: 12, color: AppColors.muted),
-            ),
-          ],
-        );
+        final nutrition = _PlanNutritionPreview(plan: plan, wide: wide);
+
         return AppPage(
           demoLabel: '设计样例 · 演示数据',
           title: wide ? '下一餐，选一个合适的搭配' : '下一餐怎么吃',
@@ -149,33 +114,15 @@ class MealPlanScreen extends ConsumerWidget {
                     SectionHeading(
                       title: plan.name,
                       detail: wide ? '替换菜品' : '换一个菜',
-                      onTap: () => _replace(context, ref),
+                      onTap: () => _replacePlan(context, ref),
                     ),
                     const SizedBox(height: 10),
                     PlanDishes(plan: plan, wide: wide),
                     const SizedBox(height: 16),
                     if (wide)
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (constraints.maxWidth < 650 ||
-                              MediaQuery.textScalerOf(context).scale(14) > 20) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                nutrition,
-                                const SizedBox(height: 16),
-                                save,
-                              ],
-                            );
-                          }
-                          return Row(
-                            children: [
-                              Expanded(child: nutrition),
-                              const SizedBox(width: 20),
-                              SizedBox(width: 238, child: save),
-                            ],
-                          );
-                        },
+                      _WidePlanActionBar(
+                        nutrition: nutrition,
+                        saveButton: saveButton,
                       )
                     else ...[
                       Padding(
@@ -183,7 +130,7 @@ class MealPlanScreen extends ConsumerWidget {
                         child: nutrition,
                       ),
                       const SizedBox(height: 16),
-                      save,
+                      saveButton,
                     ],
                   ],
                 ),
@@ -192,11 +139,11 @@ class MealPlanScreen extends ConsumerWidget {
                 PlanReasonCard(
                   reason: plan.reason,
                   wide: wide,
-                  onHealthRecords: () => context.push(AppRoutes.healthRecords),
+                  onHealthRecords: () => navigation.openHealthRecords(context),
                 ),
                 PlanMenuCard(
                   wide: wide,
-                  onMenu: () => context.push(AppRoutes.institutionMenu),
+                  onMenu: () => navigation.openInstitutionMenu(context),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -213,7 +160,7 @@ class MealPlanScreen extends ConsumerWidget {
                   AppButton(
                     label: '查看机构餐食同步',
                     secondary: true,
-                    onPressed: () => context.push(AppRoutes.institutionSync),
+                    onPressed: () => navigation.openInstitutionSync(context),
                   ),
               ],
             ),
@@ -222,4 +169,76 @@ class MealPlanScreen extends ConsumerWidget {
       },
     );
   }
+}
+
+class _PlanNutritionPreview extends StatelessWidget {
+  const _PlanNutritionPreview({required this.plan, required this.wide});
+
+  final PlanOption plan;
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (!wide)
+        const Text(
+          '预计营养',
+          style: TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
+      Wrap(
+        spacing: wide ? 8 : 24,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            '${wide ? '预计营养 ' : ''}${formatAmount(plan.energy)} kcal',
+            style: TextStyle(
+              fontSize: wide ? 16 : 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            '${wide ? '· ' : ''}蛋白质 ${formatAmount(plan.protein)} g',
+            style: TextStyle(
+              fontSize: 14,
+              color: wide ? AppColors.ink : AppColors.muted,
+              fontWeight: wide ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        '方案仅供参考，加入计划不计入已摄入',
+        style: TextStyle(fontSize: 12, color: AppColors.muted),
+      ),
+    ],
+  );
+}
+
+class _WidePlanActionBar extends StatelessWidget {
+  const _WidePlanActionBar({required this.nutrition, required this.saveButton});
+
+  final Widget nutrition;
+  final Widget saveButton;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth < 650 ||
+          MediaQuery.textScalerOf(context).scale(14) > 20) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [nutrition, const SizedBox(height: 16), saveButton],
+        );
+      }
+      return Row(
+        children: [
+          Expanded(child: nutrition),
+          const SizedBox(width: 20),
+          SizedBox(width: 238, child: saveButton),
+        ],
+      );
+    },
+  );
 }

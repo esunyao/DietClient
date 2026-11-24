@@ -1,22 +1,18 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../demo/demo_store.dart';
 
-/// @brief 格式化首页展示用的营养数值。
-/// @details 未知数值显示破折号，并为有效格式化结果添加千位分隔符。
-/// @param value 待格式化的数值，可为 null。
-/// @return 格式化后的展示字符串。
+/// 格式化首页营养展示数值，未知显示 `—` 并添加千位分隔符。
 String homeAmount(double? value) => formatAmount(
   value,
   unknown: '—',
 ).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
-/// @brief 首页营养摘要卡片组件。
-/// @details 展示演示快照的今日合计及分析状态数量；宽窄布局切换不改变统计来源。
-class HomeNutritionSummary extends StatelessWidget {
+/// 首页今日营养摘要卡片，展示已分析与分析中餐次统计及设置目标入口。
+class HomeNutritionSummary extends ConsumerWidget {
   const HomeNutritionSummary({
     super.key,
     required this.data,
@@ -27,7 +23,7 @@ class HomeNutritionSummary extends StatelessWidget {
   final bool wide;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final meals = data.todayMeals;
     final ready = meals
         .where((meal) => meal.confirmed && meal.status == AnalysisStatus.ready)
@@ -37,29 +33,10 @@ class HomeNutritionSummary extends StatelessWidget {
         .length;
     final summary = '$ready餐已分析 · $analyzing餐分析中';
     final total = data.todayTotal;
-    final energy = Wrap(
-      crossAxisAlignment: WrapCrossAlignment.end,
-      spacing: 8,
-      children: [
-        Text(
-          homeAmount(total.energy),
-          style: const TextStyle(
-            fontSize: 39,
-            fontWeight: FontWeight.w700,
-            height: 1.2,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.only(bottom: 5),
-          child: Text(
-            'kcal',
-            style: TextStyle(color: AppColors.muted, fontSize: 14),
-          ),
-        ),
-      ],
-    );
-    final target = FilledButton(
+    final navigation = ref.read(navigationManagerProvider);
+
+    final energy = _EnergyReadout(energy: total.energy);
+    final targetButton = FilledButton(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.greenSoft,
         foregroundColor: AppColors.primary,
@@ -67,25 +44,11 @@ class HomeNutritionSummary extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
       ),
-      onPressed: () => context.push(AppRoutes.healthRecords),
+      onPressed: () => navigation.openHealthRecords(context),
       child: const Text('设置目标'),
     );
-    final nutrients = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: _Nutrient(label: '蛋白质', value: total.protein),
-        ),
-        if (wide) const _NutrientDivider(),
-        Expanded(
-          child: _Nutrient(label: '碳水', value: total.carbs),
-        ),
-        if (wide) const _NutrientDivider(),
-        Expanded(
-          child: _Nutrient(label: '脂肪', value: total.fat),
-        ),
-      ],
-    );
+    final nutrients = _SummaryMacroRow(total: total, wide: wide);
+
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: wide ? 210 : 220),
       child: AppCard(
@@ -143,14 +106,18 @@ class HomeNutritionSummary extends StatelessWidget {
                       MediaQuery.textScalerOf(context).scale(14) > 18) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [energy, const SizedBox(height: 8), target],
+                      children: [
+                        energy,
+                        const SizedBox(height: 8),
+                        targetButton,
+                      ],
                     );
                   }
                   return Row(
                     children: [
                       Expanded(child: energy),
                       const SizedBox(width: 8),
-                      target,
+                      targetButton,
                     ],
                   );
                 },
@@ -173,30 +140,7 @@ class HomeNutritionSummary extends StatelessWidget {
                 children: [
                   Expanded(child: energy),
                   const SizedBox(width: 20),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '膳食评价',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 14,
-                            height: 1.2,
-                          ),
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          '暂未评估',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 18,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const Expanded(child: _WideEvaluationPlaceholder()),
                 ],
               ),
               const SizedBox(height: 8),
@@ -215,7 +159,7 @@ class HomeNutritionSummary extends StatelessWidget {
                   ),
                   TextButton(
                     style: TextButton.styleFrom(minimumSize: const Size(0, 44)),
-                    onPressed: () => context.push(AppRoutes.healthRecords),
+                    onPressed: () => navigation.openHealthRecords(context),
                     child: const Text('设置营养目标', style: TextStyle(fontSize: 13)),
                   ),
                 ],
@@ -228,8 +172,84 @@ class HomeNutritionSummary extends StatelessWidget {
   }
 }
 
+class _EnergyReadout extends StatelessWidget {
+  const _EnergyReadout({required this.energy});
+
+  final double? energy;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    crossAxisAlignment: WrapCrossAlignment.end,
+    spacing: 8,
+    children: [
+      Text(
+        homeAmount(energy),
+        style: const TextStyle(
+          fontSize: 39,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+          fontFeatures: [FontFeature.tabularFigures()],
+        ),
+      ),
+      const Padding(
+        padding: EdgeInsets.only(bottom: 5),
+        child: Text(
+          'kcal',
+          style: TextStyle(color: AppColors.muted, fontSize: 14),
+        ),
+      ),
+    ],
+  );
+}
+
+class _WideEvaluationPlaceholder extends StatelessWidget {
+  const _WideEvaluationPlaceholder();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [
+      Text(
+        '膳食评价',
+        style: TextStyle(color: AppColors.muted, fontSize: 14, height: 1.2),
+      ),
+      SizedBox(height: 5),
+      Text(
+        '暂未评估',
+        style: TextStyle(color: AppColors.muted, fontSize: 18, height: 1.2),
+      ),
+    ],
+  );
+}
+
+class _SummaryMacroRow extends StatelessWidget {
+  const _SummaryMacroRow({required this.total, required this.wide});
+
+  final Nutrients total;
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: _Nutrient(label: '蛋白质', value: total.protein),
+      ),
+      if (wide) const _NutrientDivider(),
+      Expanded(
+        child: _Nutrient(label: '碳水', value: total.carbs),
+      ),
+      if (wide) const _NutrientDivider(),
+      Expanded(
+        child: _Nutrient(label: '脂肪', value: total.fat),
+      ),
+    ],
+  );
+}
+
 class _Nutrient extends StatelessWidget {
   const _Nutrient({required this.label, required this.value});
+
   final String label;
   final double? value;
 
@@ -283,10 +303,8 @@ class _NutrientDivider extends StatelessWidget {
   );
 }
 
-/// @brief 首页今日餐食列表组件。
-/// @details 展示调用方提供的餐食，支持覆盖来源与逐餐状态标签并跳转历史或详情；空列表由此组件展示空态。
-/// @note 餐盘为示意插画，不读取真实餐食照片。
-class HomeMeals extends StatelessWidget {
+/// 首页今日餐食列表，展示餐食卡片与历史/详情入口；餐盘插画仅为示意。
+class HomeMeals extends ConsumerWidget {
   const HomeMeals({
     super.key,
     required this.meals,
@@ -294,13 +312,14 @@ class HomeMeals extends StatelessWidget {
     this.sourceLabel,
     this.statusLabels,
   });
+
   final List<MealEntry> meals;
   final bool wide;
   final String? sourceLabel;
   final Map<String, String>? statusLabels;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context, WidgetRef ref) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Row(
@@ -315,7 +334,8 @@ class HomeMeals extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () => context.push(AppRoutes.mealHistory),
+            onPressed: () =>
+                ref.read(navigationManagerProvider).openMealHistory(context),
             style: TextButton.styleFrom(
               padding: EdgeInsets.zero,
               minimumSize: const Size(80, 44),
@@ -329,7 +349,7 @@ class HomeMeals extends StatelessWidget {
                 ),
                 if (!wide) ...[
                   const SizedBox(width: 4),
-                  Icon(AppIcons.chevronRight, size: 14),
+                  const Icon(AppIcons.chevronRight, size: 14),
                 ],
               ],
             ),
@@ -377,22 +397,24 @@ class HomeMeals extends StatelessWidget {
   );
 }
 
-class _MealTile extends StatelessWidget {
+class _MealTile extends ConsumerWidget {
   const _MealTile({
     required this.meal,
     this.wide = false,
     this.sourceLabel,
     this.statusLabel,
   });
+
   final MealEntry meal;
   final bool wide;
-  final String? sourceLabel, statusLabel;
+  final String? sourceLabel;
+  final String? statusLabel;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final time =
-        '${meal.consumedAt.hour.toString().padLeft(2, '0')}:${meal.consumedAt.minute.toString().padLeft(2, '0')}';
-    // 未确认状态优先显示；能量仅在展示模型的分析状态为 ready 时显示。
+        '${meal.consumedAt.hour.toString().padLeft(2, '0')}:'
+        '${meal.consumedAt.minute.toString().padLeft(2, '0')}';
     final ready = meal.status == AnalysisStatus.ready;
     final amount = ready
         ? '${homeAmount(meal.nutrients.energy)} kcal'
@@ -454,8 +476,10 @@ class _MealTile extends StatelessWidget {
         height: 1.2,
       ),
     );
+
     return InkWell(
-      onTap: () => context.push(AppRoutes.mealDetail(meal.id)),
+      onTap: () =>
+          ref.read(navigationManagerProvider).openMealDetail(context, meal.id),
       borderRadius: BorderRadius.circular(wide ? 12 : 16),
       child: Padding(
         padding: wide
