@@ -7,10 +7,10 @@ import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 export 'package:diet_ui/diet_ui.dart' show GlassMode;
 
+/// 饮食历史列表的展示布局模式。
 enum MealHistoryLayout { compact, photoCard }
 
-/// @brief 外观偏好选择及其读写状态模型。
-/// @details copyWith 复制选择项并重置加载、保存和错误状态。
+/// 外观偏好选择及其读写状态模型。
 class UiPreferences {
   const UiPreferences({
     this.loading = false,
@@ -28,6 +28,11 @@ class UiPreferences {
   final bool reduceMotion;
   final GlassMode glassMode;
   final MealHistoryLayout mealHistoryLayout;
+
+  /// 是否正在读取或保存本机偏好。
+  bool get isBusy => loading || saving;
+
+  /// 复制更新后的外观选择项并重置加载、保存与错误标记。
   UiPreferences copyWith({
     bool? reduceTransparency,
     bool? reduceMotion,
@@ -41,13 +46,13 @@ class UiPreferences {
   );
 }
 
-/// @brief 外观偏好 JSON 的异步存储边界接口。
-/// @note 不用于保存会话或健康资料。
+/// 外观偏好 JSON 的异步存储边界接口（不用于保存会话或健康资料）。
 abstract interface class UiPreferenceStorage {
   Future<String?> read();
   Future<void> write(String value);
 }
 
+/// 基于 `SharedPreferencesAsync` 的本机外观偏好存储实现。
 class SharedUiPreferenceStorage implements UiPreferenceStorage {
   final SharedPreferencesAsync _preferences = SharedPreferencesAsync();
   static const key = 'diet.appearance.v1';
@@ -57,20 +62,20 @@ class SharedUiPreferenceStorage implements UiPreferenceStorage {
   Future<void> write(String value) => _preferences.setString(key, value);
 }
 
-/// @brief 当前平台是否持久化外观偏好的 Provider。
-/// @details 仅 Android 和 Windows 非 Web 端持久化，其余平台只保留内存选择。
+/// 当前平台是否启用本机持久化外观偏好（仅 Android 与 Windows 非 Web 端）。
 final persistentUiPreferencesProvider = Provider<bool>(
   (ref) =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.windows),
 );
+
+/// 外观偏好存储适配器 Provider。
 final uiPreferenceStorageProvider = Provider<UiPreferenceStorage>(
   (ref) => SharedUiPreferenceStorage(),
 );
 
-/// @brief 外观偏好状态控制器。
-/// @details 管理外观读取和保存；持久化平台在初始化时异步加载本地设置。
+/// 外观偏好状态控制器；持久化平台初始化时异步读取本机设置。
 class UiPreferencesController extends Notifier<UiPreferences> {
   bool _loading = false;
   @override
@@ -97,8 +102,7 @@ class UiPreferencesController extends Notifier<UiPreferences> {
     error: error,
   );
 
-  /// @brief 重新读取本地持久化的外观偏好。
-  /// @details 读取或保存进行中不重复加载；失败时保留当前值并暴露重试提示。
+  /// 重新读取本机持久化的外观偏好；读写进行中不重复加载。
   Future<void> reload() async {
     if (!ref.mounted || _loading || state.saving) return;
     if (!ref.read(persistentUiPreferencesProvider)) return;
@@ -130,7 +134,7 @@ class UiPreferencesController extends Notifier<UiPreferences> {
             );
           }
         } on FormatException {
-          /* Invalid local appearance falls back to defaults. */
+          // 无效的本机外观记录回退到默认配置。
         }
       }
       if (ref.mounted) state = prefs;
@@ -141,9 +145,7 @@ class UiPreferencesController extends Notifier<UiPreferences> {
     }
   }
 
-  /// @brief 保存外观偏好并在持久化成功后更新状态。
-  /// @details 失败时恢复此前选择；异步完成后仅在控制器仍挂载时更新状态。
-  /// @param next 待保存的新外观偏好快照。
+  /// 保存新外观偏好并在持久化成功后更新状态；失败时恢复此前选择。
   Future<void> _save(UiPreferences next) async {
     if (state.loading || state.saving) return;
     final previous = state;

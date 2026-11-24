@@ -4,8 +4,7 @@ import 'package:dio/dio.dart';
 
 import 'api_client.dart';
 
-/// @brief Isolated HTTP reader for fetching object-storage photos.
-/// @note Object GETs never share API authentication, cookies, or interceptors.
+/// 对象存储照片只读下载器；独立于业务 API 客户端，不发送鉴权头或 Cookie。
 class ObjectImageReader {
   ObjectImageReader({HttpClientAdapter? adapter})
     : _dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 30))) {
@@ -15,12 +14,7 @@ class ObjectImageReader {
   static const maxBytes = 10 * 1024 * 1024;
   final Dio _dio;
 
-  /// @brief 从对象地址读取照片字节。
-  /// @details 允许 HTTPS 或回环 HTTP，拒绝自动重定向；非 200 状态保留在 ApiFailure 中供上层判断。
-  /// @param url 对象存储照片下载地址。
-  /// @param cancelToken 可选取消令牌。
-  /// @return 读取并校验大小后的图片字节数据。
-  /// @throws ApiFailure 当地址无效、请求失败、响应状态非 200 或超过大小上限时抛出。
+  /// 从预签名地址读取并校验图片字节；允许 HTTPS 或回环 HTTP，拒绝重定向与超限流。
   Future<Uint8List> read({
     required String url,
     CancelToken? cancelToken,
@@ -102,8 +96,7 @@ class ObjectImageReader {
     } catch (_) {
       throw const ApiFailure('照片响应不可用，请稍后重试');
     } finally {
-      // Cancel the transport too: abandoning a buffered stream alone need not
-      // stop the adapter's upstream subscription.
+      // 必须同步取消传输层，避免仅放弃流读取时底层适配器仍持续拉取数据。
       requestCancel.cancel();
       await requestCancel.whenCancel;
       if (body != null && !streamStarted) {
@@ -112,7 +105,7 @@ class ObjectImageReader {
     }
   }
 
-  /// @brief 关闭独立 Dio 实例并强制终止其未完成请求。
+  /// 关闭独立 Dio 实例并强制终止其未完成请求。
   void close() => _dio.close(force: true);
 }
 

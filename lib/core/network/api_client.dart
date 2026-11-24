@@ -7,27 +7,30 @@ import '../config/ui_preview_config.dart';
 import '../session/session_controller.dart';
 import 'lossless_json.dart';
 
-/// @brief 业务 API 请求失败异常。
-/// @details 使用本地提示表示请求失败，并分别保留可用的 HTTP 状态码和业务信封 code。
+/// 业务 API 请求失败异常，保留面向用户的本地安全提示、HTTP 状态码与业务信封 `code`。
 class ApiFailure implements Exception {
   const ApiFailure(this.message, {this.status, this.code});
+
   final String message;
   final int? status;
   final int? code;
+
   @override
   String toString() => message;
 }
 
+/// 业务 API 基址配置 Provider。
 final apiConfigProvider = Provider<ApiConfig>(
   (ref) => ApiConfig(const String.fromEnvironment('API_BASE_URL')),
 );
+
+/// 业务请求底层 Dio 工厂 Provider（便于离线测试替换适配器）。
 final apiDioFactoryProvider = Provider<Dio Function()>(
   (ref) =>
       () => Dio(BaseOptions(connectTimeout: const Duration(seconds: 30))),
 );
 
-/// @brief 当前登录会话的业务 API 客户端 Provider。
-/// @details 预览或无会话时不创建业务客户端；按稳定登录代次隔离，令牌轮换不重建客户端。Provider 释放时关闭 Dio，换号后的回调和结果由代次检查拦截。
+/// 当前登录会话的业务 API 客户端 Provider；预览或未登录返回 `null`，按登录代次隔离。
 final apiClientProvider = Provider<ApiClient?>((ref) {
   final epoch = ref.watch(sessionEpochProvider);
   final present = ref.watch(sessionProvider.select((value) => value != null));
@@ -52,6 +55,7 @@ final apiClientProvider = Provider<ApiClient?>((ref) {
   return client;
 });
 
+/// 业务 HTTP 薄客户端，负责路径白名单校验、Bearer 鉴权、长整型 ID 保护与 GET 401 续期重试。
 class ApiClient {
   ApiClient({
     required this.config,
@@ -63,6 +67,14 @@ class ApiClient {
     this.currentAccessToken,
   }) : _dio =
            dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 30)));
+
+  static final RegExp _profilePathPattern = RegExp(
+    r'^v1/(users/self(?:/[a-z-]+(?:/[0-9]+)?)?|files/avatar(?:/(presign|confirm))?)$',
+  );
+  static final RegExp _nutriPathPattern = RegExp(
+    r'^v1/nutri/(capture-policy|capture-sessions(?:/drafts|/[0-9a-fA-F-]{36}(?:/(?:images/presign|images/[0-9]+(?:/confirm)?|submit|retry))?)?|meals(?:/[0-9]+)?|summaries/(?:daily|daily-trend))$',
+  );
+
   final ApiConfig config;
   final OidcSession session;
   final bool Function() isCurrent;
@@ -70,18 +82,11 @@ class ApiClient {
   final Dio _dio;
   final Future<String> Function({bool force})? freshToken;
   final String? Function()? currentAccessToken;
+
+  /// 关闭底层 Dio 并强制终止未完成请求。
   void close() => _dio.close(force: true);
 
-  /// @brief 请求允许的资料或膳食相对路径，附带当前 Bearer 令牌。
-  /// @details 支持调用方取消；HTTP 或业务 code 401 时仅 GET 最多续期重试一次，写请求不自动重放。
-  /// @param path 允许范围内的业务相对路径。
-  /// @param method HTTP 请求方法，默认为 GET。
-  /// @param data 可选请求体数据。
-  /// @param queryParameters 可选查询参数映射。
-  /// @param headers 可选额外请求头。
-  /// @param cancelToken 可选请求取消令牌。
-  /// @return 成功业务信封中的 data 数据。
-  /// @throws ApiFailure 当路径受限、会话失效、请求失败或业务返回非成功状态码时抛出。
+  /// 请求允许范围内的资料或膳食相对路径并解包业务信封 `data`；GET 在 401 时最多续期重试一次。
   Future<Object?> request(
     String path, {
     String method = 'GET',
@@ -90,108 +95,156 @@ class ApiClient {
     Map<String, String>? headers,
     CancelToken? cancelToken,
   }) async {
-    // 限制目标路径和额外请求头，避免将业务凭据发送到任意接口。
-    final profilePath = RegExp(
-      r'^v1/(users/self(?:/[a-z-]+(?:/[0-9]+)?)?|files/avatar(?:/(presign|confirm))?)$',
-    ).hasMatch(path);
-    final nutriPath = RegExp(
-      r'^v1/nutri/(capture-policy|capture-sessions(?:/drafts|/[0-9a-fA-F-]{36}(?:/(?:images/presign|images/[0-9]+(?:/confirm)?|submit|retry))?)?|meals(?:/[0-9]+)?|summaries/(?:daily|daily-trend))$',
-    ).hasMatch(path);
-    if ((!profilePath && !nutriPath) ||
-        (headers?.keys.any((key) => key.toLowerCase() != 'x-idempotency-key') ??
-            false)) {
-      throw const ApiFailure('请求路径不可用');
-    }
+    _validateRequestScope(path, headers);
     if (!isCurrent() || (freshToken == null && !hasActiveSession(session))) {
       throw const ApiFailure('请重新登录');
     }
-    // 每次发送前取得待用令牌，并在等待令牌及响应后检查账户代次。
-    Future<Object?> send(bool retry, {bool forceRefresh = false}) async {
-      String? usedToken;
-      try {
-        final token = freshToken == null
-            ? session.accessToken
-            : await freshToken!(force: forceRefresh);
-        usedToken = token;
-        if (!isCurrent()) throw const ApiFailure('会话已更换');
-        final response = await _dio.request<String>(
-          config.baseUrl.resolve(path).toString(),
+    return _sendRequest(
+      path: path,
+      method: method,
+      data: data,
+      queryParameters: queryParameters,
+      headers: headers,
+      cancelToken: cancelToken,
+      retried: false,
+      forceRefresh: false,
+    );
+  }
+
+  void _validateRequestScope(String path, Map<String, String>? headers) {
+    final allowedPath =
+        _profilePathPattern.hasMatch(path) || _nutriPathPattern.hasMatch(path);
+    final hasDisallowedHeader =
+        headers?.keys.any((key) => key.toLowerCase() != 'x-idempotency-key') ??
+        false;
+    if (!allowedPath || hasDisallowedHeader) {
+      throw const ApiFailure('请求路径不可用');
+    }
+  }
+
+  Future<Object?> _sendRequest({
+    required String path,
+    required String method,
+    required Object? data,
+    required Map<String, dynamic>? queryParameters,
+    required Map<String, String>? headers,
+    required CancelToken? cancelToken,
+    required bool retried,
+    required bool forceRefresh,
+  }) async {
+    String? usedToken;
+    try {
+      final token = freshToken == null
+          ? session.accessToken
+          : await freshToken!(force: forceRefresh);
+      usedToken = token;
+      if (!isCurrent()) throw const ApiFailure('会话已更换');
+      final response = await _dio.request<String>(
+        config.baseUrl.resolve(path).toString(),
+        data: data,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+        options: Options(
+          method: method,
+          responseType: ResponseType.plain,
+          followRedirects: false,
+          receiveTimeout: const Duration(seconds: 30),
+          sendTimeout: const Duration(seconds: 30),
+          headers: {
+            ...?headers,
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      if (!isCurrent()) throw const ApiFailure('会话已更换');
+      final envelope =
+          decodeApiJson(response.data ?? '') as Map<String, dynamic>;
+      final code = envelope['code'];
+      if (code != 200 && code != 201 && code != 202 && code != 204) {
+        throw ApiFailure(
+          _failureMessage(code is int ? code : null),
+          status: response.statusCode,
+          code: code is int ? code : null,
+        );
+      }
+      return envelope['data'];
+    } on DioException catch (error) {
+      if (!isCurrent()) throw const ApiFailure('会话已更换');
+      final status = error.response?.statusCode;
+      if (status == 401) {
+        final retryResult = await _handleUnauthorized(
+          path: path,
+          method: method,
           data: data,
           queryParameters: queryParameters,
+          headers: headers,
           cancelToken: cancelToken,
-          options: Options(
-            method: method,
-            responseType: ResponseType.plain,
-            followRedirects: false,
-            receiveTimeout: const Duration(seconds: 30),
-            sendTimeout: const Duration(seconds: 30),
-            headers: {
-              ...?headers,
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-          ),
+          retried: retried,
+          usedToken: usedToken,
         );
-        if (!isCurrent()) throw const ApiFailure('会话已更换');
-        // 先保护长整型业务 ID 再解码信封；只返回成功信封的 data。
-        final envelope =
-            decodeApiJson(response.data ?? '') as Map<String, dynamic>;
-        if (envelope['code'] != 200 &&
-            envelope['code'] != 201 &&
-            envelope['code'] != 202 &&
-            envelope['code'] != 204) {
-          final code = envelope['code'];
-          throw ApiFailure(
-            _failureMessage(code is int ? code : null),
-            status: response.statusCode,
-            code: code is int ? code : null,
-          );
-        }
-        return envelope['data'];
-      } on DioException catch (e) {
-        if (!isCurrent()) throw const ApiFailure('会话已更换');
-        final status = e.response?.statusCode;
-        // HTTP 401 与下方业务 code 401 共用重试策略；已有新令牌时无需强制再次续期。
-        if (status == 401 && isCurrent()) {
-          if (method.toUpperCase() == 'GET' && !retry && freshToken != null) {
-            final current = await freshToken!(force: false);
-            return send(true, forceRefresh: current == usedToken);
-          }
-          final currentToken = currentAccessToken?.call();
-          // A late rejection for a rotated token must not clear its successor.
-          if (currentToken == null || currentToken == usedToken) {
-            onUnauthorized();
-          }
-        }
-        throw ApiFailure(
-          status == null ? _transportMessage(e.type) : _failureMessage(status),
-          status: status,
-        );
-      } on ApiFailure catch (e) {
-        if (e.code == 401 && isCurrent()) {
-          if (method.toUpperCase() == 'GET' && !retry && freshToken != null) {
-            final current = await freshToken!(force: false);
-            return send(true, forceRefresh: current == usedToken);
-          }
-          final currentToken = currentAccessToken?.call();
-          if (currentToken == null || currentToken == usedToken) {
-            onUnauthorized();
-          }
-        }
-        rethrow;
-      } catch (_) {
-        throw const ApiFailure('服务响应不可用，请重试');
+        if (retryResult.$1) return retryResult.$2;
       }
+      throw ApiFailure(
+        status == null
+            ? _transportMessage(error.type)
+            : _failureMessage(status),
+        status: status,
+      );
+    } on ApiFailure catch (error) {
+      if (error.code == 401) {
+        final retryResult = await _handleUnauthorized(
+          path: path,
+          method: method,
+          data: data,
+          queryParameters: queryParameters,
+          headers: headers,
+          cancelToken: cancelToken,
+          retried: retried,
+          usedToken: usedToken,
+        );
+        if (retryResult.$1) return retryResult.$2;
+      }
+      rethrow;
+    } catch (_) {
+      throw const ApiFailure('服务响应不可用，请重试');
     }
+  }
 
-    return send(false);
+  Future<(bool, Object?)> _handleUnauthorized({
+    required String path,
+    required String method,
+    required Object? data,
+    required Map<String, dynamic>? queryParameters,
+    required Map<String, String>? headers,
+    required CancelToken? cancelToken,
+    required bool retried,
+    required String? usedToken,
+  }) async {
+    if (!isCurrent()) return (false, null);
+    if (method.toUpperCase() == 'GET' && !retried && freshToken != null) {
+      final current = await freshToken!(force: false);
+      final value = await _sendRequest(
+        path: path,
+        method: method,
+        data: data,
+        queryParameters: queryParameters,
+        headers: headers,
+        cancelToken: cancelToken,
+        retried: true,
+        forceRefresh: current == usedToken,
+      );
+      return (true, value);
+    }
+    final currentToken = currentAccessToken?.call();
+    // 迟到的旧令牌 401 不应清除已经完成轮换的新令牌。
+    if (currentToken == null || currentToken == usedToken) {
+      onUnauthorized();
+    }
+    return (false, null);
   }
 }
 
-/// @brief 将 HTTP 或业务错误码映射为本地安全提示。
-/// @details 只使用本地提示，避免直接暴露服务端 message 中可能包含的内部细节或用户输入。
-/// @param code HTTP 状态码或业务信封错误码。
-/// @return 面向用户的错误提示字符串。
 String _failureMessage(int? code) => switch (code ?? 0) {
   400 || 422 => '提交内容不符合要求，请检查填写的信息后重试',
   401 => '登录已失效，请重新登录',

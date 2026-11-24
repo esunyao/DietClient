@@ -6,8 +6,7 @@ import '../data/nutri_models.dart';
 import '../../network/api_client.dart';
 import '../../network/object_upload.dart';
 
-/// @brief NutriMemo 用户侧采集、餐食和营养汇总接口的薄封装。
-/// @details 业务请求经 ApiClient 发送，对象上传交给独立上传器；不提供演示数据。
+/// NutriMemo 用户侧采集、餐食与营养汇总接口客户端；业务请求走 [ApiClient]，图片上传走 [ObjectUploader]。
 class NutriApi {
   NutriApi(this.client, {ObjectUploader? uploader})
     : _uploader = uploader ?? ObjectUploader();
@@ -15,11 +14,6 @@ class NutriApi {
   final ObjectUploader _uploader;
   static const _base = 'v1/nutri';
 
-  /// @brief 校验采集会话 UUID 并构造会话相对路径。
-  /// @details 路径中的采集会话使用 UUID，餐食和图片等记录使用原样数字字符串。
-  /// @param id 采集会话 UUID 字符串。
-  /// @return 采集会话相对路径。
-  /// @throws ApiFailure 当会话 ID 不符合 UUID 格式时抛出。
   String _capture(String id) {
     if (!RegExp(
       r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
@@ -54,12 +48,7 @@ class NutriApi {
   Future<CapturePolicy> capturePolicy() async =>
       CapturePolicy.fromJson(await _request('$_base/capture-policy'));
 
-  /// @brief 创建新的餐食采集会话。
-  /// @details 创建采集会话时发送调用方提供的 UUID 幂等键。
-  /// @param timezone 设备时区标识。
-  /// @param idempotencyKey 调用方提供的 UUID 幂等键。
-  /// @return 服务端创建的采集会话对象。
-  /// @throws ApiFailure 当幂等键非合法 UUID 或请求失败时抛出。
+  /// 创建新的餐食采集会话，使用调用方传入的 UUID 幂等键。
   Future<CaptureSession> createCaptureSession({
     required String timezone,
     required String idempotencyKey,
@@ -106,13 +95,7 @@ class NutriApi {
     ),
   );
 
-  /// @brief 使用预签名地址及指定请求头上传采集图片。
-  /// @details 上传前后检查客户端所属会话；取消令牌和进度回调透传给对象上传器，确认图片需另行调用。
-  /// @param image 包含预签名地址与必需请求头的对象。
-  /// @param bytes 图片原始字节数据。
-  /// @param cancelToken 可选取消令牌。
-  /// @param onProgress 可选上传进度回调。
-  /// @throws ApiFailure 当所属会话已更换时抛出。
+  /// 使用预签名地址 PUT 上传采集图片；上传前后校验会话代次，完成后需另行确认图片。
   Future<void> uploadImage(
     PresignedImage image,
     Uint8List bytes, {
@@ -180,15 +163,7 @@ class NutriApi {
   Future<Meal> meal(String id) async =>
       Meal.fromJson(await _request('$_base/meals/${_numeric(id)}'));
 
-  /// @brief 部分更新指定餐食的基础字段。
-  /// @details 未提供的字段在请求中省略，可在 notes 为 null 时用 clearNotes 显式清空备注。
-  /// @param id 餐食数字字符串 ID。
-  /// @param mealType 可选餐别。
-  /// @param consumedAt 可选用餐时刻。
-  /// @param timezone 可选时区标识。
-  /// @param notes 可选备注文本。
-  /// @param clearNotes 当 notes 为 null 时是否显式清空备注，默认为 false。
-  /// @return 更新后的餐食详情。
+  /// 局部更新餐食基础字段；[clearNotes] 为 `true` 时在 [notes] 为 `null` 的情况下显式清空备注。
   Future<Meal> patchMeal(
     String id, {
     String? mealType,
@@ -210,11 +185,7 @@ class NutriApi {
     ),
   );
 
-  /// @brief 提交完整修正内容以替换指定餐食的条目列表。
-  /// @param id 餐食数字字符串 ID。
-  /// @param correction 完整的餐食修正输入模型。
-  /// @return 替换条目后的最新餐食详情。
-  /// @note 调用方负责写入成功后的共享查询失效。
+  /// 提交完整修正内容以替换餐食菜品条目，调用方负责写入成功后的共享查询刷新。
   Future<Meal> replaceItems(String id, MealCorrection correction) async =>
       Meal.fromJson(
         await _request(
@@ -241,6 +212,6 @@ class NutriApi {
     ),
   );
 
-  /// @brief 释放本实例使用的独立对象上传器。
+  /// 释放独立对象上传器资源。
   void close() => _uploader.close();
 }

@@ -22,8 +22,7 @@ final objectImageReaderProvider = Provider.autoDispose<ObjectImageReader>((
   return reader;
 });
 
-/// @brief Per-meal photo metadata loader provider.
-/// @details One coordinator per listened meal; it retains metadata, never image bytes.
+/// 按餐食 ID 缓存的照片元数据加载器，仅保留元数据而不缓存图片字节。
 final _photoLoaderProvider = Provider.autoDispose.family<_PhotoLoader, String>((
   ref,
   id,
@@ -36,13 +35,12 @@ final _photoLoaderProvider = Provider.autoDispose.family<_PhotoLoader, String>((
   );
 });
 
-/// @brief 按餐食 ID 共享餐食照片元数据的 Provider。
-/// @details 通过餐食定位采集会话并共享照片元数据；失败不自动重试，异步返回后检查账户代次。
+/// 按餐食 ID 共享餐食照片元数据的 Provider；异步返回后检查登录代次。
 final mealPhotosProvider = FutureProvider.autoDispose
     .family<MealPhotoSet, String>((ref, id) async {
       final loader = ref.watch(_photoLoaderProvider(id));
       if (ref.read(mealProvider(id)).hasError) ref.invalidate(mealProvider(id));
-      // Analysis polling changes the meal, but not its capture session identity.
+      // 仅依赖 captureSessionId，避免分析轮询变更餐食其他字段时重建元数据查询。
       final captureId = await ref.watch(
         mealProvider(id).selectAsync((meal) => meal.captureSessionId),
       );
@@ -55,8 +53,7 @@ final mealPhotosProvider = FutureProvider.autoDispose
       return loader.fromSession(session);
     }, retry: (count, error) => null);
 
-/// @brief 按餐食与精确图片 ID 共享照片字节的 Provider。
-/// @details 最后监听结束时取消读取，且不随签名元数据更新重建字节。
+/// 按餐食与图片 ID 共享照片字节的 Provider；监听释放时取消传输，过期或 401/403 时最多刷新签名一次。
 final mealPhotoBytesProvider = FutureProvider.autoDispose
     .family<Uint8List, MealPhotoKey>((ref, key) async {
       final epoch = ref.watch(sessionEpochProvider);
@@ -64,7 +61,7 @@ final mealPhotoBytesProvider = FutureProvider.autoDispose
       final reader = ref.watch(objectImageReaderProvider);
       final cancel = CancelToken();
       ref.onDispose(() => cancel.cancel());
-      // Retain/reuse metadata without rebuilding bytes when signatures refresh.
+      // 保留元数据订阅以免重复销毁加载器，但字节加载不随签名刷新重建。
       ref.listen(mealPhotosProvider(key.mealId), (_, _) {});
       void checkCurrent() {
         if (!ref.mounted || ref.read(sessionEpochProvider) != epoch) {
@@ -129,10 +126,7 @@ class _PhotoLoader {
     if (!isCurrent()) throw const ApiFailure('会话已更换');
   }
 
-  /// @brief 从采集会话提取并构建照片元数据集合。
-  /// @details 仅收集已确认图片并按槽位排序；签名到期时间以采集响应接收时间为基准。
-  /// @param session 服务端采集会话模型。
-  /// @return 排序后的餐食照片集合。
+  /// 从采集会话提取并按槽位排序照片元数据；签名到期时间从响应接收时刻起算。
   MealPhotoSet fromSession(CaptureSession session) {
     checkCurrent();
     if (identical(session, _session)) return _latest!;
@@ -162,14 +156,11 @@ class _PhotoLoader {
     );
   }
 
-  /// @brief 刷新指定过期的照片集合签名快照。
-  /// @details 同一餐食并发签名刷新共用请求，并在已有较新快照时直接复用。
-  /// @param stale 需要刷新的过期照片集合快照。
-  /// @return 刷新后的最新照片集合。
+  /// 刷新已过期的照片集合签名；同一餐食并发刷新合并请求并在存在更新快照时直接复用。
   Future<MealPhotoSet> refresh(MealPhotoSet stale) async {
     checkCurrent();
     if (_refresh != null) return _refresh!;
-    // A concurrent photo may have already replaced the rejected snapshot.
+    // 并发照片请求可能已将过期快照替换为最新签名集合。
     if (_latest != null && !identical(stale, _latest)) return _latest!;
     final pending = _reload(stale.captureSessionId);
     _refresh = pending;

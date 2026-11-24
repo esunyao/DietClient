@@ -2,20 +2,12 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
-/// @brief Isolated HTTP uploader for presigned object-storage PUT requests.
-/// @note Dedicated client with no API interceptors, cookies, or bearer credentials.
+/// 预签名对象存储 PUT 上传器；独立于业务 API 客户端，不附带鉴权拦截器或 Cookie。
 class ObjectUploader {
   ObjectUploader({Dio? dio}) : _dio = dio ?? Dio();
   final Dio _dio;
 
-  /// @brief 向预签名对象地址 PUT 上传二进制字节。
-  /// @details 透传所需请求头、取消令牌和进度回调；仅允许 HTTPS 或回环 HTTP，拒绝敏感请求头和自动重定向。
-  /// @param url 目标预签名上传地址。
-  /// @param bytes 待上传的图片字节。
-  /// @param requiredHeaders 服务端签发要求的请求头集合。
-  /// @param cancelToken 可选取消令牌。
-  /// @param onProgress 可选上传进度回调。
-  /// @throws FormatException 当上传地址无效或包含被禁止的敏感请求头时抛出。
+  /// 向预签名地址上传二进制字节；拒绝非法地址、敏感请求头及自动重定向。
   Future<void> put({
     required String url,
     required Uint8List bytes,
@@ -55,6 +47,6 @@ class ObjectUploader {
     );
   }
 
-  /// @brief 关闭上传 Dio 实例并强制终止其未完成请求。
+  /// 关闭上传 Dio 实例并强制终止其未完成请求。
   void close() => _dio.close(force: true);
 }

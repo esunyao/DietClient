@@ -6,6 +6,7 @@ import '../network/api_client.dart';
 import '../config/ui_preview_config.dart';
 import '../session/session_controller.dart';
 
+/// 共享真实账户身份模型，名称只读且与演示身份隔离。
 class AccountIdentity {
   const AccountIdentity({
     this.name = '姓名未提供',
@@ -17,8 +18,7 @@ class AccountIdentity {
   final String? avatarUrl;
 }
 
-/// @brief 共享账户身份信息 Provider。
-/// @details 从真实账户接口读取共享身份，无 API 客户端时使用占位身份；头像仅在用户资料声明存在时另行请求，名称优先采用非空 displayName。
+/// 共享账户身份信息 Provider；优先采用非空 `displayName`，缺失时回退 `username`。
 final accountIdentityProvider = FutureProvider<AccountIdentity>((ref) async {
   final api = ref.watch(apiClientProvider);
   if (api == null) return const AccountIdentity();
@@ -48,8 +48,7 @@ final confirmedAvatarProvider = NotifierProvider<ConfirmedAvatar, String?>(
   ConfirmedAvatar.new,
 );
 
-/// @brief 已确认头像地址状态控制器。
-/// @details 登录代次变化时重置；令牌续期本身不代表换号。
+/// 已确认头像地址状态控制器；登录代次变化时自动清空。
 class ConfirmedAvatar extends Notifier<String?> {
   @override
   String? build() {
@@ -60,10 +59,7 @@ class ConfirmedAvatar extends Notifier<String?> {
   void setUrl(String? url) => state = safeAvatarUrl(url);
 }
 
-/// @brief 校验并过滤可用的头像 URL。
-/// @details 仅接受具有地址权限部分（authority）且无用户凭据的 HTTP(S) 地址，其他值按无头像处理。
-/// @param value 原始头像地址，可为 null。
-/// @return 校验通过的地址字符串；无效时返回 null。
+/// 校验并过滤可用的 HTTP(S) 头像地址，拒绝空权限部分或包含用户凭据的 URL。
 String? safeAvatarUrl(String? value) {
   final uri = Uri.tryParse(value ?? '');
   return uri != null &&
@@ -74,8 +70,7 @@ String? safeAvatarUrl(String? value) {
       : null;
 }
 
-/// @brief 账户头像展示组件。
-/// @details 预览模式显示插画；真实界面优先使用已确认头像，再使用身份查询结果；无地址或图片加载失败时显示占位图标。
+/// 账户头像展示组件；预览模式显示插画，真实界面优先显示已确认头像，缺失时显示占位图标。
 class AccountAvatar extends ConsumerWidget {
   const AccountAvatar({super.key, this.size = 48});
   final double size;

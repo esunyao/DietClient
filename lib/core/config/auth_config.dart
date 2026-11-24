@@ -2,8 +2,7 @@ import 'package:diet_auth/diet_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// @brief 应用认证配置容器。
-/// @details 只读取编译期公开参数，不读取文件，不接收 client secret。
+/// 应用认证公开配置容器；仅读取编译期公开参数，不接收任何密钥。
 class AppAuthConfig {
   AppAuthConfig.fromValues(
     Map<String, String> values, {
@@ -100,9 +99,7 @@ class AppAuthConfig {
     }
   }
 
-  /// @brief 从编译期变量装配认证配置。
-  /// @details Web 平台额外传入当前页面源供回调校验。
-  /// @return 装配完成的 AppAuthConfig 实例。
+  /// 从编译期 `--dart-define` 环境变量装配认证配置。
   factory AppAuthConfig.fromEnvironment() => AppAuthConfig.fromValues(
     const {
       'AUTHENTIK_BASE_URL': String.fromEnvironment('AUTHENTIK_BASE_URL'),

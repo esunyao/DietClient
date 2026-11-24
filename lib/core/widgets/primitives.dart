@@ -1,3 +1,4 @@
-//! @file primitives.dart
-//! @brief 兼容旧基础组件导入路径，公开内容由 diet_ui 提供。
-export 'package:diet_ui/diet_ui.dart';
+/// 兼容旧基础组件导入路径；基础控件由 `diet_ui` 提供。
+library;
+
+export 'package:diet_ui/diet_ui.dart' show AppButton, AppCard;

@@ -9,54 +9,66 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/auth_config.dart';
 
-/// @brief 会话状态枚举。
-/// @details 表示启动恢复、未登录、会话可用或需要用户重试的状态。
+/// 会话生命周期状态：启动恢复中、未登录、已就绪、需重试恢复。
 enum SessionStatus { booting, signedOut, ready, retryRequired }
 
+/// 会话提示信息控制器，用于向页面外壳投递非阻塞提醒。
 class SessionNotice extends Notifier<String?> {
   @override
   String? build() => null;
+
+  /// 更新当前会话提示文案；传 `null` 清除提示。
   void set(String? value) => state = value;
 }
 
+/// 全局会话提示 Provider。
 final sessionNoticeProvider = NotifierProvider<SessionNotice, String?>(
   SessionNotice.new,
 );
 
+/// 会话门控状态控制器。
 class SessionStatusController extends Notifier<SessionStatus> {
   @override
   SessionStatus build() =>
       kIsWeb ? SessionStatus.signedOut : SessionStatus.booting;
+
+  /// 更新当前会话门控状态。
   void set(SessionStatus value) => state = value;
 }
 
-/// @brief 登录代次状态控制器。
-/// @details 登录和清除会话时推进代次以隔离旧账户异步结果；普通续期不推进。
+/// 登录代次计数器；登录与退出时递增以隔离旧账户异步结果，普通续期不改变代次。
 class SessionEpoch extends Notifier<int> {
   @override
   int build() => 0;
+
+  /// 推进登录代次。
   void advance() => state++;
 }
 
+/// 全局登录代次 Provider。
 final sessionEpochProvider = NotifierProvider<SessionEpoch, int>(
   SessionEpoch.new,
 );
+
+/// 全局会话门控状态 Provider。
 final sessionStatusProvider =
     NotifierProvider<SessionStatusController, SessionStatus>(
       SessionStatusController.new,
     );
+
+/// 全局内存登录会话 Provider。
 final sessionProvider = NotifierProvider<SessionController, OidcSession?>(
   SessionController.new,
 );
 
+/// 本机记住登录存储抽象接口（供测试替换安全存储）。
 abstract interface class SessionStorage {
   Future<String?> read();
   Future<void> write(String value);
   Future<void> delete();
 }
 
-/// @brief 基于系统安全存储的会话存储实现。
-/// @details 配合普通偏好中的禁用标记，阻止读取已清除的旧恢复记录。
+/// 基于系统安全存储的会话存储实现；配合禁用标记防止读取已清除的旧凭据。
 class SecureSessionStorage implements SessionStorage {
   const SecureSessionStorage();
   static const _storage = FlutterSecureStorage();
@@ -83,13 +95,15 @@ class SecureSessionStorage implements SessionStorage {
   }
 }
 
+/// 全局记住登录存储 Provider。
 final sessionStorageProvider = Provider<SessionStorage>(
   (ref) => const SecureSessionStorage(),
 );
+
+/// 会话刷新回调签名。
 typedef RefreshSession = Future<OidcSession> Function(OidcSession session);
 
-/// @brief OIDC 会话续期函数 Provider。
-/// @details 使用当前认证配置创建 OIDC 客户端执行续期，并在请求结束后释放客户端。
+/// OIDC 会话续期函数 Provider；使用当前认证配置执行刷新并释放临时客户端。
 final refreshSessionProvider = Provider<RefreshSession>(
   (ref) => (session) async {
     final config = ref.read(authConfigProvider).authentik;
@@ -110,25 +124,27 @@ final refreshSessionProvider = Provider<RefreshSession>(
   },
 );
 
-/// @brief Central OIDC session lifecycle, renewal, and persistence controller.
-/// @note Token rotation keeps the same epoch; login and logout advance it.
+/// 核心 OIDC 会话生命周期、续期与可选记住登录控制器；普通续期不推进代次。
 class SessionController extends Notifier<OidcSession?> {
   Timer? _expiry;
   bool _remember = false;
   Future<String>? _refresh;
   Future<void> _storageWork = Future.value();
   Future<void>? _restoring;
+
+  /// 当前登录代次。
   int get epoch => ref.read(sessionEpochProvider);
+
+  /// 判断控制器是否仍挂载且登录代次与 [value] 一致。
+  bool isCurrentEpoch(int value) => ref.mounted && epoch == value;
+
   @override
   OidcSession? build() {
     ref.onDispose(() => _expiry?.cancel());
     return null;
   }
 
-  /// @brief 串行调度安全存储写入与删除操作。
-  /// @details 单次失败仍向调用方报告，但不阻断后续队列操作。
-  /// @param action 针对 SessionStorage 的异步操作。
-  /// @return 本次入队存储操作的完成 Future。
+  /// 串行调度安全存储写入与删除操作；单次失败向调用方报错但不阻断后续队列。
   Future<void> _store(Future<void> Function(SessionStorage) action) {
     final storage = ref.read(sessionStorageProvider);
     final next = _storageWork.then((_) => action(storage));
@@ -145,10 +161,7 @@ class SessionController extends Notifier<OidcSession?> {
     _refresh = null;
   }
 
-  /// @brief 建立内存会话并推进登录代次。
-  /// @details 仅非 Web 且具备刷新令牌和身份时可记住登录；保存失败只提示并尝试清理记录，不回退到明文存储。
-  /// @param session 新建立的 OIDC 会话。
-  /// @param rememberMe 是否记住登录，默认为 false。
+  /// 建立内存会话并推进登录代次；仅非 Web 且具备刷新令牌和身份时写入安全存储。
   Future<void> establish(OidcSession session, {bool rememberMe = false}) async {
     _expiry?.cancel();
     _advance();
@@ -182,15 +195,20 @@ class SessionController extends Notifier<OidcSession?> {
         try {
           await _store((storage) => storage.delete());
         } catch (_) {
-          /* Disabled marker prevents restoring stale credentials. */
+          // 禁用标记已阻止读取失效凭据。
         }
       }
     }
   }
 
-  /// @brief 尝试从安全存储恢复已记住的会话。
-  /// @details 合并并发恢复请求；非 Web 从安全存储读取记录，并通过强制续期验证后进入可用状态。
-  /// @return 恢复流程的完成 Future。
+  /// 若当前处于启动恢复阶段，则异步触发本机恢复流程。
+  void restoreIfBooting() {
+    if (ref.read(sessionStatusProvider) == SessionStatus.booting) {
+      unawaited(restore());
+    }
+  }
+
+  /// 尝试从安全存储恢复已记住的会话；并发调用会合并到同一恢复 Future。
   Future<void> restore() =>
       _restoring ??= _restore().whenComplete(() => _restoring = null);
   Future<void> _restore() async {
@@ -239,10 +257,7 @@ class SessionController extends Notifier<OidcSession?> {
     }
   }
 
-  /// @brief 获取当前仍可用的访问令牌，必要时触发续期。
-  /// @details 合并同一代次的并发续期请求；缺少续期条件时清除会话。
-  /// @param force 是否强制立即续期，默认为 false。
-  /// @return 可用的访问令牌字符串。
+  /// 获取当前可用的访问令牌，临近过期或 [force] 为 `true` 时触发续期；并发请求自动合并。
   Future<String> ensureFreshAccessToken({bool force = false}) {
     final current = state;
     if (current == null) {
@@ -283,12 +298,7 @@ class SessionController extends Notifier<OidcSession?> {
     return pending;
   }
 
-  /// @brief 执行会话令牌续期并校验身份一致性与登录代次。
-  /// @details 续期后核对主体、签发方和客户端，代次变化或销毁时拒绝旧结果回写；按需尝试持久化轮换后的记录，再次检查代次后更新内存会话。
-  /// @param current 当前待续期的会话。
-  /// @param start 发起续期时的登录代次。
-  /// @return 续期后的新访问令牌字符串。
-  /// @throws OidcFailure 当会话已更换、身份不一致或续期失败时抛出。
+  /// 执行令牌续期并校验主体、签发方、客户端与代次一致性；身份失败时抛出 [OidcFailure]。
   Future<String> _renew(OidcSession current, int start) async {
     try {
       final fresh = await ref.read(refreshSessionProvider)(current);
@@ -314,7 +324,7 @@ class SessionController extends Notifier<OidcSession?> {
           try {
             await _store((storage) => storage.delete());
           } catch (_) {
-            /* See disabled marker. */
+            // 禁用标记已阻止后续恢复读取旧凭据。
           }
         }
       }
@@ -346,7 +356,7 @@ class SessionController extends Notifier<OidcSession?> {
                 : SessionStatus.retryRequired,
           );
           _notice('暂时无法续期，请检查网络后重试');
-          // A failed early refresh must still enforce the old token's expiry.
+          // 提前续期失败后仍须按旧令牌剩余有效期执行过期兜底。
           _expiry?.cancel();
           if (hasActiveSession(state)) {
             _expiry = Timer(state!.expiresAt.difference(DateTime.now()), () {
@@ -367,9 +377,7 @@ class SessionController extends Notifier<OidcSession?> {
     }
   }
 
-  /// @brief 为活动会话安排到期续期或过期清除定时器。
-  /// @details 非 Web 且刷新令牌非 null 时提前触发（剩余寿命的五分之一，最多 60 秒）；其他情况到期清除，重新安排或控制器销毁时取消旧定时器。
-  /// @param session 当前有效会话。
+  /// 为当前活动会话安排到期自动续期或过期清除定时器。
   void _arm(OidcSession session) {
     _expiry?.cancel();
     final lifetime = session.expiresAt.difference(DateTime.now());
@@ -388,7 +396,7 @@ class SessionController extends Notifier<OidcSession?> {
     });
   }
 
-  /// @brief 检查当前内存会话是否过期，并异步尝试续期或清除。
+  /// 检查当前内存会话是否已过期，必要时异步触发续期或清除。
   void checkExpiry() {
     if (state != null && !hasActiveSession(state)) {
       unawaited(
@@ -400,9 +408,7 @@ class SessionController extends Notifier<OidcSession?> {
     }
   }
 
-  /// @brief 清除当前应用会话及本机恢复记录。
-  /// @details 先推进代次并清空内存状态，再尝试删除本机恢复记录。
-  /// @note 不执行全局 SSO 注销。
+  /// 清除当前应用内存会话及本机记住登录记录，不注销全局 SSO。
   Future<void> clear() async {
     _expiry?.cancel();
     _expiry = null;
@@ -420,9 +426,7 @@ class SessionController extends Notifier<OidcSession?> {
     }
   }
 
-  /// @brief 计算绑定 API 地址与身份配置的环境指纹。
-  /// @details 恢复记录绑定该环境指纹，且只编码刷新令牌和身份校验上下文。
-  /// @return JSON 编码的环境指纹字符串。
+  /// 计算绑定 API 地址与身份配置的环境指纹，防止跨环境恢复旧会话记录。
   String get _environment => jsonEncode([
     const String.fromEnvironment('API_BASE_URL'),
     ref.read(authConfigProvider).authentik?.discoveryUri.toString(),
@@ -441,5 +445,6 @@ class SessionController extends Notifier<OidcSession?> {
   });
 }
 
+/// 判断给定 [session] 是否处于未过期可用状态。
 bool hasActiveSession(OidcSession? session, {DateTime? now}) =>
     session != null && session.expiresAt.isAfter(now ?? DateTime.now());
