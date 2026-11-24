@@ -1,14 +1,14 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../demo/demo_store.dart';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'health_kind.dart';
 
-/// @brief 演示健康记录分类摘要与展开列表组件。
-/// @details 新增操作走路由跳转，删除操作仅修改共享演示状态。
+/// 演示健康记录分类摘要与展开列表组件，新增跳转由统一导航管理器执行。
 class HealthRecordCategory extends ConsumerStatefulWidget {
   const HealthRecordCategory({
     super.key,
@@ -29,9 +29,6 @@ class HealthRecordCategory extends ConsumerStatefulWidget {
 class _HealthRecordCategoryState extends ConsumerState<HealthRecordCategory> {
   bool _expanded = false;
 
-  /// @brief 生成当前健康类别卡片的摘要描述文案。
-  /// @details 优先使用最新记录的备注，否则按类别给出默认说明；无记录不推断为没有健康问题。
-  /// @return 展示在类别卡片中的描述字符串。
   String get _description {
     final latest = latestHealthRecord(widget.records, widget.kind);
     if (latest != null && latest.note.isNotEmpty) return latest.note;
@@ -56,28 +53,59 @@ class _HealthRecordCategoryState extends ConsumerState<HealthRecordCategory> {
     return '$value${widget.records.length > 1 ? ' · 共${widget.records.length}条' : ''}';
   }
 
+  void _toggleExpanded() => setState(() => _expanded = !_expanded);
+
+  void _openAddForm() => ref
+      .read(navigationManagerProvider)
+      .openHealthRecordForm(context, widget.kind);
+
   Future<void> _remove(HealthRecordPreview record) async {
-    final remove = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('删除这条演示记录？'),
-        content: Text('“${record.title}”将从本次预览中移除，重启后恢复样例。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('保留'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('删除'),
-          ),
-        ],
+    final remove = await showAppConfirmDialog(
+      context,
+      title: '删除这条演示记录？',
+      content: '“${record.title}”将从本次预览中移除，重启后恢复样例。',
+      confirmLabel: '删除',
+      cancelLabel: '保留',
+    );
+    if (remove && mounted) {
+      ref.read(demoProvider.notifier).removeHealthRecord(record.id);
+      showDemoMessage(context, '已从本次演示中移除。');
+    }
+  }
+
+  Widget _buildHeaderText(
+    BuildContext context,
+    BoxConstraints constraints,
+    Color color,
+  ) {
+    final title = Text(
+      healthKinds[widget.kind]!,
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    );
+    final value = Text(
+      _value,
+      style: TextStyle(
+        fontSize: 13,
+        color: widget.kind == 'allergy' ? color : AppColors.muted,
       ),
     );
-    if (remove == true) {
-      ref.read(demoProvider.notifier).removeHealthRecord(record.id);
-      if (mounted) showDemoMessage(context, '已从本次演示中移除。');
+    if (constraints.maxWidth < 230 ||
+        MediaQuery.textScalerOf(context).scale(14) > 20) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [title, const SizedBox(height: 4), value],
+      );
     }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        title,
+        const SizedBox(width: 12),
+        Expanded(
+          child: Align(alignment: Alignment.topRight, child: value),
+        ),
+      ],
+    );
   }
 
   @override
@@ -92,7 +120,7 @@ class _HealthRecordCategoryState extends ConsumerState<HealthRecordCategory> {
           button: true,
           expanded: _expanded,
           child: InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: _toggleExpanded,
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 82),
               child: Padding(
@@ -109,50 +137,8 @@ class _HealthRecordCategoryState extends ConsumerState<HealthRecordCategory> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           LayoutBuilder(
-                            builder: (context, constraints) {
-                              final title = Text(
-                                healthKinds[widget.kind]!,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              );
-                              final value = Text(
-                                _value,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: widget.kind == 'allergy'
-                                      ? color
-                                      : AppColors.muted,
-                                ),
-                              );
-                              // 局部可用宽度不足或文字放大时，将标题和摘要改为纵向排列。
-                              if (constraints.maxWidth < 230 ||
-                                  MediaQuery.textScalerOf(context).scale(14) >
-                                      20) {
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    title,
-                                    const SizedBox(height: 4),
-                                    value,
-                                  ],
-                                );
-                              }
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  title,
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Align(
-                                      alignment: Alignment.topRight,
-                                      child: value,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
+                            builder: (context, constraints) =>
+                                _buildHeaderText(context, constraints, color),
                           ),
                           const SizedBox(height: 8),
                           Text(
@@ -224,8 +210,7 @@ class _HealthRecordCategoryState extends ConsumerState<HealthRecordCategory> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
-                    onPressed: () =>
-                        context.push(AppRoutes.healthRecordForm(widget.kind)),
+                    onPressed: _openAddForm,
                     icon: const Icon(AppIcons.plus, size: 18),
                     label: Text('添加${healthKinds[widget.kind]}'),
                   ),

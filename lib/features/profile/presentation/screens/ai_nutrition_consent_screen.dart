@@ -2,13 +2,11 @@ import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../demo/demo_store.dart';
 import '../../../../core/config/ui_preview_config.dart';
+import '../../../../demo/demo_store.dart';
 import 'real_consent_screen.dart';
 
-/// @brief AI 营养分析同意设置页入口组件。
-/// @details 按预览配置选择真实同意页面或共享内存中的演示开关。
-/// @note 演示模式操作不会修改服务端真实授权。
+/// AI 营养分析同意设置页入口；按预览配置切换真实同意页或演示开关。
 class AiNutritionConsentScreen extends ConsumerWidget {
   const AiNutritionConsentScreen({super.key});
 
@@ -17,26 +15,15 @@ class AiNutritionConsentScreen extends ConsumerWidget {
     WidgetRef ref,
     bool enabled,
   ) async {
-    // 仅关闭演示开关时需要确认；弹窗取消或页面销毁后不写入状态。
     if (enabled) {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('关闭演示开关？'),
-          content: const Text('只改变本次预览，不涉及真实授权的撤回。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('保持开启'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('关闭演示开关'),
-            ),
-          ],
-        ),
+      final confirm = await showAppConfirmDialog(
+        context,
+        title: '关闭演示开关？',
+        content: '只改变本次预览，不涉及真实授权的撤回。',
+        confirmLabel: '关闭演示开关',
+        cancelLabel: '保持开启',
       );
-      if (confirm != true || !context.mounted) return;
+      if (!confirm || !context.mounted) return;
     }
     ref.read(demoProvider.notifier).setAiConsent(!enabled);
     if (context.mounted) {

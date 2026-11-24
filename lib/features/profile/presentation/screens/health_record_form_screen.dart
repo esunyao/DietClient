@@ -1,18 +1,20 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:diet_ui/diet_ui.dart';
-import 'package:diet_client/demo/demo_store.dart';
 
+import '../../../../core/config/ui_preview_config.dart';
+import '../../../../demo/demo_store.dart';
 import '../widgets/health_kind.dart';
 import '../widgets/unsaved_form.dart';
-import '../../../../core/config/ui_preview_config.dart';
 import 'real_health_form_screen.dart';
 
 /// 健康记录新增或编辑表单路由入口，按预览配置隔离真实与演示表单状态。
 class HealthRecordFormScreen extends ConsumerWidget {
   const HealthRecordFormScreen({super.key, required this.kind, this.record});
+
   final String kind;
   final Map<String, dynamic>? record;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) =>
       ref.watch(uiPreviewProvider)
@@ -22,14 +24,14 @@ class HealthRecordFormScreen extends ConsumerWidget {
 
 class _DemoHealthRecordFormScreen extends ConsumerStatefulWidget {
   const _DemoHealthRecordFormScreen({required this.kind});
+
   final String kind;
+
   @override
   ConsumerState<_DemoHealthRecordFormScreen> createState() =>
       _HealthRecordFormScreenState();
 }
 
-/// @brief 演示健康记录新增表单状态。
-/// @details 按类别组织表单字段并将结果写入共享内存记录；输入控制器随页面销毁释放。
 class _HealthRecordFormScreenState
     extends ConsumerState<_DemoHealthRecordFormScreen> {
   final _form = GlobalKey<FormState>();
@@ -40,6 +42,7 @@ class _HealthRecordFormScreenState
   bool _dirty = false;
   String? _measurement;
   String? _savedId;
+
   @override
   void dispose() {
     for (final c in [_name, _value, _date, _note]) {
@@ -51,10 +54,6 @@ class _HealthRecordFormScreenState
   String? _required(String? v) =>
       v == null || v.trim().isEmpty ? '请填写此项' : null;
 
-  /// @brief 校验记录日期字符串格式及有效性。
-  /// @details 比较解析后的 ISO 日期文本，排除自动进位的无效日期和未来日期。
-  /// @param v 待校验的日期文本。
-  /// @return 校验通过时返回 null，否则返回错误提示文案。
   String? _validDate(String? v) {
     if (_required(v) != null) return '请填写记录日期';
     if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(v!)) return '请输入 YYYY-MM-DD';
@@ -67,9 +66,27 @@ class _HealthRecordFormScreenState
     return null;
   }
 
-  Widget field(
+  String? _validateMeasurementValue(String? v) {
+    final n = double.tryParse(v ?? '');
+    return n == null || !n.isFinite || n <= 0 || n > 1000
+        ? '请输入大于 0 且不超过 1000 的数值'
+        : null;
+  }
+
+  void _onFieldChanged(String _) => setState(() {
+    _dirty = true;
+    _savedId = null;
+  });
+
+  void _onMeasurementChanged(String? value) => setState(() {
+    _measurement = value;
+    _dirty = true;
+    _savedId = null;
+  });
+
+  Widget _buildField(
     String label,
-    TextEditingController c, {
+    TextEditingController controller, {
     String? hint,
     bool numeric = false,
     int lines = 1,
@@ -77,12 +94,9 @@ class _HealthRecordFormScreenState
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 20),
     child: TextFormField(
-      controller: c,
+      controller: controller,
       maxLines: lines,
-      onChanged: (_) => setState(() {
-        _dirty = true;
-        _savedId = null;
-      }),
+      onChanged: _onFieldChanged,
       keyboardType: numeric
           ? const TextInputType.numberWithOptions(decimal: true)
           : lines > 1
@@ -97,8 +111,6 @@ class _HealthRecordFormScreenState
     ),
   );
 
-  /// @brief 校验表单并向共享演示状态写入新健康记录。
-  /// @details 测量单位从所选标签提取；保存后禁用重复提交，后续编辑会清除保存标记。
   void _save() {
     if (!_form.currentState!.validate()) return;
     final id = 'health-${DateTime.now().microsecondsSinceEpoch}';
@@ -128,7 +140,6 @@ class _HealthRecordFormScreenState
 
   @override
   Widget build(BuildContext context) {
-    // 未知类别只显示返回提示，不构建可提交的表单。
     final label = healthKinds[widget.kind];
     if (label == null) {
       return const AppPage(
@@ -178,32 +189,23 @@ class _HealthRecordFormScreenState
                               )
                               .toList(),
                       validator: (v) => v == null ? '请选择测量项目' : null,
-                      onChanged: (v) => setState(() {
-                        _measurement = v;
-                        _dirty = true;
-                        _savedId = null;
-                      }),
+                      onChanged: _onMeasurementChanged,
                     ),
                     const SizedBox(height: 20),
-                    field(
+                    _buildField(
                       '测量数值',
                       _value,
                       numeric: true,
-                      validator: (v) {
-                        final n = double.tryParse(v ?? '');
-                        return n == null || !n.isFinite || n <= 0 || n > 1000
-                            ? '请输入大于 0 且不超过 1000 的数值'
-                            : null;
-                      },
+                      validator: _validateMeasurementValue,
                     ),
                   ] else ...[
-                    field(switch (widget.kind) {
+                    _buildField(switch (widget.kind) {
                       'goal' => '目标名称',
                       'allergy' => '过敏原',
                       'disease' => '疾病名称',
                       _ => '限制名称',
                     }, _name),
-                    field(
+                    _buildField(
                       switch (widget.kind) {
                         'goal' => '目标值或方向',
                         'allergy' => '严重程度与反应',
@@ -214,13 +216,18 @@ class _HealthRecordFormScreenState
                       hint: widget.kind == 'allergy' ? '不明确时填写“待确认”' : null,
                     ),
                   ],
-                  field(
+                  _buildField(
                     '记录日期',
                     _date,
                     hint: 'YYYY-MM-DD',
                     validator: _validDate,
                   ),
-                  field('备注（可选）', _note, lines: 3, validator: (_) => null),
+                  _buildField(
+                    '备注（可选）',
+                    _note,
+                    lines: 3,
+                    validator: (_) => null,
+                  ),
                 ],
               ),
             ),

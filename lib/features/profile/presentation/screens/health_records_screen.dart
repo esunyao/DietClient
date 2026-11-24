@@ -3,17 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/config/ui_preview_config.dart';
-import 'real_health_records_screen.dart';
-
-import 'package:go_router/go_router.dart';
-
-import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../demo/demo_store.dart';
 import '../widgets/health_kind.dart';
 import '../widgets/health_record_category.dart';
+import 'real_health_records_screen.dart';
 
-/// @brief 健康档案总览页入口组件。
-/// @details 真实模式委托给真实健康档案页，预览模式汇总展示共享演示资料和记录。
+/// 健康档案总览页入口，真实模式委托 [RealHealthRecordsScreen]，预览模式展示演示档案。
 class HealthRecordsScreen extends ConsumerWidget {
   const HealthRecordsScreen({super.key});
 
@@ -21,83 +17,14 @@ class HealthRecordsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(uiPreviewProvider)) return const RealHealthRecordsScreen();
     final state = ref.watch(demoProvider);
-    // 此页面按窗口宽度选择宽窄布局；宽屏类别合卡并将用途说明放入侧栏。
     final wide = MediaQuery.sizeOf(context).width >= 1024;
-    final profile = state.profile;
-    final basics = AppCard(
-      radius: wide ? 16 : 20,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (wide)
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    profile.name,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => context.push(AppRoutes.editProfile),
-                  child: const Text('编辑基础资料'),
-                ),
-              ],
-            )
-          else
-            Text(
-              '${profile.name}的基础资料',
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
-              ),
-            ),
-          const SizedBox(height: 10),
-          Text(
-            '${profile.gender} / ${profile.birthday}${wide ? ' / 身高 ${formatAmount(profile.height)} cm / ${profile.activity}' : ''}',
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontSize: 14,
-              height: 1.4,
-            ),
-          ),
-          if (!wide) ...[
-            const SizedBox(height: 8),
-            Text(
-              '身高 ${formatAmount(profile.height)} cm / ${profile.activity}',
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 14,
-                height: 1.4,
-              ),
-            ),
-          ],
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  '基础资料与身体测量分开保留',
-                  style: TextStyle(fontSize: 12, color: AppColors.muted),
-                ),
-              ),
-              if (!wide)
-                TextButton(
-                  onPressed: () => context.push(AppRoutes.editProfile),
-                  style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
-                  child: const Text('编辑'),
-                ),
-            ],
-          ),
-        ],
-      ),
+    final navigation = ref.read(navigationManagerProvider);
+
+    final basics = _DemoBasicsCard(
+      profile: state.profile,
+      wide: wide,
+      onEdit: () => navigation.openEditProfile(context),
     );
-    // 各类别只接收对应记录，展开和演示删除交互由类别组件负责。
     final categories = [
       for (final kind in healthKinds.keys)
         HealthRecordCategory(
@@ -107,60 +34,12 @@ class HealthRecordsScreen extends ConsumerWidget {
           wide: wide,
         ),
     ];
-    final records = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SectionHeading(title: '五类健康记录'),
-        const SizedBox(height: 16),
-        if (wide)
-          AppCard(
-            radius: 16,
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (var i = 0; i < categories.length; i++) ...[
-                  if (i > 0)
-                    const Divider(height: 1, indent: 68, endIndent: 24),
-                  categories[i],
-                ],
-              ],
-            ),
-          )
-        else
-          for (var i = 0; i < categories.length; i++) ...[
-            if (i > 0) const SizedBox(height: 14),
-            AppCard(radius: 16, padding: EdgeInsets.zero, child: categories[i]),
-          ],
-      ],
+    final records = _DemoCategoriesSection(wide: wide, categories: categories);
+    final usage = _DemoUsageCard(
+      wide: wide,
+      onOpenConsent: () => navigation.openAiConsent(context),
     );
-    final usage = AppCard(
-      radius: wide ? 16 : 20,
-      color: AppColors.greenSoft,
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            wide ? '资料用于什么' : '资料与授权',
-            style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            '身体测量用于查看变化。\n目标与偏好用于方案筛选。\n过敏与限制用于提示冲突。\n资料录入与 AI 使用授权分别管理。',
-            style: TextStyle(fontSize: 14, height: 2, color: AppColors.ink),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: () => context.push(AppRoutes.aiConsent),
-            child: const Text('查看 AI 数据与隐私'),
-          ),
-        ],
-      ),
-    );
+
     return AppPage(
       demoLabel: '设计样例 · 演示数据',
       title: wide ? '让建议建立在真实资料上' : '健康档案',
@@ -172,56 +51,8 @@ class HealthRecordsScreen extends ConsumerWidget {
             main: [basics, records],
             aside: [
               usage,
-              const AppCard(
-                radius: 16,
-                color: AppColors.greenSoft,
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '未知，不能当作没有',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      '疾病未填写、限制暂无记录，都保持未知。不能自动标记为已确认无。',
-                      style: TextStyle(fontSize: 14, height: 1.7),
-                    ),
-                  ],
-                ),
-              ),
-              const AppCard(
-                radius: 16,
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(AppIcons.shield, size: 28, color: AppColors.primary),
-                    SizedBox(height: 12),
-                    Text(
-                      '敏感资料逐步展开',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      '列表只展示必要摘要；点击类别后再查看、添加或移除演示记录。',
-                      style: TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 14,
-                        height: 1.7,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const _DemoPolicyHintCard(),
+              const _DemoProgressiveHintCard(),
             ],
           )
         else ...[
@@ -238,4 +69,211 @@ class HealthRecordsScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+class _DemoBasicsCard extends StatelessWidget {
+  const _DemoBasicsCard({
+    required this.profile,
+    required this.wide,
+    required this.onEdit,
+  });
+
+  final PersonProfile profile;
+  final bool wide;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    radius: wide ? 16 : 20,
+    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (wide)
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  profile.name,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(onPressed: onEdit, child: const Text('编辑基础资料')),
+            ],
+          )
+        else
+          Text(
+            '${profile.name}的基础资料',
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
+            ),
+          ),
+        const SizedBox(height: 10),
+        Text(
+          '${profile.gender} / ${profile.birthday}${wide ? ' / 身高 ${formatAmount(profile.height)} cm / ${profile.activity}' : ''}',
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        if (!wide) ...[
+          const SizedBox(height: 8),
+          Text(
+            '身高 ${formatAmount(profile.height)} cm / ${profile.activity}',
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ],
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '基础资料与身体测量分开保留',
+                style: TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+            ),
+            if (!wide)
+              TextButton(
+                onPressed: onEdit,
+                style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+                child: const Text('编辑'),
+              ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _DemoCategoriesSection extends StatelessWidget {
+  const _DemoCategoriesSection({required this.wide, required this.categories});
+
+  final bool wide;
+  final List<Widget> categories;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const SectionHeading(title: '五类健康记录'),
+      const SizedBox(height: 16),
+      if (wide)
+        AppCard(
+          radius: 16,
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              for (var i = 0; i < categories.length; i++) ...[
+                if (i > 0) const Divider(height: 1, indent: 68, endIndent: 24),
+                categories[i],
+              ],
+            ],
+          ),
+        )
+      else
+        for (var i = 0; i < categories.length; i++) ...[
+          if (i > 0) const SizedBox(height: 14),
+          AppCard(radius: 16, padding: EdgeInsets.zero, child: categories[i]),
+        ],
+    ],
+  );
+}
+
+class _DemoUsageCard extends StatelessWidget {
+  const _DemoUsageCard({required this.wide, required this.onOpenConsent});
+
+  final bool wide;
+  final VoidCallback onOpenConsent;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    radius: wide ? 16 : 20,
+    color: AppColors.greenSoft,
+    padding: const EdgeInsets.all(24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          wide ? '资料用于什么' : '资料与授权',
+          style: const TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          '身体测量用于查看变化。\n目标与偏好用于方案筛选。\n过敏与限制用于提示冲突。\n资料录入与 AI 使用授权分别管理。',
+          style: TextStyle(fontSize: 14, height: 2, color: AppColors.ink),
+        ),
+        const SizedBox(height: 12),
+        TextButton(onPressed: onOpenConsent, child: const Text('查看 AI 数据与隐私')),
+      ],
+    ),
+  );
+}
+
+class _DemoPolicyHintCard extends StatelessWidget {
+  const _DemoPolicyHintCard();
+
+  @override
+  Widget build(BuildContext context) => const AppCard(
+    radius: 16,
+    color: AppColors.greenSoft,
+    padding: EdgeInsets.all(24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '未知，不能当作没有',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primary,
+          ),
+        ),
+        SizedBox(height: 12),
+        Text(
+          '疾病未填写、限制暂无记录，都保持未知。不能自动标记为已确认无。',
+          style: TextStyle(fontSize: 14, height: 1.7),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DemoProgressiveHintCard extends StatelessWidget {
+  const _DemoProgressiveHintCard();
+
+  @override
+  Widget build(BuildContext context) => const AppCard(
+    radius: 16,
+    padding: EdgeInsets.all(24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(AppIcons.shield, size: 28, color: AppColors.primary),
+        SizedBox(height: 12),
+        Text(
+          '敏感资料逐步展开',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
+        SizedBox(height: 12),
+        Text(
+          '列表只展示必要摘要；点击类别后再查看、添加或移除演示记录。',
+          style: TextStyle(color: AppColors.muted, fontSize: 14, height: 1.7),
+        ),
+      ],
+    ),
+  );
 }

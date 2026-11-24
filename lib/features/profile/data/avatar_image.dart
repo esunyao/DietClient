@@ -2,11 +2,7 @@ import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
 
-/// @brief 预处理待裁剪的头像原图并输出规范化 PNG 字节。
-/// @details 校验原图格式、字节数和像素数，读取首帧并归一化 EXIF 方向后限制最长边，输出 PNG。
-/// @param bytes 原始图片字节数据。
-/// @return 预处理后的 PNG 字节数据。
-/// @throws FormatException 当图片超限、格式不受支持、无法解码或超过像素上限时抛出。
+/// 校验并预处理待裁剪的头像原图（归一化方向并限制最长边 2048px），输出 PNG 字节。
 Uint8List prepareAvatar(Uint8List bytes) {
   if (bytes.length > 5 * 1024 * 1024) {
     throw const FormatException('图片不能超过 5 MiB');
@@ -37,10 +33,7 @@ Uint8List prepareAvatar(Uint8List bytes) {
   return Uint8List.fromList(img.encodePng(oriented));
 }
 
-/// @brief 将已裁剪的方形图片缩放并编码为 512×512 上传用 PNG。
-/// @param bytes 裁剪后的方形图片字节数据。
-/// @return 512×512 PNG 字节数据。
-/// @throws FormatException 当图片不可解码或非方形时抛出。
+/// 将已裁剪的方形图片缩放并编码为 512×512 PNG。
 Uint8List finishAvatar(Uint8List bytes) {
   final decoded = img.decodeImage(bytes);
   if (decoded == null || decoded.width != decoded.height) {

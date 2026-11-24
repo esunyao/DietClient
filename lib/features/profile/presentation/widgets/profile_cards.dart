@@ -1,14 +1,13 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../demo/demo_store.dart';
 import 'health_kind.dart';
 
-/// @brief 个人中心共享身份卡片组件。
-/// @details 调用方可覆盖默认演示头像、身份标签和缺失身高的展示文本。
-class ProfileIdentityCard extends StatelessWidget {
+/// 个人中心共享身份卡片，支持覆盖默认演示头像、身份标签与缺失身高文案。
+class ProfileIdentityCard extends ConsumerWidget {
   const ProfileIdentityCard({
     super.key,
     required this.profile,
@@ -24,98 +23,103 @@ class ProfileIdentityCard extends StatelessWidget {
   final String identityLabel;
   final String? heightLabel;
 
+  void _openEdit(BuildContext context, WidgetRef ref) {
+    ref.read(navigationManagerProvider).openEditProfile(context);
+  }
+
   @override
-  Widget build(BuildContext context) => AppCard(
-    radius: wide ? 16 : 20,
-    padding: EdgeInsets.symmetric(horizontal: 20, vertical: wide ? 24 : 16),
-    child: ConstrainedBox(
-      constraints: BoxConstraints(minHeight: wide ? 102 : 98),
-      child: Row(
-        children: [
-          avatar ?? AvatarIllustration(size: wide ? 76 : 65),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.name,
-                  style: const TextStyle(
-                    fontSize: 23,
-                    fontWeight: FontWeight.w600,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  profile.email,
-                  style: TextStyle(
-                    fontSize: wide ? 15 : 13,
-                    color: AppColors.muted,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                if (wide)
-                  AppBadge(label: identityLabel)
-                else
-                  SizedBox(
-                    width: double.infinity,
-                    child: Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      children: [
-                        AppBadge(label: identityLabel),
-                        TextButton(
-                          onPressed: () => context.push(AppRoutes.editProfile),
-                          child: const Text('编辑资料'),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          if (wide) ...[
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AppCard(
+      radius: wide ? 16 : 20,
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: wide ? 24 : 16),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: wide ? 102 : 98),
+        child: Row(
+          children: [
+            avatar ?? AvatarIllustration(size: wide ? 76 : 65),
             const SizedBox(width: 16),
-            Flexible(
+            Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextButton(
-                    onPressed: () => context.push(AppRoutes.editProfile),
-                    child: const Text('编辑基础资料'),
-                  ),
                   Text(
-                    '${profile.gender} · ${profile.birthday}',
-                    textAlign: TextAlign.end,
+                    profile.name,
                     style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 14,
+                      fontSize: 23,
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
-                    '${heightLabel ?? '${formatAmount(profile.height)} cm'} · ${profile.activity}',
-                    textAlign: TextAlign.end,
-                    style: const TextStyle(
+                    profile.email,
+                    style: TextStyle(
+                      fontSize: wide ? 15 : 13,
                       color: AppColors.muted,
-                      fontSize: 14,
+                      height: 1.3,
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  if (wide)
+                    AppBadge(label: identityLabel)
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      child: Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        children: [
+                          AppBadge(label: identityLabel),
+                          TextButton(
+                            onPressed: () => _openEdit(context, ref),
+                            child: const Text('编辑资料'),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
+            if (wide) ...[
+              const SizedBox(width: 16),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => _openEdit(context, ref),
+                      child: const Text('编辑基础资料'),
+                    ),
+                    Text(
+                      '${profile.gender} · ${profile.birthday}',
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${heightLabel ?? '${formatAmount(profile.height)} cm'} · ${profile.activity}',
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-/// @brief 个人基础资料信息卡片组件。
-/// @details 身高和饮水目标展示标签可由调用方覆盖，以准确表达真实数据缺失。
+/// 个人基础资料信息卡片，允许调用方覆盖身高和饮水目标标签以表达真实缺失态。
 class ProfileFactsCard extends StatelessWidget {
   const ProfileFactsCard({
     super.key,
@@ -161,8 +165,7 @@ class ProfileFactsCard extends StatelessWidget {
   );
 }
 
-/// @brief 个人中心健康档案摘要卡片组件。
-/// @details 从传入的真实或演示摘要记录中组合最近测量、健康目标及过敏与缺失提示。
+/// 个人中心健康档案摘要卡片，组合最近身体测量、目标、过敏与缺失提示。
 class ProfileHealthSummary extends StatelessWidget {
   const ProfileHealthSummary({
     super.key,
@@ -174,6 +177,77 @@ class ProfileHealthSummary extends StatelessWidget {
   final List<HealthRecordPreview> records;
   final bool wide;
   final bool real;
+
+  Widget _buildMetricColumn(
+    String label,
+    String value,
+    String detail, {
+    required double valueSize,
+    IconData? icon,
+  }) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (wide && icon != null) ...[
+        Icon(icon, size: 27, color: AppColors.primary),
+        const SizedBox(width: 14),
+      ],
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.muted,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: valueSize,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              detail,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.muted,
+                height: 1.3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildResponsiveContent(
+    BuildContext context,
+    BoxConstraints constraints,
+    List<Widget> items,
+  ) {
+    if (constraints.maxWidth < 280 ||
+        MediaQuery.textScalerOf(context).scale(14) > 20) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [items.first, const Divider(height: 28), items.last],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: items.first),
+        SizedBox(width: wide ? 40 : 16),
+        Expanded(child: items.last),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,54 +261,27 @@ class ProfileHealthSummary extends StatelessWidget {
       if (!records.any((r) => r.kind == 'disease')) '疾病',
       if (!records.any((r) => r.kind == 'restriction')) '饮食限制',
     ];
-    Widget summary(
-      String label,
-      String value,
-      String detail, {
-      required double valueSize,
-      IconData? icon,
-    }) => Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (wide && icon != null) ...[
-          Icon(icon, size: 27, color: AppColors.primary),
-          const SizedBox(width: 14),
-        ],
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.muted,
-                  height: 1.3,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: valueSize,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                detail,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.muted,
-                  height: 1.3,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+    final items = [
+      _buildMetricColumn(
+        measurement == null
+            ? '最近身体测量'
+            : '最近${measurement.title.split('（').first}',
+        measurement?.value ?? '暂未填写',
+        measurement == null
+            ? '添加测量后查看'
+            : '${healthRecordDate(measurement.date)}${real ? '' : ' / 手工测量'}',
+        valueSize: wide ? 28 : 23,
+        icon: AppIcons.scales,
+      ),
+      _buildMetricColumn(
+        wide ? '当前目标' : '健康目标',
+        goal?.value ?? '暂未填写',
+        allergySummary,
+        valueSize: wide ? 24 : 19,
+        icon: AppIcons.target,
+      ),
+    ];
+
     return AppCard(
       radius: wide ? 16 : 20,
       padding: EdgeInsets.all(wide ? 24 : 20),
@@ -242,48 +289,8 @@ class ProfileHealthSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           LayoutBuilder(
-            builder: (context, constraints) {
-              final items = [
-                summary(
-                  measurement == null
-                      ? '最近身体测量'
-                      : '最近${measurement.title.split('（').first}',
-                  measurement?.value ?? '暂未填写',
-                  measurement == null
-                      ? '添加测量后查看'
-                      : '${healthRecordDate(measurement.date)}${real ? '' : ' / 手工测量'}',
-                  valueSize: wide ? 28 : 23,
-                  icon: AppIcons.scales,
-                ),
-                summary(
-                  wide ? '当前目标' : '健康目标',
-                  goal?.value ?? '暂未填写',
-                  allergySummary,
-                  valueSize: wide ? 24 : 19,
-                  icon: AppIcons.target,
-                ),
-              ];
-              // 按卡片实际宽度和文字缩放决定摘要横排或纵排。
-              if (constraints.maxWidth < 280 ||
-                  MediaQuery.textScalerOf(context).scale(14) > 20) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    items.first,
-                    const Divider(height: 28),
-                    items.last,
-                  ],
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: items.first),
-                  SizedBox(width: wide ? 40 : 16),
-                  Expanded(child: items.last),
-                ],
-              );
-            },
+            builder: (context, constraints) =>
+                _buildResponsiveContent(context, constraints, items),
           ),
           if (wide && missing.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -309,6 +316,41 @@ class _FactRow extends StatelessWidget {
   final String label;
   final String value;
 
+  Widget _buildAdaptiveRow(BuildContext context, BoxConstraints constraints) {
+    final compact =
+        constraints.maxWidth < 260 ||
+        MediaQuery.textScalerOf(context).scale(14) > 20;
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 15)),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 13, color: AppColors.muted),
+            ),
+          ],
+        ),
+      );
+    }
+    return Row(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 15)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontSize: 13, color: AppColors.muted),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) => ConstrainedBox(
     constraints: const BoxConstraints(minHeight: 50),
@@ -316,51 +358,7 @@ class _FactRow extends StatelessWidget {
       children: [
         Icon(icon, size: 24, color: AppColors.primary),
         const SizedBox(width: 12),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // 基础资料行独立按剩余宽度和文字缩放切换紧凑布局。
-              final compact =
-                  constraints.maxWidth < 260 ||
-                  MediaQuery.textScalerOf(context).scale(14) > 20;
-              if (compact) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label, style: const TextStyle(fontSize: 15)),
-                      const SizedBox(height: 4),
-                      Text(
-                        value,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return Row(
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 15)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      value,
-                      textAlign: TextAlign.end,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
+        Expanded(child: LayoutBuilder(builder: _buildAdaptiveRow)),
       ],
     ),
   );

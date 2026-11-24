@@ -3,18 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/config/ui_preview_config.dart';
-import 'real_profile_screen.dart';
-
-import 'package:go_router/go_router.dart';
-
-import '../../../../core/presentation/app_routes.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../demo/demo_store.dart';
 import '../widgets/health_kind.dart';
 import '../widgets/profile_cards.dart';
 import '../widgets/profile_services.dart';
+import 'real_profile_screen.dart';
 
-/// @brief “我的”主页面入口组件。
-/// @details 非预览模式使用真实资料页，预览模式从共享演示状态组合身份、健康摘要和服务入口。
+/// “我的”主页面路由入口，按预览配置切换真实资料页或演示页面。
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -22,8 +18,9 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(uiPreviewProvider)) return const RealProfileScreen();
     final state = ref.watch(demoProvider);
-    // 窗口宽度决定页面编排；机构卡片是否出现由演示模式状态决定，而非宽度推断。
     final wide = MediaQuery.sizeOf(context).width >= 1024;
+    final navigation = ref.read(navigationManagerProvider);
+
     final identity = ProfileIdentityCard(profile: state.profile, wide: wide);
     final health = ProfileHealthSummary(
       records: state.healthRecords,
@@ -36,9 +33,10 @@ class ProfileScreen extends ConsumerWidget {
         title: 'AI 数据与隐私',
         value: state.aiConsent ? '演示开关已开启' : '演示开关已关闭',
         icon: AppIcons.shield,
-        onTap: () => context.push(AppRoutes.aiConsent),
+        onTap: () => navigation.openAiConsent(context),
       ),
     );
+
     return AppPage(
       demoLabel: '设计样例 · 演示数据',
       title: wide ? '你的资料与服务' : '我的',
@@ -52,7 +50,7 @@ class ProfileScreen extends ConsumerWidget {
               ProfileSection(
                 title: '健康档案',
                 action: '查看全部',
-                onTap: () => context.push(AppRoutes.healthRecords),
+                onTap: () => navigation.openHealthRecords(context),
                 child: health,
               ),
               ProfileSection(
@@ -62,7 +60,7 @@ class ProfileScreen extends ConsumerWidget {
               ProfileSection(
                 title: '基础资料',
                 action: '编辑',
-                onTap: () => context.push(AppRoutes.editProfile),
+                onTap: () => navigation.openEditProfile(context),
                 child: ProfileFactsCard(profile: state.profile),
               ),
             ],
@@ -74,43 +72,14 @@ class ProfileScreen extends ConsumerWidget {
             ],
           )
         else
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              identity,
-              const SizedBox(height: 14),
-              const ProfileShortcuts(),
-              const SizedBox(height: 12),
-              ProfileSection(
-                title: '基础资料',
-                action: '编辑',
-                onTap: () => context.push(AppRoutes.editProfile),
-                child: ProfileFactsCard(profile: state.profile),
-              ),
-              const SizedBox(height: 16),
-              ProfileSection(
-                title: '健康资料',
-                action: '管理',
-                onTap: () => context.push(AppRoutes.healthRecords),
-                child: health,
-              ),
-              const SizedBox(height: 16),
-              privacy,
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 12, 20, 20),
-                child: Text(
-                  '查看分析用途；演示开关不构成真实授权',
-                  style: TextStyle(color: AppColors.muted, fontSize: 13),
-                ),
-              ),
-              if (state.isInstitution) ...[
-                const ProfileInstitutionCard(),
-                const SizedBox(height: 16),
-                const ProfilePrivacyCard(),
-                const SizedBox(height: 16),
-              ],
-              const ProfileSection(title: '账户与帮助', child: ProfileAccountCard()),
-            ],
+          _CompactDemoProfileBody(
+            identity: identity,
+            profile: state.profile,
+            health: health,
+            privacy: privacy,
+            institution: state.isInstitution,
+            onOpenEditProfile: () => navigation.openEditProfile(context),
+            onOpenHealthRecords: () => navigation.openHealthRecords(context),
           ),
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 12),
@@ -124,8 +93,67 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-/// @brief 资料页面通用分节容器组件。
-/// @details 为资料页面各内容块统一提供节标题与可选操作入口。
+class _CompactDemoProfileBody extends StatelessWidget {
+  const _CompactDemoProfileBody({
+    required this.identity,
+    required this.profile,
+    required this.health,
+    required this.privacy,
+    required this.institution,
+    required this.onOpenEditProfile,
+    required this.onOpenHealthRecords,
+  });
+
+  final Widget identity;
+  final PersonProfile profile;
+  final Widget health;
+  final Widget privacy;
+  final bool institution;
+  final VoidCallback onOpenEditProfile;
+  final VoidCallback onOpenHealthRecords;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      identity,
+      const SizedBox(height: 14),
+      const ProfileShortcuts(),
+      const SizedBox(height: 12),
+      ProfileSection(
+        title: '基础资料',
+        action: '编辑',
+        onTap: onOpenEditProfile,
+        child: ProfileFactsCard(profile: profile),
+      ),
+      const SizedBox(height: 16),
+      ProfileSection(
+        title: '健康资料',
+        action: '管理',
+        onTap: onOpenHealthRecords,
+        child: health,
+      ),
+      const SizedBox(height: 16),
+      privacy,
+      const Padding(
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Text(
+          '查看分析用途；演示开关不构成真实授权',
+          style: TextStyle(color: AppColors.muted, fontSize: 13),
+        ),
+      ),
+      if (institution) ...[
+        const ProfileInstitutionCard(),
+        const SizedBox(height: 16),
+        const ProfilePrivacyCard(),
+        const SizedBox(height: 16),
+      ],
+      const ProfileSection(title: '账户与帮助', child: ProfileAccountCard()),
+    ],
+  );
+}
+
+/// 资料页面通用分节容器，统一展示标题与可选操作入口。
 class ProfileSection extends StatelessWidget {
   const ProfileSection({
     super.key,
@@ -151,45 +179,55 @@ class ProfileSection extends StatelessWidget {
   );
 }
 
-/// @brief 资料页快捷入口行组件。
-/// @details 提供健康档案、营养报告和饮食历史的路由快捷入口，具体数据边界由目标页面各自负责。
-class ProfileShortcuts extends StatelessWidget {
+/// 资料页窄屏快捷入口栏，提供健康档案、营养报告与饮食历史入口。
+class ProfileShortcuts extends ConsumerWidget {
   const ProfileShortcuts({super.key});
 
+  void _openShortcut(BuildContext context, WidgetRef ref, int index) {
+    final navigation = ref.read(navigationManagerProvider);
+    switch (index) {
+      case 0:
+        navigation.openHealthRecords(context);
+      case 1:
+        navigation.openReports(context);
+      case 2:
+        navigation.openMealHistory(context);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      for (final entry in [
-        (
-          label: '健康档案',
-          icon: AppIcons.identification,
-          route: AppRoutes.healthRecords,
-        ),
-        (label: '我的报告', icon: AppIcons.reports, route: AppRoutes.reports),
-        (label: '饮食历史', icon: AppIcons.history, route: AppRoutes.mealHistory),
-      ])
-        Expanded(
-          child: TextButton(
-            onPressed: () => context.push(entry.route),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(entry.icon, size: 28),
-                const SizedBox(height: 8),
-                Text(
-                  entry.label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+  Widget build(BuildContext context, WidgetRef ref) {
+    const entries = [
+      (label: '健康档案', icon: AppIcons.identification),
+      (label: '我的报告', icon: AppIcons.reports),
+      (label: '饮食历史', icon: AppIcons.history),
+    ];
+    return Row(
+      children: [
+        for (var i = 0; i < entries.length; i++)
+          Expanded(
+            child: TextButton(
+              onPressed: () => _openShortcut(context, ref, i),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(entries[i].icon, size: 28),
+                  const SizedBox(height: 8),
+                  Text(
+                    entries[i].label,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-    ],
-  );
+      ],
+    );
+  }
 }

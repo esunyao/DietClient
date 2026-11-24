@@ -1,23 +1,21 @@
 import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/presentation/app_routes.dart';
-import '../../../../core/presentation/display_state.dart';
 import '../../../../core/config/ui_preview_config.dart';
+import '../../../../core/presentation/display_state.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../../../demo/demo_store.dart';
 import 'health_kind.dart';
 
-/// @brief 个人中心机构服务卡片组件。
-/// @details 演示模式展示虚构机构信息及菜单入口；非演示模式仅提示机构能力暂未支持。
-class ProfileInstitutionCard extends StatelessWidget {
+/// 个人中心机构服务卡片；演示模式展示虚构机构与菜单入口，真实模式仅提示暂未支持。
+class ProfileInstitutionCard extends ConsumerWidget {
   const ProfileInstitutionCard({super.key, this.demo = true});
 
   final bool demo;
 
   @override
-  Widget build(BuildContext context) => !demo
+  Widget build(BuildContext context, WidgetRef ref) => !demo
       ? const InfoBanner(text: '机构成员信息、菜单与餐食同步暂未支持。')
       : AppCard(
           radius: 16,
@@ -53,7 +51,9 @@ class ProfileInstitutionCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => context.push(AppRoutes.institutionMenu),
+                onPressed: () => ref
+                    .read(navigationManagerProvider)
+                    .openInstitutionMenu(context),
                 child: const Text('查看食堂菜单'),
               ),
             ],
@@ -61,10 +61,17 @@ class ProfileInstitutionCard extends StatelessWidget {
         );
 }
 
-/// @brief 个人中心隐私隐藏开关卡片组件。
-/// @details 预览模式写入演示状态，其他模式写入独立临时展示状态。
+/// 个人中心隐私隐藏开关卡片；按预览状态分别写入演示或真实展示状态。
 class ProfilePrivacyCard extends ConsumerWidget {
   const ProfilePrivacyCard({super.key});
+
+  void _hidePersonalInfo(WidgetRef ref) {
+    if (ref.read(uiPreviewProvider)) {
+      ref.read(demoProvider.notifier).setPrivacyHidden(true);
+    } else {
+      ref.read(displayStateProvider.notifier).setPrivacyHidden(true);
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => AppCard(
@@ -95,22 +102,15 @@ class ProfilePrivacyCard extends ConsumerWidget {
           label: '暂时隐藏个人信息',
           icon: AppIcons.shield,
           secondary: true,
-          onPressed: () {
-            if (ref.read(uiPreviewProvider)) {
-              ref.read(demoProvider.notifier).setPrivacyHidden(true);
-            } else {
-              ref.read(displayStateProvider.notifier).setPrivacyHidden(true);
-            }
-          },
+          onPressed: () => _hidePersonalInfo(ref),
         ),
       ],
     ),
   );
 }
 
-/// @brief 个人中心服务入口集合组件。
-/// @details 组合各项服务路由；参数 real 控制支持状态文案，目标页面仍负责各自功能边界。
-class ProfileServiceEntries extends StatelessWidget {
+/// 个人中心服务入口集合卡片，根据 [real] 区分支持状态说明文案。
+class ProfileServiceEntries extends ConsumerWidget {
   const ProfileServiceEntries({
     super.key,
     required this.institution,
@@ -121,96 +121,97 @@ class ProfileServiceEntries extends StatelessWidget {
   final bool real;
 
   @override
-  Widget build(BuildContext context) => AppCard(
-    radius: 16,
-    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-    child: Column(
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ProfileEntryRow(
-                title: '我的报告',
-                subtitle: real ? '报告生成暂未支持' : '查看周期摘要与历史版本',
-                icon: AppIcons.reports,
-                onTap: () => context.push(AppRoutes.reports),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final navigation = ref.read(navigationManagerProvider);
+    return AppCard(
+      radius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ProfileEntryRow(
+                  title: '我的报告',
+                  subtitle: real ? '报告生成暂未支持' : '查看周期摘要与历史版本',
+                  icon: AppIcons.reports,
+                  onTap: () => navigation.openReports(context),
+                ),
               ),
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: ProfileEntryRow(
-                title: '饮食历史',
-                subtitle: '按日期查看个人餐食',
-                icon: AppIcons.history,
-                onTap: () => context.push(AppRoutes.mealHistory),
-              ),
-            ),
-          ],
-        ),
-        const Divider(height: 1),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ProfileEntryRow(
-                title: 'AI 数据与隐私',
-                subtitle: real ? '查看数据用途与同意记录' : '查看用途与演示开关',
-                icon: AppIcons.shield,
-                onTap: () => context.push(AppRoutes.aiConsent),
-              ),
-            ),
-            if (institution) ...[
               const SizedBox(width: 24),
               Expanded(
                 child: ProfileEntryRow(
-                  title: '机构餐食同步',
-                  subtitle: real ? '暂未支持' : '核对待确认的机构餐食',
-                  icon: AppIcons.sync,
-                  onTap: () => context.push(AppRoutes.institutionSync),
+                  title: '饮食历史',
+                  subtitle: '按日期查看个人餐食',
+                  icon: AppIcons.history,
+                  onTap: () => navigation.openMealHistory(context),
                 ),
               ),
             ],
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-/// @brief 个人中心账户与设置卡片组件。
-/// @details 提供外观设置与应用内退出入口；预览模式隐藏退出按钮，实际退出动作由页面作用域注入。
-class ProfileAccountCard extends StatelessWidget {
-  const ProfileAccountCard({super.key});
-
-  Future<void> _confirmLogout(BuildContext context) async {
-    final logout = AppPageScope.of(context)?.onLogout;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('退出当前应用？'),
-        content: const Text(
-          '退出将清除当前应用的登录状态及已保存的记住登录信息，返回登录入口。不会注销身份服务中的 SSO 会话，也不会向身份服务发起全局注销。',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('继续使用'),
           ),
-          FilledButton(
-            onPressed: logout == null
-                ? null
-                : () => Navigator.pop(dialogContext, true),
-            child: const Text('退出当前应用'),
+          const Divider(height: 1),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ProfileEntryRow(
+                  title: 'AI 数据与隐私',
+                  subtitle: real ? '查看数据用途与同意记录' : '查看用途与演示开关',
+                  icon: AppIcons.shield,
+                  onTap: () => navigation.openAiConsent(context),
+                ),
+              ),
+              if (institution) ...[
+                const SizedBox(width: 24),
+                Expanded(
+                  child: ProfileEntryRow(
+                    title: '机构餐食同步',
+                    subtitle: real ? '暂未支持' : '核对待确认的机构餐食',
+                    icon: AppIcons.sync,
+                    onTap: () => navigation.openInstitutionSync(context),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
     );
-    if (confirmed == true && context.mounted) logout?.call();
+  }
+}
+
+/// 个人中心账户与设置卡片，提供外观设置入口与仅清除本地会话的应用内退出入口。
+class ProfileAccountCard extends ConsumerWidget {
+  const ProfileAccountCard({super.key});
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final logout = AppPageScope.of(context)?.onLogout;
+    if (logout == null) {
+      await showAppConfirmDialog(
+        context,
+        title: '退出当前应用？',
+        content: '退出将清除当前应用的登录状态及已保存的记住登录信息，返回登录入口。不会注销身份服务中的 SSO 会话，也不会向身份服务发起全局注销。',
+        confirmLabel: '退出当前应用',
+        cancelLabel: '继续使用',
+        filledConfirm: true,
+      );
+      return;
+    }
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '退出当前应用？',
+      content:
+          '退出将清除当前应用的登录状态及已保存的记住登录信息，返回登录入口。不会注销身份服务中的 SSO 会话，也不会向身份服务发起全局注销。',
+      confirmLabel: '退出当前应用',
+      cancelLabel: '继续使用',
+      filledConfirm: true,
+    );
+    if (confirmed && context.mounted) logout();
   }
 
   @override
-  Widget build(BuildContext context) => AppCard(
+  Widget build(BuildContext context, WidgetRef ref) => AppCard(
     radius: MediaQuery.sizeOf(context).width >= 1024 ? 16 : 20,
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
     child: Column(
@@ -219,7 +220,8 @@ class ProfileAccountCard extends StatelessWidget {
           title: '应用设置',
           subtitle: '显示、体验模式与帮助',
           icon: AppIcons.settings,
-          onTap: () => context.push(AppRoutes.settings),
+          onTap: () =>
+              ref.read(navigationManagerProvider).openSettingsGuarded(context),
         ),
         if (!(AppPageScope.of(context)?.uiPreview ?? false)) ...[
           const Divider(height: 1, indent: 36),

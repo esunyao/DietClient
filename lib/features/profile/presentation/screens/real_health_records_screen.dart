@@ -1,20 +1,20 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:diet_ui/diet_ui.dart';
 
-import '../../application/profile_state.dart';
-import '../../data/profile_api.dart';
-import '../../data/health_fields.dart';
-import '../../../../core/session/session_controller.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/presentation/navigation_manager.dart';
+import '../../../../core/session/session_controller.dart';
+import '../../application/profile_state.dart';
+import '../../data/health_fields.dart';
+import '../../data/profile_api.dart';
 import '../widgets/health_kind.dart';
 import '../widgets/remote_state.dart';
-import 'real_health_form_screen.dart';
 
-/// @brief 真实健康档案总览页面。
-/// @details 为每类真实健康记录创建独立查询与操作区域，不使用演示记录补齐空值。
+/// 真实健康档案总览页面，为五类记录分别提供独立加载、新增、编辑与删除操作。
 class RealHealthRecordsScreen extends ConsumerWidget {
   const RealHealthRecordsScreen({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) => AppPage(
     demoLabel: null,
@@ -23,46 +23,37 @@ class RealHealthRecordsScreen extends ConsumerWidget {
     subtitle: '身体测量按日期保留；未填写的信息保持未知',
     children: [
       for (final entry in healthKinds.entries)
-        _Category(kind: entry.key, label: entry.value),
+        _RealHealthCategoryCard(kind: entry.key, label: entry.value),
     ],
   );
 }
 
-class _Category extends ConsumerStatefulWidget {
-  const _Category({required this.kind, required this.label});
-  final String kind, label;
+class _RealHealthCategoryCard extends ConsumerStatefulWidget {
+  const _RealHealthCategoryCard({required this.kind, required this.label});
+
+  final String kind;
+  final String label;
+
   @override
-  ConsumerState<_Category> createState() => _CategoryState();
+  ConsumerState<_RealHealthCategoryCard> createState() =>
+      _RealHealthCategoryCardState();
 }
 
-class _CategoryState extends ConsumerState<_Category> {
+class _RealHealthCategoryCardState
+    extends ConsumerState<_RealHealthCategoryCard> {
   bool _removing = false;
   String? _error;
 
-  /// @brief 弹窗确认并删除指定的真实健康记录。
-  /// @details 删除前复核登录代次；删除成功后仅在 API 仍匹配当前账户时刷新对应类别查询。
-  /// @param record 待删除的健康记录 JSON 对象。
   Future<void> _remove(Json record) async {
-    final session = ref.read(sessionEpochProvider);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('删除这条健康记录？'),
-        content: const Text('删除后无法恢复。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(c, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
+    final epoch = ref.read(sessionEpochProvider);
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '删除这条健康记录？',
+      content: '删除后无法恢复。',
+      confirmLabel: '删除',
     );
-    if (confirmed != true || !mounted) return;
-    if (session != ref.read(sessionEpochProvider)) {
+    if (!confirmed || !mounted) return;
+    if (epoch != ref.read(sessionEpochProvider)) {
       setState(() => _error = '账户已切换，请重新打开记录。');
       return;
     }
@@ -71,15 +62,10 @@ class _CategoryState extends ConsumerState<_Category> {
       _error = null;
     });
     try {
-      final api = ref.read(profileApiProvider);
-      if (api == null) throw StateError('会话不可用');
-      await api.remove(
-        widget.kind,
-        record[healthIdKeys[widget.kind]].toString(),
-      );
-      if (mounted && identical(api, ref.read(profileApiProvider))) {
-        ref.invalidate(healthRecordsProvider(widget.kind));
-      }
+      final id = record[healthIdKeys[widget.kind]].toString();
+      await ref
+          .read(profileManagerProvider)
+          .deleteHealthRecord(widget.kind, id, epoch: epoch);
     } catch (error) {
       if (mounted) {
         setState(
@@ -91,12 +77,52 @@ class _CategoryState extends ConsumerState<_Category> {
     }
   }
 
-  void _edit([Json? record]) => Navigator.push(
-    context,
-    MaterialPageRoute<void>(
-      builder: (_) => RealHealthFormScreen(kind: widget.kind, record: record),
-    ),
+  void _openForm([Json? record]) => ref
+      .read(navigationManagerProvider)
+      .openHealthRecordForm(context, widget.kind, record: record);
+
+  String _recordTitle(Json record) =>
+      record['allergenName']?.toString() ??
+      record['conditionName']?.toString() ??
+      record['restrictionName']?.toString() ??
+      (record['measuredAt'] == null
+          ? null
+          : DateTime.tryParse(record['measuredAt'].toString())
+                ?.toLocal()
+                .toString()) ??
+      fieldsByKind['goal']!.first.options?[record['goalType']] ??
+      widget.label;
+
+  Widget _buildRecordTile(Json record) => ExpansionTile(
+    title: Text(_recordTitle(record)),
+    children: [
+      for (final field in fieldsByKind[widget.kind]!)
+        if (record[field.key] != null && !field.key.endsWith('Code'))
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '${field.label}：${field.options?[record[field.key].toString()] ?? record[field.key]}',
+              ),
+            ),
+          ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: _removing ? null : () => _openForm(record),
+            child: const Text('编辑'),
+          ),
+          TextButton(
+            onPressed: _removing ? null : () => _remove(record),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    ],
   );
+
   @override
   Widget build(BuildContext context) => AppCard(
     child: Column(
@@ -110,14 +136,15 @@ class _CategoryState extends ConsumerState<_Category> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            TextButton(onPressed: () => _edit(), child: const Text('添加')),
+            TextButton(onPressed: () => _openForm(), child: const Text('添加')),
           ],
         ),
         if (_error != null) InfoBanner(text: _error!),
-        // 各类别分别处理加载、错误和重试；展开后按字段配置展示并进入编辑或删除。
         RemoteState(
           value: ref.watch(healthRecordsProvider(widget.kind)),
-          retry: () => ref.invalidate(healthRecordsProvider(widget.kind)),
+          retry: () => ref
+              .read(profileManagerProvider)
+              .refreshHealthRecords(widget.kind),
           builder: (records) => records.isEmpty
               ? const Padding(
                   padding: EdgeInsets.all(12),
@@ -127,57 +154,7 @@ class _CategoryState extends ConsumerState<_Category> {
                   title: Text('共 ${records.length} 条记录'),
                   subtitle: const Text('展开查看历史与编辑'),
                   children: [
-                    for (final record in records)
-                      ExpansionTile(
-                        title: Text(
-                          record['allergenName']?.toString() ??
-                              record['conditionName']?.toString() ??
-                              record['restrictionName']?.toString() ??
-                              (record['measuredAt'] == null
-                                  ? null
-                                  : DateTime.tryParse(
-                                      record['measuredAt'].toString(),
-                                    )?.toLocal().toString()) ??
-                              fieldsByKind['goal']!
-                                  .first
-                                  .options?[record['goalType']] ??
-                              widget.label,
-                        ),
-                        children: [
-                          for (final field in fieldsByKind[widget.kind]!)
-                            if (record[field.key] != null &&
-                                !field.key.endsWith('Code'))
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 4,
-                                ),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    '${field.label}：${field.options?[record[field.key].toString()] ?? record[field.key]}',
-                                  ),
-                                ),
-                              ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton(
-                                onPressed: _removing
-                                    ? null
-                                    : () => _edit(record),
-                                child: const Text('编辑'),
-                              ),
-                              TextButton(
-                                onPressed: _removing
-                                    ? null
-                                    : () => _remove(record),
-                                child: const Text('删除'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                    for (final record in records) _buildRecordTile(record),
                   ],
                 ),
         ),

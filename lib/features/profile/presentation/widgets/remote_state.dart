@@ -4,8 +4,7 @@ import 'package:diet_ui/diet_ui.dart';
 
 import '../../../../core/network/api_client.dart';
 
-/// @brief 通用远程异步状态展示包装组件。
-/// @details 将 `AsyncValue<T>` 映射为数据内容、加载态或安全错误提示；重试回调由调用方注入。
+/// 通用远程异步状态包装组件，将 `AsyncValue<T>` 映射为数据内容、加载态或错误重试卡片。
 class RemoteState<T> extends StatelessWidget {
   const RemoteState({
     super.key,

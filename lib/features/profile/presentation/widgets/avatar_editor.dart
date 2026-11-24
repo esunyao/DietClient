@@ -1,20 +1,20 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:diet_ui/diet_ui.dart';
 
+import '../../../../core/media/media_coordinator.dart';
 import '../../../../core/presentation/account_identity.dart';
 import '../../../../core/session/session_controller.dart';
-import '../../../../core/media/media_coordinator.dart';
 import '../../application/profile_state.dart';
 import '../../data/avatar_image.dart';
 
-/// @brief 头像选取、方形裁剪预览与确认上传组件。
-/// @details 协调选图、本地预处理裁剪与确认上传流程，底层上传实现由资料 API 负责。
+/// 头像选取、方形裁剪预览与确认上传组件。
 class AvatarEditor extends ConsumerStatefulWidget {
   const AvatarEditor({super.key});
+
   @override
   ConsumerState<AvatarEditor> createState() => _AvatarEditorState();
 }
@@ -25,6 +25,7 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
   bool _busy = false;
   double? _progress;
   String? _error;
+
   @override
   void initState() {
     super.initState();
@@ -66,11 +67,8 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
     }
   }
 
-  /// @brief 校验、预处理并打开方形裁剪流程。
-  /// @details 限制原图大小，异步预处理后执行裁剪；仅将当前登录代次的裁剪结果留作待上传预览。
-  /// @param file 用户新选中的原始图片文件。
   Future<void> _crop(XFile file) async {
-    final session = ref.read(sessionEpochProvider);
+    final epoch = ref.read(sessionEpochProvider);
     setState(() {
       _busy = true;
       _error = null;
@@ -80,15 +78,15 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
         throw const FormatException('图片不能超过 5 MiB');
       }
       final prepared = await compute(prepareAvatar, await file.readAsBytes());
-      if (!mounted || session != ref.read(sessionEpochProvider)) return;
+      if (!mounted || epoch != ref.read(sessionEpochProvider)) return;
       final cropped = await showSquareImageCrop(context, prepared);
       if (cropped == null ||
           !mounted ||
-          session != ref.read(sessionEpochProvider)) {
+          epoch != ref.read(sessionEpochProvider)) {
         return;
       }
       final result = await compute(finishAvatar, cropped);
-      if (mounted && session == ref.read(sessionEpochProvider)) {
+      if (mounted && epoch == ref.read(sessionEpochProvider)) {
         setState(() => _pending = result);
       }
     } on FormatException catch (e) {
@@ -100,11 +98,14 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
     }
   }
 
-  /// @brief 上传当前待确认的裁剪头像字节。
-  /// @details 上传失败时保留裁剪结果供重试；上传成功且 API 仍匹配当前账户时更新已确认头像并刷新身份查询。
+  void _handleUploadProgress(int sent, int total) {
+    if (mounted && total > 0) setState(() => _progress = sent / total);
+  }
+
   Future<void> _upload() async {
     final bytes = _pending;
     if (bytes == null) return;
+    final epoch = ref.read(sessionEpochProvider);
     setState(() {
       _busy = true;
       _error = null;
@@ -112,15 +113,17 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
     });
     _cancel = CancelToken();
     try {
-      final api = ref.read(profileApiProvider);
-      if (api == null) throw StateError('会话不可用');
-      final url = await api.uploadAvatar(bytes, (sent, total) {
-        if (mounted && total > 0) setState(() => _progress = sent / total);
-      }, _cancel!);
-      if (!mounted || !identical(api, ref.read(profileApiProvider))) return;
-      ref.read(confirmedAvatarProvider.notifier).setUrl(url);
-      setState(() => _pending = null);
-      ref.invalidate(accountIdentityProvider);
+      final uploaded = await ref
+          .read(profileManagerProvider)
+          .uploadAvatar(
+            bytes,
+            onProgress: _handleUploadProgress,
+            cancelToken: _cancel!,
+            epoch: epoch,
+          );
+      if (mounted && uploaded) {
+        setState(() => _pending = null);
+      }
     } catch (_) {
       if (mounted) setState(() => _error = '上传失败，裁剪结果已保留，可重试。');
     } finally {
@@ -133,18 +136,23 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
     }
   }
 
+  void _discardPending() => setState(() => _pending = null);
+
+  void _resetOnAccountSwitch(int? _, int _) {
+    _cancel?.cancel();
+    setState(() {
+      _pending = null;
+      _error = null;
+      _busy = false;
+      _progress = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 切换账户时取消上传并清除本地预览；页面销毁时也会取消上传。
-    ref.listen(sessionEpochProvider, (_, next) {
-      _cancel?.cancel();
-      setState(() {
-        _pending = null;
-        _error = null;
-        _busy = false;
-        _progress = null;
-      });
-    });
+    ref.listen(sessionEpochProvider, _resetOnAccountSwitch);
+    final isAndroid =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -171,8 +179,7 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
                         : () => _choose(ImageSource.gallery),
                     child: const Text('选择头像'),
                   ),
-                  if (!kIsWeb &&
-                      defaultTargetPlatform == TargetPlatform.android)
+                  if (isAndroid)
                     TextButton(
                       onPressed: _busy
                           ? null
@@ -194,7 +201,7 @@ class _AvatarEditorState extends ConsumerState<AvatarEditor> {
                 child: const Text('确认上传'),
               ),
               TextButton(
-                onPressed: _busy ? null : () => setState(() => _pending = null),
+                onPressed: _busy ? null : _discardPending,
                 child: const Text('放弃此图片'),
               ),
             ],

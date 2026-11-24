@@ -7,8 +7,7 @@ import '../widgets/unsaved_form.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'real_edit_profile_screen.dart';
 
-/// @brief 个人基础资料编辑页入口组件。
-/// @details 先按预览配置选择真实编辑页或演示编辑页，避免真实编辑入口创建演示表单状态。
+/// 个人基础资料编辑页入口，按预览配置隔离真实与演示表单状态。
 class EditProfileScreen extends ConsumerWidget {
   const EditProfileScreen({super.key});
   @override
@@ -25,13 +24,14 @@ class _DemoEditProfileScreen extends ConsumerStatefulWidget {
       _EditProfileScreenState();
 }
 
-/// @brief 演示资料编辑页面状态。
-/// @details 从演示资料快照初始化输入控制器；修改仅写回共享演示状态，并由未保存保护拦截离开。
 class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
   final _form = GlobalKey<FormState>();
   late final PersonProfile _original;
   late final Map<String, TextEditingController> _fields;
   bool _dirty = false;
+  late String _gender;
+  late String _activity;
+
   @override
   void initState() {
     super.initState();
@@ -46,8 +46,6 @@ class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
     _activity = _original.activity;
   }
 
-  late String _gender;
-  late String _activity;
   @override
   void dispose() {
     for (final c in _fields.values) {
@@ -56,11 +54,6 @@ class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
     super.dispose();
   }
 
-  /// @brief 校验单个演示资料表单字段。
-  /// @details 日期回读年月日以排除 DateTime 自动进位，数值范围仅适用于此演示表单。
-  /// @param key 字段标签名。
-  /// @param value 用户输入的字符串值。
-  /// @return 校验通过时返回 null，否则返回错误提示字符串。
   String? _validate(String key, String? value) {
     if (value == null || value.trim().isEmpty) return '请填写$key';
     if (key == '出生日期') {
@@ -92,8 +85,6 @@ class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
     return null;
   }
 
-  /// @brief 校验表单并将修改合并写回共享演示资料状态。
-  /// @note 仅修改内存演示状态，不调用真实资料接口。
   void _save() {
     if (!_form.currentState!.validate()) return;
     ref
@@ -112,6 +103,18 @@ class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
     setState(() => _dirty = false);
     showDemoMessage(context, '基础资料已用于本次演示，重启后恢复样例。');
   }
+
+  void _onGenderChanged(String? value) => setState(() {
+    _gender = value!;
+    _dirty = true;
+  });
+
+  void _onActivityChanged(String? value) => setState(() {
+    _activity = value!;
+    _dirty = true;
+  });
+
+  void _markDirty(String _) => setState(() => _dirty = true);
 
   @override
   Widget build(BuildContext context) => UnsavedForm(
@@ -134,7 +137,7 @@ class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
                     padding: const EdgeInsets.only(bottom: 20),
                     child: TextFormField(
                       controller: entry.value,
-                      onChanged: (_) => setState(() => _dirty = true),
+                      onChanged: _markDirty,
                       validator: (v) => _validate(entry.key, v),
                       keyboardType:
                           entry.key.contains('cm') || entry.key.contains('ml')
@@ -153,10 +156,7 @@ class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
                   items: ['女', '男', '其他', '未说明']
                       .map((v) => DropdownMenuItem(value: v, child: Text(v)))
                       .toList(),
-                  onChanged: (v) => setState(() {
-                    _gender = v!;
-                    _dirty = true;
-                  }),
+                  onChanged: _onGenderChanged,
                 ),
                 const SizedBox(height: 20),
                 DropdownButtonFormField<String>(
@@ -166,10 +166,7 @@ class _EditProfileScreenState extends ConsumerState<_DemoEditProfileScreen> {
                   items: ['久坐', '轻度活动', '中度活动', '活跃', '高强度活动']
                       .map((v) => DropdownMenuItem(value: v, child: Text(v)))
                       .toList(),
-                  onChanged: (v) => setState(() {
-                    _activity = v!;
-                    _dirty = true;
-                  }),
+                  onChanged: _onActivityChanged,
                 ),
               ],
             ),

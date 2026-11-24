@@ -1,23 +1,26 @@
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:diet_ui/diet_ui.dart';
 
-import '../../application/profile_state.dart';
-import '../../data/profile_api.dart';
-import '../../data/health_fields.dart';
-import '../../../../core/session/session_controller.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/presentation/app_routes.dart';
-import '../../../../core/presentation/unsaved_form.dart' show returnOrGo;
+import '../../../../core/presentation/navigation_manager.dart';
+import '../../../../core/session/session_controller.dart';
+import '../../application/profile_state.dart';
+import '../../data/health_fields.dart';
+import '../../data/profile_api.dart';
 import '../widgets/remote_state.dart';
 import '../widgets/unsaved_form.dart';
 
+/// 性别编码到中文选项的映射表。
 const genderOptions = {
   'male': '男',
   'female': '女',
   'other': '其他',
   'unknown': '未知',
 };
+
+/// 活动水平编码到中文选项的映射表。
 const activityOptions = {
   'sedentary': '久坐',
   'light': '轻度活动',
@@ -26,14 +29,14 @@ const activityOptions = {
   'very_active': '极高活动',
 };
 
-/// @brief 真实个人基础资料编辑页面。
-/// @details 加载真实基础资料后装配表单；读取失败时通过失效查询重试。
+/// 真实个人基础资料编辑页面，加载档案后装配表单并支持重试。
 class RealEditProfileScreen extends ConsumerWidget {
   const RealEditProfileScreen({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) => RemoteState(
     value: ref.watch(profileProvider),
-    retry: () => ref.invalidate(profileProvider),
+    retry: () => ref.read(profileManagerProvider).refreshProfile(),
     builder: (data) =>
         _ProfileForm(key: ValueKey(data['userId']), original: data),
   );
@@ -41,23 +44,27 @@ class RealEditProfileScreen extends ConsumerWidget {
 
 class _ProfileForm extends ConsumerStatefulWidget {
   const _ProfileForm({super.key, required this.original});
+
   final Json original;
+
   @override
   ConsumerState<_ProfileForm> createState() => _ProfileFormState();
 }
 
-/// @brief 真实个人基础资料表单状态。
-/// @details 持有初始登录代次和各字段编辑控制器；保存过程中交由未保存保护阻止离开。
 class _ProfileFormState extends ConsumerState<_ProfileForm> {
   final _form = GlobalKey<FormState>();
   late final Map<String, TextEditingController> _fields;
-  String? _gender, _activity, _error;
-  bool _dirty = false, _saving = false;
-  Object? _session;
+  String? _gender;
+  String? _activity;
+  String? _error;
+  bool _dirty = false;
+  bool _saving = false;
+  late final int _epoch;
+
   @override
   void initState() {
     super.initState();
-    _session = ref.read(sessionEpochProvider);
+    _epoch = ref.read(sessionEpochProvider);
     _fields = {
       for (final key in ['birthDate', 'heightCm', 'dailyWaterTargetMl'])
         key: TextEditingController(
@@ -76,20 +83,47 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
     super.dispose();
   }
 
-  Future<void> _save() async {
-    if (_session != ref.read(sessionEpochProvider)) {
-      setState(() => _error = '账户已切换，请返回重新打开表单。');
-      return;
+  String? _validateBirthDate(String? raw) {
+    final value = raw?.trim() ?? '';
+    final error = validateHealthField(
+      const HealthField('birthDate', '出生日期', date: true),
+      value,
+    );
+    if (error != null || value.isEmpty) return error;
+    final date = DateTime.parse(value);
+    final now = DateTime.now();
+    var age = now.year - date.year;
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
     }
-    if (!_form.currentState!.validate()) return;
-    // 空字段不发送；原有字段不能通过留空清除，避免将 PATCH 保留语义误作清空。
+    return age < 10 || age > 120 ? '年龄须在 10–120 岁之间' : null;
+  }
+
+  String? _validateHeight(String? raw) => validateHealthField(
+    const HealthField('heightCm', '身高', min: 50, max: 300),
+    raw?.trim() ?? '',
+  );
+
+  String? _validateWaterTarget(String? raw) => validateHealthField(
+    const HealthField(
+      'dailyWaterTargetMl',
+      '饮水目标',
+      min: 0,
+      max: 10000,
+      integer: true,
+    ),
+    raw?.trim() ?? '',
+  );
+
+  Map<String, dynamic>? _collectPatchData() {
     final data = <String, dynamic>{};
     for (final entry in _fields.entries) {
       final value = entry.value.text.trim();
       if (value.isEmpty) {
         if (widget.original[entry.key] != null) {
           setState(() => _error = '已有资料不能通过留空清除，请保留原值。');
-          return;
+          return null;
         }
         continue;
       }
@@ -97,47 +131,64 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
     }
     if (_gender != null) data['gender'] = _gender;
     if (_activity != null) data['activityLevel'] = _activity;
+    return data;
+  }
+
+  Future<void> _save() async {
+    if (_epoch != ref.read(sessionEpochProvider)) {
+      setState(() => _error = '账户已切换，请返回重新打开表单。');
+      return;
+    }
+    if (!_form.currentState!.validate()) return;
+    final data = _collectPatchData();
+    if (data == null) return;
+
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
-      final api = ref.read(profileApiProvider);
-      if (api == null) throw StateError('会话不可用');
-      // 成功结果须仍属于当前代次和 API，再更新已确认资料并在帧后返回。
-      final saved = await api.saveProfile(data);
-      if (!mounted ||
-          _session != ref.read(sessionEpochProvider) ||
-          !identical(api, ref.read(profileApiProvider))) {
-        return;
-      }
+      final saved = await ref
+          .read(profileManagerProvider)
+          .saveProfile(data, epoch: _epoch);
+      if (!mounted || !saved) return;
       setState(() => _dirty = false);
-      if (!ref
-          .read(confirmedProfileProvider.notifier)
-          .accept(saved, _session)) {
-        return;
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted &&
-            _session == ref.read(sessionEpochProvider) &&
-            ModalRoute.of(context)?.isCurrent != false) {
-          returnOrGo(context, AppRoutes.profile);
-        }
-      });
+      ref
+          .read(navigationManagerProvider)
+          .scheduleSafeReturn(
+            context,
+            fallbackLocation: AppRoutes.profile,
+            isValid: () => _epoch == ref.read(sessionEpochProvider),
+          );
     } catch (error) {
-      if (mounted) {
-        setState(
-          () => _error = error is ApiFailure
-              ? '${error.message}，输入已保留。'
-              : '保存失败，输入已保留，请重试。',
-        );
-      }
+      if (!mounted) return;
+      setState(
+        () => _error = error is ApiFailure
+            ? '${error.message}，输入已保留。'
+            : '保存失败，输入已保留，请重试。',
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  Widget _field(
+  void _onGenderChanged(String? value) {
+    setState(() {
+      _gender = value;
+      _dirty = true;
+    });
+  }
+
+  void _onActivityChanged(String? value) {
+    setState(() {
+      _activity = value;
+      _dirty = true;
+    });
+  }
+
+  void _markDirty(String _) => setState(() => _dirty = true);
+
+  Widget _buildTextField(
     String key,
     String label,
     String? Function(String?) validator,
@@ -148,9 +199,10 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
       enabled: !_saving,
       decoration: InputDecoration(labelText: label, errorMaxLines: 3),
       validator: validator,
-      onChanged: (_) => setState(() => _dirty = true),
+      onChanged: _markDirty,
     ),
   );
+
   @override
   Widget build(BuildContext context) => UnsavedForm(
     dirty: _dirty,
@@ -184,22 +236,11 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
           child: AppCard(
             child: Column(
               children: [
-                _field('birthDate', '出生日期（YYYY-MM-DD）', (v) {
-                  final value = v?.trim() ?? '';
-                  final error = validateHealthField(
-                    const HealthField('birthDate', '出生日期', date: true),
-                    value,
-                  );
-                  if (error != null || value.isEmpty) return error;
-                  // 按今年生日是否已过计算完整年龄，再检查允许范围。
-                  final date = DateTime.parse(value), now = DateTime.now();
-                  var age = now.year - date.year;
-                  if (now.month < date.month ||
-                      (now.month == date.month && now.day < date.day)) {
-                    age--;
-                  }
-                  return age < 10 || age > 120 ? '年龄须在 10–120 岁之间' : null;
-                }),
+                _buildTextField(
+                  'birthDate',
+                  '出生日期（YYYY-MM-DD）',
+                  _validateBirthDate,
+                ),
                 DropdownButtonFormField<String>(
                   initialValue: _gender,
                   isExpanded: true,
@@ -212,22 +253,10 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
                         ),
                       )
                       .toList(),
-                  onChanged: _saving
-                      ? null
-                      : (v) => setState(() {
-                          _gender = v;
-                          _dirty = true;
-                        }),
+                  onChanged: _saving ? null : _onGenderChanged,
                 ),
                 const SizedBox(height: 20),
-                _field(
-                  'heightCm',
-                  '身高（cm）',
-                  (v) => validateHealthField(
-                    const HealthField('heightCm', '身高', min: 50, max: 300),
-                    v?.trim() ?? '',
-                  ),
-                ),
+                _buildTextField('heightCm', '身高（cm）', _validateHeight),
                 DropdownButtonFormField<String>(
                   initialValue: _activity,
                   isExpanded: true,
@@ -240,27 +269,13 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
                         ),
                       )
                       .toList(),
-                  onChanged: _saving
-                      ? null
-                      : (v) => setState(() {
-                          _activity = v;
-                          _dirty = true;
-                        }),
+                  onChanged: _saving ? null : _onActivityChanged,
                 ),
                 const SizedBox(height: 20),
-                _field(
+                _buildTextField(
                   'dailyWaterTargetMl',
                   '每日饮水目标（ml）',
-                  (v) => validateHealthField(
-                    const HealthField(
-                      'dailyWaterTargetMl',
-                      '饮水目标',
-                      min: 0,
-                      max: 10000,
-                      integer: true,
-                    ),
-                    v?.trim() ?? '',
-                  ),
+                  _validateWaterTarget,
                 ),
               ],
             ),

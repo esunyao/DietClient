@@ -1,31 +1,23 @@
+import 'package:diet_models/diet_models.dart';
+import 'package:diet_ui/diet_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:diet_ui/diet_ui.dart';
 
-import '../../../../core/presentation/account_identity.dart';
 import '../../../../core/config/ui_preview_config.dart';
-import '../../../../core/presentation/app_routes.dart';
-
-import 'package:diet_models/diet_models.dart';
-
+import '../../../../core/presentation/account_identity.dart';
 import '../../../../core/presentation/display_state.dart';
+import '../../../../core/presentation/navigation_manager.dart';
 import '../../application/profile_state.dart';
-import '../../data/profile_api.dart';
 import '../../data/health_fields.dart';
-import '../widgets/remote_state.dart';
+import '../../data/profile_api.dart';
 import '../widgets/avatar_editor.dart';
+import '../widgets/health_kind.dart';
 import '../widgets/profile_cards.dart';
 import '../widgets/profile_services.dart';
-import '../widgets/health_kind.dart';
+import '../widgets/remote_state.dart';
 import 'profile_screen.dart' show ProfileSection, ProfileShortcuts;
 import 'real_edit_profile_screen.dart';
 
-/// @brief 将账户身份与真实档案 JSON 适配为共享资料卡片模型。
-/// @details 身高和饮水目标的缺失展示标签由调用方另行提供。
-/// @param account 共享账户身份对象。
-/// @param data 真实基础资料 JSON 映射。
-/// @return 适配后的 PersonProfile 展示模型。
 PersonProfile _displayProfile(AccountIdentity account, Json data) =>
     PersonProfile(
       name: account.name,
@@ -39,12 +31,7 @@ PersonProfile _displayProfile(AccountIdentity account, Json data) =>
       goal: '未填写',
     );
 
-/// @brief 将单条真实健康记录投影为摘要预览模型。
-/// @details 身体测量优先取体重，否则取首个有值的数值字段及其标签中的单位。
-/// @param kind 健康记录类别键。
-/// @param record 真实健康记录 JSON 映射。
-/// @return 转换后的 HealthRecordPreview 摘要对象。
-HealthRecordPreview _preview(String kind, Json record) {
+HealthRecordPreview _previewHealthRecord(String kind, Json record) {
   String field(String key) => record[key]?.toString() ?? '';
   final fields = fieldsByKind[kind]!;
   final numeric = fields
@@ -94,10 +81,25 @@ HealthRecordPreview _preview(String kind, Json record) {
   );
 }
 
-/// @brief 真实“我的”个人中心页面。
-/// @details 组合真实身份、基础资料、健康记录和 AI 同意状态；机构显示模式来自临时展示状态。
+/// 真实“我的”个人中心页面，组合真实身份、基础资料、五类健康档案与 AI 同意状态。
 class RealProfileScreen extends ConsumerWidget {
   const RealProfileScreen({super.key});
+
+  Future<void> _openAvatarDialog(BuildContext context) => showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('更换头像'),
+      scrollable: true,
+      content: const SizedBox(width: 380, child: AvatarEditor()),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('完成'),
+        ),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final native = ref.watch(nativeNutritionEnabledProvider);
@@ -105,96 +107,47 @@ class RealProfileScreen extends ConsumerWidget {
     final institution = ref.watch(
       displayStateProvider.select((s) => s.isInstitution),
     );
-    final data =
+    final profileData =
         ref.watch(profileProvider).asData?.value ?? <String, dynamic>{};
     final account =
         ref.watch(accountIdentityProvider).asData?.value ??
         const AccountIdentity();
-    final person = _displayProfile(account, data);
-    final height = data['heightCm'] == null
+    final person = _displayProfile(account, profileData);
+    final heightLabel = profileData['heightCm'] == null
         ? '身高未填写'
-        : '${data['heightCm']} cm';
+        : '${profileData['heightCm']} cm';
+    final manager = ref.read(profileManagerProvider);
+    final navigation = ref.read(navigationManagerProvider);
+
     final identity = RemoteState(
       value: ref.watch(accountIdentityProvider),
-      retry: () => ref.invalidate(accountIdentityProvider),
-      builder: (account) => ProfileIdentityCard(
-        profile: _displayProfile(account, data),
+      retry: manager.refreshIdentity,
+      builder: (resolvedAccount) => ProfileIdentityCard(
+        profile: _displayProfile(resolvedAccount, profileData),
         wide: wide,
-        heightLabel: height,
+        heightLabel: heightLabel,
         identityLabel: '当前账户',
-        avatar: Semantics(
-          label: '更换头像',
-          button: true,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(50),
-            onTap: () => showDialog<void>(
-              context: context,
-              builder: (c) => AlertDialog(
-                title: const Text('更换头像'),
-                scrollable: true,
-                content: const SizedBox(width: 380, child: AvatarEditor()),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(c),
-                    child: const Text('完成'),
-                  ),
-                ],
-              ),
-            ),
-            child: AccountAvatar(size: wide ? 76 : 65),
-          ),
+        avatar: _AvatarTrigger(
+          size: wide ? 76 : 65,
+          onTap: () => _openAvatarDialog(context),
         ),
       ),
     );
     final facts = RemoteState(
       value: ref.watch(profileProvider),
-      retry: () => ref.invalidate(profileProvider),
+      retry: manager.refreshProfile,
       builder: (data) => ProfileFactsCard(
         profile: person,
-        heightLabel: height,
+        heightLabel: heightLabel,
         waterLabel: data['dailyWaterTargetMl'] == null
             ? '未填写'
             : '${data['dailyWaterTargetMl']} ml / 用户设置',
       ),
     );
-    // 五类记录独立查询，汇总已有结果；部分失败时仅重试失败类别，不隐藏其他摘要。
-    final records = <HealthRecordPreview>[];
-    final healthErrors = <String>[];
-    var loading = false;
-    for (final kind in healthKinds.keys) {
-      final value = ref.watch(healthRecordsProvider(kind));
-      if (value.isLoading) loading = true;
-      if (value.hasError) healthErrors.add(kind);
-      records.addAll(
-        (value.asData?.value ?? <Json>[]).map((r) => _preview(kind, r)),
-      );
-    }
-    final health = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (loading) const LinearProgressIndicator(),
-        if (healthErrors.isNotEmpty)
-          AppCard(
-            child: Row(
-              children: [
-                const Expanded(child: Text('部分健康资料加载失败，摘要暂不完整。')),
-                TextButton(
-                  onPressed: () {
-                    for (final kind in healthErrors) {
-                      ref.invalidate(healthRecordsProvider(kind));
-                    }
-                  },
-                  child: const Text('重试'),
-                ),
-              ],
-            ),
-          ),
-        ProfileHealthSummary(records: records, wide: wide, real: true),
-      ],
-    );
+    final health = _RealHealthSummarySection(wide: wide);
     final privacy = RemoteState(
       value: ref.watch(consentsProvider),
-      retry: () => ref.invalidate(consentsProvider),
+      retry: manager.refreshConsents,
       builder: (records) => AppCard(
         radius: wide ? 16 : 20,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -202,16 +155,17 @@ class RealProfileScreen extends ConsumerWidget {
           title: 'AI 数据与隐私',
           value: consentStatus(records),
           icon: AppIcons.shield,
-          onTap: () => context.push(AppRoutes.aiConsent),
+          onTap: () => navigation.openAiConsent(context),
         ),
       ),
     );
     final basics = ProfileSection(
       title: '基础资料',
       action: '编辑',
-      onTap: () => context.push(AppRoutes.editProfile),
+      onTap: () => navigation.openEditProfile(context),
       child: facts,
     );
+
     return AppPage(
       demoLabel: null,
       title: wide ? '你的资料与服务' : '我的',
@@ -225,10 +179,9 @@ class RealProfileScreen extends ConsumerWidget {
               ProfileSection(
                 title: '健康档案',
                 action: '查看全部',
-                onTap: () => context.push(AppRoutes.healthRecords),
+                onTap: () => navigation.openHealthRecords(context),
                 child: health,
               ),
-              // 服务入口按原生营养能力区分真实支持与演示或暂未支持的文案。
               ProfileSection(
                 title: native ? '常用入口' : '常用入口（报告、饮食与机构仍演示）',
                 child: ProfileServiceEntries(
@@ -246,62 +199,148 @@ class RealProfileScreen extends ConsumerWidget {
             ],
           )
         else
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              identity,
-              const SizedBox(height: 14),
-              const ProfileShortcuts(),
-              const SizedBox(height: 12),
-              basics,
-              const SizedBox(height: 16),
-              ProfileSection(
-                title: '健康资料',
-                action: '管理',
-                onTap: () => context.push(AppRoutes.healthRecords),
-                child: health,
-              ),
-              const SizedBox(height: 16),
-              privacy,
-              Padding(
-                padding: EdgeInsets.fromLTRB(20, 12, 20, 20),
-                child: Text(
-                  native
-                      ? '资料录入不等于授权；餐食分析前需单独确认 AI 数据同意。'
-                      : '资料录入不等于授权；报告与饮食历史仍为演示',
-                  style: TextStyle(color: AppColors.muted, fontSize: 13),
-                ),
-              ),
-              if (institution) ...[
-                ProfileInstitutionCard(demo: !native),
-                const SizedBox(height: 16),
-                const ProfilePrivacyCard(),
-                const SizedBox(height: 16),
-              ],
-              const ProfileSection(title: '账户与帮助', child: ProfileAccountCard()),
-            ],
+          _CompactRealProfileBody(
+            identity: identity,
+            basics: basics,
+            health: health,
+            privacy: privacy,
+            native: native,
+            institution: institution,
+            onOpenHealthRecords: () => navigation.openHealthRecords(context),
           ),
-        // 手动刷新先清除已确认的头像和资料覆盖，再失效各项查询。
         TextButton(
-          onPressed: () {
-            ref.read(confirmedAvatarProvider.notifier).setUrl(null);
-            ref.read(confirmedProfileProvider.notifier).clear();
-            ref.invalidate(accountIdentityProvider);
-            ref.invalidate(profileProvider);
-            for (final kind in healthKinds.keys) {
-              ref.invalidate(healthRecordsProvider(kind));
-            }
-            ref.invalidate(consentsProvider);
-          },
+          onPressed: () => manager.refreshAll(healthKinds.keys),
           child: const Text('刷新资料'),
         ),
         Text(
           native
               ? '资料未填写，不等于已确认无相关健康限制。机构服务暂未支持。'
               : '资料未填写，不等于已确认无相关健康限制。机构服务仍为演示。',
-          style: TextStyle(color: AppColors.muted, fontSize: 12, height: 1.8),
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 12,
+            height: 1.8,
+          ),
         ),
       ],
     );
   }
+}
+
+class _AvatarTrigger extends StatelessWidget {
+  const _AvatarTrigger({required this.size, required this.onTap});
+
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: '更换头像',
+    button: true,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(50),
+      onTap: onTap,
+      child: AccountAvatar(size: size),
+    ),
+  );
+}
+
+class _RealHealthSummarySection extends ConsumerWidget {
+  const _RealHealthSummarySection({required this.wide});
+
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final records = <HealthRecordPreview>[];
+    final healthErrors = <String>[];
+    var loading = false;
+    for (final kind in healthKinds.keys) {
+      final value = ref.watch(healthRecordsProvider(kind));
+      if (value.isLoading) loading = true;
+      if (value.hasError) healthErrors.add(kind);
+      records.addAll(
+        (value.asData?.value ?? <Json>[]).map(
+          (r) => _previewHealthRecord(kind, r),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (loading) const LinearProgressIndicator(),
+        if (healthErrors.isNotEmpty)
+          AppCard(
+            child: Row(
+              children: [
+                const Expanded(child: Text('部分健康资料加载失败，摘要暂不完整。')),
+                TextButton(
+                  onPressed: () => ref
+                      .read(profileManagerProvider)
+                      .refreshHealthCategories(healthErrors),
+                  child: const Text('重试'),
+                ),
+              ],
+            ),
+          ),
+        ProfileHealthSummary(records: records, wide: wide, real: true),
+      ],
+    );
+  }
+}
+
+class _CompactRealProfileBody extends StatelessWidget {
+  const _CompactRealProfileBody({
+    required this.identity,
+    required this.basics,
+    required this.health,
+    required this.privacy,
+    required this.native,
+    required this.institution,
+    required this.onOpenHealthRecords,
+  });
+
+  final Widget identity;
+  final Widget basics;
+  final Widget health;
+  final Widget privacy;
+  final bool native;
+  final bool institution;
+  final VoidCallback onOpenHealthRecords;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      identity,
+      const SizedBox(height: 14),
+      const ProfileShortcuts(),
+      const SizedBox(height: 12),
+      basics,
+      const SizedBox(height: 16),
+      ProfileSection(
+        title: '健康资料',
+        action: '管理',
+        onTap: onOpenHealthRecords,
+        child: health,
+      ),
+      const SizedBox(height: 16),
+      privacy,
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Text(
+          native ? '资料录入不等于授权；餐食分析前需单独确认 AI 数据同意。' : '资料录入不等于授权；报告与饮食历史仍为演示',
+          style: const TextStyle(color: AppColors.muted, fontSize: 13),
+        ),
+      ),
+      if (institution) ...[
+        ProfileInstitutionCard(demo: !native),
+        const SizedBox(height: 16),
+        const ProfilePrivacyCard(),
+        const SizedBox(height: 16),
+      ],
+      const ProfileSection(title: '账户与帮助', child: ProfileAccountCard()),
+    ],
+  );
 }
