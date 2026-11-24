@@ -6,6 +6,7 @@ export 'src/widgets/app_icons.dart';
 export 'src/widgets/app_navigation.dart';
 export 'src/widgets/app_side_navigation.dart';
 export 'src/widgets/app_page.dart';
+export 'src/widgets/confirm_dialog.dart';
 export 'src/widgets/primitives.dart';
 export 'src/widgets/layout.dart';
 export 'src/widgets/square_image_crop.dart';
