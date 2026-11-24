@@ -8,16 +8,16 @@ import '../widgets/unsaved_form.dart';
 import '../../../../core/config/ui_preview_config.dart';
 import 'real_health_form_screen.dart';
 
-/// @brief 健康记录新增表单页入口组件。
-/// @details 依据预览配置选择演示或真实表单实现，不在真实入口初始化演示控制器。
+/// 健康记录新增或编辑表单路由入口，按预览配置隔离真实与演示表单状态。
 class HealthRecordFormScreen extends ConsumerWidget {
-  const HealthRecordFormScreen({super.key, required this.kind});
+  const HealthRecordFormScreen({super.key, required this.kind, this.record});
   final String kind;
+  final Map<String, dynamic>? record;
   @override
   Widget build(BuildContext context, WidgetRef ref) =>
       ref.watch(uiPreviewProvider)
       ? _DemoHealthRecordFormScreen(kind: kind)
-      : RealHealthFormScreen(kind: kind);
+      : RealHealthFormScreen(kind: kind, record: record);
 }
 
 class _DemoHealthRecordFormScreen extends ConsumerStatefulWidget {

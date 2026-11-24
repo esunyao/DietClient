@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-/// @brief 导航栏收起进度控制器，仅消费主体的用户纵向滚动。
-/// @details 动画状态与业务页面相互独立。
+/// 导航栏收起进度控制器，仅响应页面主体的用户纵向滚动。
 class NavigationCollapseController extends ValueNotifier<double> {
   NavigationCollapseController() : super(0);
   bool interacting = false;
@@ -10,14 +9,13 @@ class NavigationCollapseController extends ValueNotifier<double> {
   double _down = 0;
   double _up = 0;
 
+  /// 恢复导航栏至完整展开态。
   void restore() {
     _down = _up = 0;
     value = 0;
   }
 
-  /// @brief 根据主体用户滚动更新导航栏收起进度。
-  /// @param notification 滚动通知对象。
-  /// @return 始终返回 false，使滚动通知继续向上传播。
+  /// 处理页面主体滚动通知并更新收起进度；始终返回 `false` 以便继续冒泡。
   bool handle(ScrollNotification notification) {
     if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
       return false;
