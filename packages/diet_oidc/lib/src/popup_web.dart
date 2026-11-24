@@ -6,6 +6,7 @@ import 'package:web/web.dart' as web;
 
 import 'client.dart';
 
+/// 在用户点击栈内打开同源弹窗，并通过 BroadcastChannel 接收授权回调以完成登录。
 Future<OidcSession> signInWithPopup(OidcClient client) {
   final current = Uri.parse(web.window.location.href);
   final redirect = client.config.redirectUri;
@@ -21,7 +22,7 @@ Future<OidcSession> signInWithPopup(OidcClient client) {
       ),
     );
   }
-  // No await before open: browsers require the initiating user gesture.
+  // 必须在任何 await 前打开弹窗，否则浏览器会拦截非手势触发的窗口。
   final window = web.window.open(
     'about:blank',
     '_blank',
@@ -35,7 +36,7 @@ Future<OidcSession> signInWithPopup(OidcClient client) {
       ),
     );
   }
-  // Authorization pages do not need permission to navigate the application.
+  // 切断 opener 引用，防止授权页面反向导航主应用窗口。
   window.opener = null;
   return _authorize(client, window, current.origin);
 }

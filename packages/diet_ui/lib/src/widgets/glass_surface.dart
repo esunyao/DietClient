@@ -7,9 +7,10 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import '../theme/app_colors.dart';
 import 'glass_backdrop.dart';
 
+/// 玻璃表面显示模式：关闭、标准磨砂或增强折射。
 enum GlassMode { off, standard, enhanced }
 
-/// 支持的实时后端或 Windows 背景捕获启用折射；加载失败回退磨砂。
+/// 玻璃效果表面容器；支持的后端启用实时折射，加载失败或无障碍受限时自动回退磨砂或实体。
 class GlassSurface extends StatefulWidget {
   const GlassSurface({
     super.key,
@@ -22,6 +23,8 @@ class GlassSurface extends StatefulWidget {
   final double radius;
   final GlassMode mode;
   final bool reduceTransparency;
+
+  /// 当前运行平台是否具备增强折射能力。
   static bool get supportsEnhanced =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.windows ||
@@ -93,7 +96,7 @@ class _GlassSurfaceState extends State<GlassSurface> {
   }
 }
 
-/// 第三方运动镜片保留在包内；应用只传逻辑位置与展示偏好。
+/// 导航选中泡动效层；增强模式使用折射镜片，其他情况回退为浅绿胶囊。
 class GlassMotionSelection extends StatelessWidget {
   static Future<bool>? _shader;
   static Future<bool> _load() async {

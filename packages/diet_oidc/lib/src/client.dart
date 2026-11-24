@@ -8,6 +8,7 @@ import 'package:openid_client/openid_client.dart' as oidc;
 
 import 'popup_stub.dart' if (dart.library.js_interop) 'popup_web.dart' as popup;
 
+/// 公开 OIDC 客户端配置，约束同源 HTTPS discovery 与安全回调地址。
 final class OidcConfig {
   final Uri discoveryUri;
   final String clientId;
@@ -35,6 +36,7 @@ final class OidcConfig {
   }
 }
 
+/// OIDC 协议流程失败异常，包含机器可读错误码与提示信息。
 final class OidcFailure implements Exception {
   final String code;
   final String message;
@@ -43,7 +45,7 @@ final class OidcFailure implements Exception {
   String toString() => 'OidcFailure($code): $message';
 }
 
-/// Identity established by a verified ID token.
+/// 经 ID Token 校验确认的账户身份声明，调试字符串已脱敏。
 final class OidcIdentity {
   const OidcIdentity({
     required this.issuer,
@@ -65,6 +67,7 @@ final class OidcIdentity {
   String toString() => 'OidcIdentity([redacted])';
 }
 
+/// 已验证的 OIDC 内存会话，包含访问令牌、过期时间与可选刷新凭据。
 final class OidcSession {
   final String accessToken;
   final String tokenType;
@@ -85,6 +88,7 @@ final class OidcSession {
       'OidcSession(tokenType: $tokenType, expiresAt: $expiresAt, tokens: [redacted])';
 }
 
+/// 单次授权码 PKCE 事务上下文；使用一次后即失效。
 final class OidcTransaction {
   final oidc.Flow _flow;
   final String _nonce;
@@ -101,6 +105,7 @@ final class OidcTransaction {
   String toString() => 'OidcTransaction([redacted])';
 }
 
+/// 通用 OIDC 协议客户端，负责 discovery、PKCE S256 授权交换、JWKS 校验与令牌刷新。
 final class OidcClient {
   final OidcConfig config;
   final http.Client _baseClient;
@@ -115,10 +120,12 @@ final class OidcClient {
   int _generation = 0;
   Completer<void> _pendingCancellation = Completer<void>();
 
+  /// 创建 OIDC 客户端；可选注入受测 [httpClient]。
   OidcClient(this.config, {http.Client? httpClient})
     : _baseClient = httpClient ?? http.Client(),
       _ownsClient = httpClient == null;
 
+  /// 拉取并校验 provider metadata，生成单次 PKCE 授权事务。
   Future<OidcTransaction> beginAuthorization() async {
     _checkAlive();
     final generation = _generation;
@@ -189,6 +196,7 @@ final class OidcClient {
     }
   }
 
+  /// 校验回调参数、兑换令牌并验证 ID Token 签名与声明，返回已建立会话。
   Future<OidcSession> completeAuthorization(
     OidcTransaction tx,
     Uri callbackUri,
@@ -370,7 +378,7 @@ final class OidcClient {
     }
   }
 
-  /// Refresh is bound to trusted discovery and the previously verified subject.
+  /// 使用刷新令牌向受信任 discovery 端点续期，并核对主体、签发方及受众连续性。
   Future<OidcSession> refresh(OidcSession previous) async {
     try {
       return await _refresh(previous);
@@ -502,13 +510,13 @@ final class OidcClient {
     );
   }
 
-  // This method must remain non-async: the browser window is opened on the
-  // initiating click stack, before discovery has a chance to await.
+  /// 发起 Web 弹窗登录；必须保持同步入口以便在用户点击栈内打开浏览器窗口。
   Future<OidcSession> signInWithPopup() {
     _checkAlive();
     return popup.signInWithPopup(this);
   }
 
+  /// 取消指定授权事务并通知关联弹窗清理资源。
   void cancel(OidcTransaction tx) {
     _transactions.remove(tx);
     tx._used = true;
@@ -517,7 +525,7 @@ final class OidcClient {
     tx._cancelPopup = null;
   }
 
-  /// Cancel active authorizations, including a popup still loading discovery.
+  /// 取消所有进行中的授权事务与仍在加载 discovery 的弹窗尝试。
   void cancelPending() {
     _generation++;
     _pendingCancellation.complete();
@@ -530,13 +538,13 @@ final class OidcClient {
     }
   }
 
-  /// Internal lifecycle hook used by the conditional browser bridge.
+  /// 供条件导出的 Web 桥接注册弹窗取消回调。
   void Function() registerPopupCancellation(void Function() onCancel) {
     _popupCancellations.add(onCancel);
     return () => _popupCancellations.remove(onCancel);
   }
 
-  /// Bridge lifecycle hook; consumers should normally use [cancel].
+  /// 为已建立事务绑定弹窗关闭钩子；调用方常规取消请使用 [cancel]。
   void attachPopupCancellation(OidcTransaction tx, void Function() onCancel) {
     if (!_transactions.contains(tx)) {
       onCancel();
@@ -545,6 +553,7 @@ final class OidcClient {
     }
   }
 
+  /// 释放客户端并取消所有未完成事务。
   void dispose() {
     if (_disposed) return;
     _disposed = true;

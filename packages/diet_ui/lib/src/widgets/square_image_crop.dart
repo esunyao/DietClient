@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
 
-/// 设计系统只暴露字节结果，裁剪计算交给 crop_your_image。
+/// 打开 1:1 方形交互裁剪页并返回裁剪后的图片字节；用户取消返回 `null`。
 Future<Uint8List?> showSquareImageCrop(BuildContext context, Uint8List bytes) =>
     Navigator.push<Uint8List>(
       context,

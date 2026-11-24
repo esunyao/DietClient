@@ -4,7 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import '../theme/app_typography.dart';
 
-/// 导航覆盖量不含系统安全区，设计系统无需导入应用路由。
+/// 向设计系统内部页面传递导航覆盖量与回退能力，不引入应用路由。
 class AppPageScope extends InheritedWidget {
   const AppPageScope({
     super.key,
@@ -20,6 +20,8 @@ class AppPageScope extends InheritedWidget {
   final double bottomInset;
   final double topInset;
   final bool uiPreview;
+
+  /// 读取当前构建树上最近的 [AppPageScope]。
   static AppPageScope? of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppPageScope>();
   @override
@@ -31,7 +33,7 @@ class AppPageScope extends InheritedWidget {
       oldWidget.onBackFallback != onBackFallback;
 }
 
-/// 常规高度固定标题与操作；短视口将它们并入滚动，统一消费安全区。
+/// 标准业务页面骨架；常规高度固定标题与底部操作栏，短视口将其并入同一滚动区域并统一消费安全区。
 class AppPage extends StatelessWidget {
   const AppPage({
     super.key,
@@ -57,15 +59,17 @@ class AppPage extends StatelessWidget {
   final bool showBack;
   final Widget? footer;
 
+  Future<void> _handleBackPressed(BuildContext context) async {
+    final popped = await Navigator.of(context).maybePop();
+    if (!popped && context.mounted) {
+      AppPageScope.of(context)?.onBackFallback();
+    }
+  }
+
   Widget _backButton(BuildContext context) => IconButton(
     tooltip: '返回',
     constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-    onPressed: () async {
-      final popped = await Navigator.of(context).maybePop();
-      if (!popped && context.mounted) {
-        AppPageScope.of(context)?.onBackFallback();
-      }
-    },
+    onPressed: () => _handleBackPressed(context),
     icon: const Icon(Icons.arrow_back),
   );
 

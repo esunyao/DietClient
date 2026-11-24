@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'types.dart';
 
-/// One isolated enrollment/resend attempt, with no redirects or token exchange.
+/// 单次隔离的注册与验证邮件重发流程执行器，禁止跳转且不交换登录令牌。
 class AuxiliaryFlowExecutor {
   AuxiliaryFlowExecutor(this.config, {Dio? dio}) : _dio = dio ?? Dio() {
     _dio.options
@@ -22,6 +22,7 @@ class AuxiliaryFlowExecutor {
   final CancelToken _cancel = CancelToken();
   bool _started = false;
 
+  /// 提交注册信息并推进至邮件验证阶段；字段校验错误抛出 [AuthFieldFailure]。
   Future<void> register({
     required String username,
     required String email,
@@ -37,6 +38,8 @@ class AuxiliaryFlowExecutor {
         ? username.trim()
         : displayName.trim(),
   });
+
+  /// 触发验证邮件重发流程至指定 [email]。
   Future<void> resend(String email) =>
       _run(config.emailVerificationResendFlowSlug, {'email': email.trim()});
 
@@ -132,8 +135,7 @@ class AuxiliaryFlowExecutor {
           throw const AuthFailure('email_rejected', '邮件请求未被受理，请稍后重试。');
         }
         if (component == 'ak-stage-email') {
-          // EmailChallenge has no email field (authentik public schema).
-          // Acceptance does not reveal whether this address exists.
+          // Authentik EmailChallenge 响应本身不含邮箱字段，受理仅代表请求发出而非邮箱存在。
           return;
         }
         body = {'component': component};
@@ -204,7 +206,10 @@ class AuxiliaryFlowExecutor {
     }
   }
 
+  /// 取消当前进行中的辅助流程请求。
   void cancel() => _cancel.cancel();
+
+  /// 取消请求并清理底层 Dio 与内存 Cookie。
   Future<void> dispose() async {
     cancel();
     _dio.close(force: true);

@@ -8,7 +8,7 @@ import 'app_icons.dart';
 import 'app_navigation.dart';
 import 'glass_surface.dart';
 
-/// 桌面覆盖侧栏。应用负责路由、账户菜单与菜单打开状态。
+/// 桌面覆盖侧栏；悬停、焦点、键盘或菜单打开时平滑展开，路由与账户菜单由应用注入。
 class AppSideNavigation extends StatefulWidget {
   const AppSideNavigation({
     super.key,
@@ -218,22 +218,32 @@ class _AppSideNavigationState extends State<AppSideNavigation>
     );
   }
 
+  void _togglePinned() {
+    if (_pointerInside) return;
+    _pinned = !_pinned;
+    _update();
+  }
+
+  void _handlePointerDown(PointerDownEvent _) {
+    _keyboardInput = false;
+    _focus = false;
+    _update();
+  }
+
+  void _handleFocusChange(bool value) {
+    _focus = value && _keyboardInput;
+    _update();
+  }
+
   @override
   Widget build(BuildContext context) => MouseRegion(
     onEnter: (_) => _hoverChanged(true),
     onExit: (_) => _hoverChanged(false),
     child: Listener(
-      onPointerDown: (_) {
-        _keyboardInput = false;
-        _focus = false;
-        _update();
-      },
+      onPointerDown: _handlePointerDown,
       child: Focus(
         focusNode: _focusNode,
-        onFocusChange: (value) {
-          _focus = value && _keyboardInput;
-          _update();
-        },
+        onFocusChange: _handleFocusChange,
         child: AnimatedBuilder(
           animation: _animation,
           builder: (context, _) => SizedBox(
@@ -254,11 +264,12 @@ class _AppSideNavigationState extends State<AppSideNavigation>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _entry('膳食健康', AppIcons.bowlFood, () {
-                              if (_pointerInside) return;
-                              _pinned = !_pinned;
-                              _update();
-                            }, progress: _progress),
+                            _entry(
+                              '膳食健康',
+                              AppIcons.bowlFood,
+                              _togglePinned,
+                              progress: _progress,
+                            ),
                             const SizedBox(height: 18),
                             for (var i = 0; i < widget.destinations.length; i++)
                               _entry(

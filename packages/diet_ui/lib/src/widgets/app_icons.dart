@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-/// 保留上游 Regular 字体；Flutter 3.47 的 IconData 为 final，不能继承。
-/// 码点核对自 phosphor_flutter 2.1.0，避免导入其旧 IconData 子类。
+/// Phosphor Regular 字体图标常量表，避免直接依赖非 final 的三方图标子类。
 @staticIconProvider
 abstract final class AppIcons {
   static const home = IconData(

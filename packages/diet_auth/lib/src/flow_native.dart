@@ -7,7 +7,7 @@ import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 
 import 'types.dart';
 
-/// One short-lived flow session. Never reuse this object between logins.
+/// 单次短生命周期的原生登录流程执行器，使用内存 Cookie 推进 Authentik 流程，不可跨登录复用。
 class FlowExecutor {
   FlowExecutor(this.config, {Dio? dio}) : _dio = dio ?? Dio() {
     _dio.options
@@ -31,6 +31,7 @@ class FlowExecutor {
   String? _flowId;
   int _redirects = 0;
 
+  /// 推进授权与认证流程直至获得回调地址；超时、不支持挑战或取消时抛出 [AuthFailure]。
   Future<Uri> run({
     required Uri authorizationUri,
     required String username,
@@ -306,6 +307,7 @@ class FlowExecutor {
     }
   }
 
+  /// 取消正在执行的流程请求。
   void cancel() {
     if (_closed) return;
     _closed = true;
@@ -315,6 +317,7 @@ class FlowExecutor {
     }
   }
 
+  /// 取消请求并释放底层 Dio 与内存 Cookie。
   Future<void> dispose() async {
     cancel();
     _dio.close(force: true);

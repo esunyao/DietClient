@@ -6,7 +6,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 import 'glass_surface.dart';
 
-/// 背景只装配一次；镜片覆盖层不参与 Windows 的背景捕获。
+/// 分离背景页面与玻璃覆盖层的容器；Windows 仅捕获背景子树，避免切档重挂载页面状态。
 class GlassBackdrop extends StatefulWidget {
   const GlassBackdrop({
     super.key,
@@ -73,7 +73,7 @@ class _GlassBackdropState extends State<GlassBackdrop> {
   }
 }
 
-/// 包内后端边界，不从 diet_ui 的公共入口导出。
+/// 向包内玻璃组件传递当前背景捕获可用性，不从公共入口导出。
 class GlassCaptureScope extends InheritedWidget {
   const GlassCaptureScope({
     super.key,
@@ -82,6 +82,7 @@ class GlassCaptureScope extends InheritedWidget {
   });
   final bool available;
 
+  /// 读取当前树上最近 [GlassCaptureScope] 的背景捕获可用状态。
   static bool availableOf(BuildContext context) =>
       context
           .dependOnInheritedWidgetOfExactType<GlassCaptureScope>()

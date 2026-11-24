@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// 应用绿色主题语义色板。
 abstract final class AppColors {
   static const primary = Color(0xFF17664F);
   static const canvas = Color(0xFFF4F8F5);

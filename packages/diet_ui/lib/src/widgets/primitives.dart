@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import '../theme/app_typography.dart';
 
+/// 圆角实体卡片容器，支持 `ListTile` 与水波纹交互并保持零阴影。
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
@@ -35,6 +36,7 @@ class AppCard extends StatelessWidget {
   }
 }
 
+/// 分区标题行，可选右侧辅助文案或点击操作。
 class SectionHeading extends StatelessWidget {
   const SectionHeading({
     super.key,
@@ -74,6 +76,7 @@ class SectionHeading extends StatelessWidget {
   );
 }
 
+/// 应用主/次按钮组件，支持前置图标与次要描边样式。
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
@@ -102,6 +105,7 @@ class AppButton extends StatelessWidget {
   }
 }
 
+/// 圆角状态徽标，[compact] 用于紧凑列表行样式。
 class AppBadge extends StatelessWidget {
   const AppBadge({
     super.key,
@@ -138,6 +142,7 @@ class AppBadge extends StatelessWidget {
   );
 }
 
+/// 指标展示卡片，支持单位与可选进度条。
 class MetricTile extends StatelessWidget {
   const MetricTile({
     super.key,
@@ -190,6 +195,7 @@ class MetricTile extends StatelessWidget {
   );
 }
 
+/// 响应式分段选择器，支持等宽与实心高亮模式。
 class AppSegmented extends StatelessWidget {
   const AppSegmented({
     super.key,
@@ -308,6 +314,7 @@ class AppSegmented extends StatelessWidget {
   }
 }
 
+/// 柔和提示横幅卡片。
 class InfoBanner extends StatelessWidget {
   const InfoBanner({
     super.key,
@@ -339,6 +346,7 @@ class InfoBanner extends StatelessWidget {
   );
 }
 
+/// 替换当前提示并展示底部简短操作反馈消息。
 void showDemoMessage(BuildContext context, String text) {
   ScaffoldMessenger.of(context).hideCurrentSnackBar();
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));

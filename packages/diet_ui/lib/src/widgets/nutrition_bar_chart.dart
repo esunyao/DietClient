@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
+/// 营养趋势柱状图，保留空值为空白柱并通过纹理区分缺失日，不以零值替代。
 class NutritionBarChart extends StatelessWidget {
   const NutritionBarChart({
     super.key,
@@ -30,6 +31,46 @@ class NutritionBarChart extends StatelessWidget {
   String _missing(int index) => missingLabels?[index] ?? '未记录';
   String _number(double value) =>
       value.toStringAsFixed(value == value.roundToDouble() ? 0 : 1);
+
+  Widget _buildBottomTitle(double value, bool showMissing) {
+    final i = value.toInt();
+    if (i < 0 ||
+        i >= labels.length ||
+        (labels.length > 10 &&
+            i % (labels.length ~/ 7) != 0 &&
+            i != labels.length - 1)) {
+      return const SizedBox.shrink();
+    }
+    final missing = i < values.length && values[i] == null;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(labels[i], style: AppTypography.small.copyWith(fontSize: 10)),
+          if (showMissing && missing) ...[
+            const SizedBox(height: 3),
+            const CustomPaint(
+              size: Size(18, 8),
+              painter: _MissingMarkPainter(),
+            ),
+            Text(
+              _missing(i),
+              style: AppTypography.small.copyWith(fontSize: 10),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  BarTooltipItem _buildTooltipItem(
+    BarChartGroupData group,
+    BarChartRodData rod,
+  ) => BarTooltipItem(
+    '${group.x < labels.length ? '${labels[group.x]}\n' : ''}${_number(rod.toY)} $unit',
+    const TextStyle(color: Colors.white),
+  );
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -128,42 +169,8 @@ class NutritionBarChart extends StatelessWidget {
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: (showMissing ? 52 : 32) + extraTextHeight * 3,
-                    getTitlesWidget: (value, meta) {
-                      final i = value.toInt();
-                      if (i < 0 ||
-                          i >= labels.length ||
-                          (labels.length > 10 &&
-                              i % (labels.length ~/ 7) != 0 &&
-                              i != labels.length - 1)) {
-                        return const SizedBox.shrink();
-                      }
-                      final missing = i < values.length && values[i] == null;
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              labels[i],
-                              style: AppTypography.small.copyWith(fontSize: 10),
-                            ),
-                            if (showMissing && missing) ...[
-                              const SizedBox(height: 3),
-                              const CustomPaint(
-                                size: Size(18, 8),
-                                painter: _MissingMarkPainter(),
-                              ),
-                              Text(
-                                _missing(i),
-                                style: AppTypography.small.copyWith(
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      );
-                    },
+                    getTitlesWidget: (value, _) =>
+                        _buildBottomTitle(value, showMissing),
                   ),
                 ),
               ),
@@ -172,11 +179,8 @@ class NutritionBarChart extends StatelessWidget {
                 touchTooltipData: BarTouchTooltipData(
                   fitInsideHorizontally: true,
                   fitInsideVertically: true,
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) =>
-                      BarTooltipItem(
-                        '${group.x < labels.length ? '${labels[group.x]}\n' : ''}${_number(rod.toY)} $unit',
-                        const TextStyle(color: Colors.white),
-                      ),
+                  getTooltipItem: (group, _, rod, _) =>
+                      _buildTooltipItem(group, rod),
                 ),
               ),
             ),

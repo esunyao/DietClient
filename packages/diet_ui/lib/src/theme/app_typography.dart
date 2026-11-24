@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 
+/// 应用文字字阶与等宽数字排版样式。
 abstract final class AppTypography {
   static const pageTitle = TextStyle(
     fontSize: 28,

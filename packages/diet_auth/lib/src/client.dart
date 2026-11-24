@@ -5,7 +5,9 @@ import 'types.dart';
 
 const _isWeb = bool.fromEnvironment('dart.library.js_interop');
 
+/// Authentik 认证门面客户端，组合通用 OIDC 与原生 Flow Executor。
 class AuthentikAuthClient {
+  /// 使用 [config] 初始化认证客户端。
   AuthentikAuthClient(this.config)
     : _oidc = OidcClient(
         OidcConfig(
@@ -30,6 +32,7 @@ class AuthentikAuthClient {
     _busy = true;
   }
 
+  /// 在原生平台执行账号密码认证流程及可选应用授权确认，完成后返回 OIDC 会话。
   Future<OidcSession> signInWithPassword({
     required String username,
     required String password,
@@ -71,10 +74,11 @@ class AuthentikAuthClient {
     }
   }
 
+  /// 在 Web 平台发起同源弹窗 SSO 登录，完成后返回 OIDC 会话。
   Future<OidcSession> signInWithPopup() {
     _start();
     final generation = _generation;
-    // Invoke before any await so the browser still has the user activation.
+    // 必须在任何 await 前调用，以保留浏览器用户手势激活上下文。
     return _oidc
         .signInWithPopup()
         .then((session) {
@@ -93,6 +97,7 @@ class AuthentikAuthClient {
     }
   }
 
+  /// 取消当前进行中的登录事务与流程请求。
   void cancel() {
     _generation++;
     _flow?.cancel();
@@ -101,6 +106,7 @@ class AuthentikAuthClient {
     if (transaction != null) _oidc.cancel(transaction);
   }
 
+  /// 释放认证客户端及底层资源；调用后不可再发起登录。
   void dispose() {
     if (_disposed) return;
     cancel();

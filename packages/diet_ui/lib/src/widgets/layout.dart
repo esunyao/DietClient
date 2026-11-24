@@ -5,6 +5,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import '../theme/app_typography.dart';
 
+/// 餐盘示意矢量插画。
 class PlateIllustration extends StatelessWidget {
   const PlateIllustration({super.key, this.size = 48});
   final double size;
@@ -20,6 +21,7 @@ class PlateIllustration extends StatelessWidget {
   );
 }
 
+/// 预览头像矢量插画。
 class AvatarIllustration extends StatelessWidget {
   const AvatarIllustration({super.key, this.size = 48});
   final double size;
@@ -33,6 +35,7 @@ class AvatarIllustration extends StatelessWidget {
   );
 }
 
+/// 标准列表行组件，薄封装 [ListTile] 与右侧跳转箭头约定。
 class AppListRow extends StatelessWidget {
   const AppListRow({
     super.key,
@@ -82,6 +85,7 @@ class AppListRow extends StatelessWidget {
   );
 }
 
+/// 响应式主辅双栏容器；父级可用宽度达到 [AppLayout.columnsMinWidth] 且存在辅栏时分双栏显示。
 class AdaptiveColumns extends StatelessWidget {
   const AdaptiveColumns({super.key, required this.main, this.aside = const []});
   final List<Widget> main;

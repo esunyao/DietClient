@@ -4,7 +4,9 @@ import 'app_colors.dart';
 import 'app_layout.dart';
 import 'app_typography.dart';
 
+/// 应用 Material 3 浅色主题装配入口。
 abstract final class AppTheme {
+  /// 应用默认浅色主题配置。
   static ThemeData get light {
     final base = ThemeData(
       useMaterial3: true,

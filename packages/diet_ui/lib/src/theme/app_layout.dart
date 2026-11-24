@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
-/// 样板使用逻辑尺寸；安全区由页面与导航各自的覆盖区域处理。
+/// 逻辑尺寸与响应式断点常量；安全区由页面与导航各自覆盖区域处理。
 abstract final class AppLayout {
   static const navigationBreakpoint = 840.0;
   static const maxPageWidth = 1194.0;
@@ -22,9 +22,11 @@ abstract final class AppLayout {
   static const bottomNavigationMaxWidth = 340.0;
   static const topNavigationHeight = 84.0;
 
+  /// 根据可用页面宽度返回左右内边距。
   static double pageGutter(double width) =>
       width >= navigationBreakpoint ? wideGutter : mobileGutter;
 
+  /// 根据当前文字缩放比例计算宽屏顶部导航栏高度。
   static double topBarHeight(TextScaler textScaler) => math.max(
     topNavigationHeight,
     math.max(textScaler.scale(16) * 1.4 + 20, 44) + 40,

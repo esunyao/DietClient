@@ -6,15 +6,17 @@ import '../theme/app_colors.dart';
 import '../theme/app_layout.dart';
 import 'glass_surface.dart';
 
+/// 导航项定义，包含展示标签与图标。
 class AppNavigationDestination {
   const AppNavigationDestination({required this.label, required this.icon});
   final String label;
   final IconData icon;
 }
 
+/// 底部悬浮导航栏的三档收起状态。
 enum AppNavigationState { full, compact, mini }
 
-/// 连续三态悬浮岛；手势只预览，提交仍由应用决定。
+/// 连续三态手机底部悬浮导航栏；横向拖动只做视觉预览，松手后才提交选中项。
 class AppBottomNavigation extends StatefulWidget {
   const AppBottomNavigation({
     super.key,
@@ -35,12 +37,15 @@ class AppBottomNavigation extends StatefulWidget {
   final ValueChanged<bool>? onInteractionChanged;
   final GlassMode glassMode;
   final bool reduceTransparency;
+
+  /// 根据当前 [collapseProgress] 计算对应的显示状态。
   AppNavigationState get displayState => collapseProgress >= 1.99
       ? AppNavigationState.mini
       : collapseProgress >= 1
       ? AppNavigationState.compact
       : AppNavigationState.full;
 
+  /// 按当前文字缩放比例计算完整态底栏高度。
   static double heightFor(
     BuildContext context, {
     required double width,
@@ -117,6 +122,61 @@ class _AppBottomNavigationState extends State<AppBottomNavigation>
     }
   }
 
+  void _resetInteractionFlags() {
+    Future.microtask(() {
+      _swallow = false;
+      _ignoreTap = false;
+    });
+  }
+
+  void _handlePointerEnd(
+    PointerEvent event,
+    double slot, {
+    required bool cancel,
+  }) {
+    if (event.pointer != _primaryPointer) return;
+    if (_dragX != null) _finish(slot, cancel: cancel);
+    _primaryPointer = null;
+    widget.onInteractionChanged?.call(false);
+    _resetInteractionFlags();
+  }
+
+  void _handlePointerDown(PointerDownEvent event, double center, double slot) {
+    if (_primaryPointer != null) {
+      _ignoreTap = true;
+      return;
+    }
+    _ignoreTap = false;
+    _primaryPointer = event.pointer;
+    _primaryX = event.localPosition.dx;
+    widget.onInteractionChanged?.call(true);
+    _swallow = _mini;
+    _dragAllowed =
+        !_swallow && (event.localPosition.dx - center).abs() <= slot / 2;
+    if (_swallow) widget.onExpand?.call();
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (event.pointer != _primaryPointer) return;
+    _primaryX = event.localPosition.dx;
+    if (_dragX != null) setState(() => _dragX = _primaryX);
+  }
+
+  void _handleDragStart(DragStartDetails _) {
+    if (!_dragAllowed || _swallow) return;
+    _snap.stop();
+    setState(() => _dragX = _primaryX);
+  }
+
+  void _handleDestinationTap(int index) {
+    if (_ignoreTap) return;
+    if (_swallow || _mini) {
+      widget.onExpand?.call();
+      return;
+    }
+    widget.onSelected(index);
+  }
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _progress,
@@ -154,53 +214,15 @@ class _AppBottomNavigationState extends State<AppBottomNavigation>
           width: width,
           height: height,
           child: Listener(
-            onPointerUp: (event) {
-              if (event.pointer != _primaryPointer) return;
-              if (_dragX != null) _finish(slot);
-              _primaryPointer = null;
-              widget.onInteractionChanged?.call(false);
-              Future.microtask(() {
-                _swallow = false;
-                _ignoreTap = false;
-              });
-            },
-            onPointerCancel: (event) {
-              if (event.pointer != _primaryPointer) return;
-              if (_dragX != null) _finish(slot, cancel: true);
-              _primaryPointer = null;
-              widget.onInteractionChanged?.call(false);
-              Future.microtask(() {
-                _swallow = false;
-                _ignoreTap = false;
-              });
-            },
-            onPointerDown: (event) {
-              if (_primaryPointer != null) {
-                _ignoreTap = true;
-                return;
-              }
-              _ignoreTap = false;
-              _primaryPointer = event.pointer;
-              _primaryX = event.localPosition.dx;
-              widget.onInteractionChanged?.call(true);
-              _swallow = _mini;
-              _dragAllowed =
-                  !_swallow &&
-                  (event.localPosition.dx - center).abs() <= slot / 2;
-              if (_swallow) widget.onExpand?.call();
-            },
-            onPointerMove: (event) {
-              if (event.pointer != _primaryPointer) return;
-              _primaryX = event.localPosition.dx;
-              if (_dragX != null) setState(() => _dragX = _primaryX);
-            },
+            onPointerUp: (event) =>
+                _handlePointerEnd(event, slot, cancel: false),
+            onPointerCancel: (event) =>
+                _handlePointerEnd(event, slot, cancel: true),
+            onPointerDown: (event) => _handlePointerDown(event, center, slot),
+            onPointerMove: _handlePointerMove,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onHorizontalDragStart: (details) {
-                if (!_dragAllowed || _swallow) return;
-                _snap.stop();
-                setState(() => _dragX = _primaryX);
-              },
+              onHorizontalDragStart: _handleDragStart,
               onHorizontalDragUpdate: (_) {},
               onHorizontalDragEnd: (_) {},
               onHorizontalDragCancel: () => _finish(slot, cancel: true),
@@ -244,14 +266,7 @@ class _AppBottomNavigationState extends State<AppBottomNavigation>
                                           ? AppColors.primary
                                           : AppColors.muted,
                                     ),
-                                    onPressed: () {
-                                      if (_ignoreTap) return;
-                                      if (_swallow || _mini) {
-                                        widget.onExpand?.call();
-                                        return;
-                                      }
-                                      widget.onSelected(i);
-                                    },
+                                    onPressed: () => _handleDestinationTap(i),
                                     child: ExcludeSemantics(
                                       child: Column(
                                         mainAxisAlignment:
@@ -306,7 +321,7 @@ class _AppBottomNavigationState extends State<AppBottomNavigation>
   );
 }
 
-/// 宽屏使用横向文字 tab，不复用手机的图标纵向布局。
+/// 宽屏横向文字顶部导航栏。
 class AppTopNavigation extends StatelessWidget {
   const AppTopNavigation({
     super.key,
